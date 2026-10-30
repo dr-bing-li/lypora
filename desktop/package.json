@@ -1,0 +1,18 @@
+{
+  "name": "lypora-desktop",
+  "productName": "Lypora",
+  "version": "0.4.0",
+  "private": true,
+  "description": "Lypora — Windows 桌面外壳（Electron）",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "start:dev": "electron . --dev"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "rcedit": "^5.0.2"
+  },
+  "license": "MIT",
+  "author": "Lypora contributors"
+}

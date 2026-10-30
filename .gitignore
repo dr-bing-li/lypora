@@ -1,0 +1,25 @@
+# ---- 依赖与构建产物 ----
+node_modules/
+core/dist/
+release/
+
+# 由 core/scripts/gen-katex-css.mjs 生成（构建前自动重建，不入库）
+core/src/io/katex-inline.ts
+
+# ---- 内部资料：不入公开仓库 ----
+# docs/internal/  内部功能测绘与逆向笔记
+# research/       抓取的公开页面、截图与下载物
+# .tmp-themes/    第三方主题合集（授权链不完整，仅本机验收用）
+# artifacts/      验证截图、导出样例（体积大，仓库不放）
+docs/internal/
+research/
+.tmp-themes/
+artifacts/
+
+# ---- 系统 / 编辑器 ----
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.log
+*.tmp
