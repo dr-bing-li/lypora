@@ -56,7 +56,9 @@ const repo =
     .replace(/\.git$/, '')
 
 const API_IP = process.env.GITHUB_API_IP || null
-const UPLOAD_IP = process.env.GITHUB_UPLOAD_IP || API_IP
+// 注意：uploads.github.com 与 api.github.com 是两套服务，**不能共用同一个 IP**。
+// 曾把 UPLOAD_IP 缺省成 API_IP，导致上传打到 api 那台机器上返回 404（api 不认上传路径）。
+const UPLOAD_IP = process.env.GITHUB_UPLOAD_IP || null
 
 function lookupFor(ip) {
   if (!ip) return undefined

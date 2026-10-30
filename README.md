@@ -6,6 +6,8 @@
 
 ![Lypora 界面 / Lypora screenshot](docs/images/lypora.png)
 
+> **v0.4.0** — Windows x64 portable build, [`Lypora-0.4.0-win-x64.zip`](https://github.com/dr-bing-li/lypora/releases/download/v0.4.0/Lypora-0.4.0-win-x64.zip) · [all releases](https://github.com/dr-bing-li/lypora/releases)
+
 ---
 
 ## English
@@ -19,6 +21,31 @@ formulas — and it turns back into plain source the moment you click into it. T
 
 The whole thing is one TypeScript core (CodeMirror 6 + a small hand-written UI, no UI framework) wrapped by
 three shells: an Electron desktop app, a browser/PWA build, and a Capacitor project for Android.
+
+### Download
+
+Latest: **[v0.4.0](https://github.com/dr-bing-li/lypora/releases/tag/v0.4.0)** · all builds on the
+[Releases page](https://github.com/dr-bing-li/lypora/releases).
+
+| File | Platform | Format | Size | SHA256 |
+|---|---|---|---|---|
+| [`Lypora-0.4.0-win-x64.zip`](https://github.com/dr-bing-li/lypora/releases/download/v0.4.0/Lypora-0.4.0-win-x64.zip) | Windows 10/11 x64 | Portable ZIP — unzip and run | 110.9 MiB | `adb223dd…cf911c2` |
+| [`SHA256SUMS.txt`](https://github.com/dr-bing-li/lypora/releases/download/v0.4.0/SHA256SUMS.txt) | any | Checksum list | 409 B | — |
+
+Unzip, keep the `Lypora\` folder intact, and run `Lypora\Lypora.exe`. No installer, no admin rights, no
+auto-update — upgrading means downloading the next ZIP over it. **The executable is not code-signed**, so
+SmartScreen will warn once ("More info" → "Run anyway").
+
+Only Windows x64 is built and tested. macOS, Linux and an `.msi`/`.exe` installer are **not** shipped —
+see the [platform matrix](https://github.com/dr-bing-li/lypora/releases/tag/v0.4.0) for why, rather than
+publishing a package that downloads but does not run. The browser build and the Android project are built
+from source (below).
+
+Verify before running:
+
+```bat
+certutil -hashfile Lypora-0.4.0-win-x64.zip SHA256
+```
 
 ### Why it exists (and what it is not)
 
@@ -165,6 +192,30 @@ Lypora 是一个即时渲染的 Markdown 编辑器。你在编辑区里写 Markd
 
 整套东西是一个 TypeScript 核心（CodeMirror 6 + 手写 UI，不用 UI 框架），外面套三层壳：Electron 桌面版、
 浏览器 / PWA 版、Capacitor 的 Android 工程。
+
+### 下载
+
+最新版本：**[v0.4.0](https://github.com/dr-bing-li/lypora/releases/tag/v0.4.0)** · 全部构建见
+[Releases 页面](https://github.com/dr-bing-li/lypora/releases)。
+
+| 文件 | 平台 | 格式 | 大小 | SHA256 |
+|---|---|---|---|---|
+| [`Lypora-0.4.0-win-x64.zip`](https://github.com/dr-bing-li/lypora/releases/download/v0.4.0/Lypora-0.4.0-win-x64.zip) | Windows 10/11 x64 | 便携版 ZIP，解压即用 | 110.9 MiB | `adb223dd…cf911c2` |
+| [`SHA256SUMS.txt`](https://github.com/dr-bing-li/lypora/releases/download/v0.4.0/SHA256SUMS.txt) | 任意 | 校验清单 | 409 B | — |
+
+解压后**保持 `Lypora\` 文件夹结构完整**，双击 `Lypora\Lypora.exe` 即可。无安装程序、无需管理员权限、
+没有自动更新——升级就是下载新版 ZIP 覆盖上去。**exe 未做代码签名**，所以 SmartScreen 会拦一次：
+「更多信息」→「仍要运行」。
+
+只有 Windows x64 是构建并测试过的。macOS、Linux、`.msi` / `.exe` 安装包**均未提供**，原因写在
+[平台矩阵](https://github.com/dr-bing-li/lypora/releases/tag/v0.4.0) 里：宁可不给，也不放一个「能下载但跑
+不起来」的包。浏览器版与 Android 工程按下面的步骤自行构建。
+
+运行前先校验：
+
+```bat
+certutil -hashfile Lypora-0.4.0-win-x64.zip SHA256
+```
 
 ### 为什么会有这个东西（以及它不是什么）
 
