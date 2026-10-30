@@ -17,7 +17,9 @@ import {
   type ThemeStats,
 } from './ui/themes'
 import { toast } from './ui/toast'
+import { initMobileShell } from './ui/mobile'
 import { openFile, saveFile, openWorkspace, desktop, type WorkspaceEntry } from './io/files'
+import { isNative, nativePlatform } from './io/native'
 import { exportHtml, exportMarkdown, exportPdf } from './io/export'
 import { putDoc, listDocs, getDoc, readSetting, writeSetting, migrateLegacySettings } from './io/store'
 import { SAMPLE_MD, SAMPLE_NAME } from './sample'
@@ -520,7 +522,11 @@ async function doSave(forceAs: boolean): Promise<boolean> {
   updateTitle()
   await persistCurrent()
   void renderRecents()
-  toast(`已保存 ${res.name}`)
+  toast(
+    isNative()
+      ? `已保存到应用文稿目录（${nativePlatform() === 'android' ? 'Documents/Lypora' : 'Lypora'}）`
+      : `已保存 ${res.name}`,
+  )
   return true
 }
 
@@ -629,12 +635,18 @@ function doExport(kind: 'md' | 'html' | 'pdf'): void {
   if (!app.view) return
   const content = app.view.state.doc.toString()
   const name = app.fileName
+  // Android 壳里没有打印管线（WebView 的 window.print 不弹系统打印），
+  // PDF 一律由菜单置灰，这里再兜一层，避免用户点了没反应。
+  if (kind === 'pdf' && isNative()) {
+    toast('手机版请先「导出 HTML」，再用浏览器或文档应用转 PDF', 3200)
+    return
+  }
   if (kind === 'md') {
     exportMarkdown(content, name)
-    toast('已导出 Markdown')
+    toast(isNative() ? '已生成 Markdown，正在唤起分享…' : '已导出 Markdown')
   } else if (kind === 'html') {
     exportHtml(content, name)
-    toast('已导出 HTML')
+    toast(isNative() ? '已生成 HTML，正在唤起分享…' : '已导出 HTML')
   } else {
     toast('正在唤起打印，选择"另存为 PDF"即可', 2600)
     exportPdf(content, name)
@@ -748,14 +760,23 @@ function buildMenus(): MenuDef[] {
       items: [
         { label: '新建', shortcut: 'Ctrl+N', action: () => { loadDocument('# 新文档\n\n', '未命名.md'); toast('已新建文档') } },
         { label: '打开…', shortcut: 'Ctrl+O', action: () => void doOpen() },
-        { label: '打开文件夹…', shortcut: 'Ctrl+Shift+O', action: () => void doOpenWorkspace() },
+        {
+          label: isNative() ? '打开文件夹（手机版不支持）' : '打开文件夹…',
+          shortcut: isNative() ? undefined : 'Ctrl+Shift+O',
+          disabled: isNative(),
+          action: () => void doOpenWorkspace(),
+        },
         { sep: true },
         { label: '保存', shortcut: 'Ctrl+S', action: () => void doSave(false) },
         { label: '另存为…', shortcut: 'Ctrl+Shift+S', action: () => void doSave(true) },
         { sep: true },
         { label: '导出 Markdown', action: () => doExport('md') },
         { label: '导出 HTML', action: () => doExport('html') },
-        { label: '导出 PDF（打印）', action: () => doExport('pdf') },
+        {
+          label: isNative() ? '导出 PDF（手机版不支持）' : '导出 PDF（打印）',
+          disabled: isNative(),
+          action: () => doExport('pdf'),
+        },
       ],
     },
     {
@@ -877,7 +898,13 @@ function buildMenus(): MenuDef[] {
             ] as MenuDef['items'])
           : []),
         { sep: true },
-        { label: '导入自定义主题…', action: () => $<HTMLInputElement>('theme-file').click() },
+        {
+          // 手机版不提供主题导入：文件选择器拿到 .css 后没有稳定的存放位置，
+          // 且导入的是第三方主题时授权链说不清（见 docs/05 §3.2）
+          label: isNative() ? '导入自定义主题（手机版不支持）' : '导入自定义主题…',
+          disabled: isNative(),
+          action: () => $<HTMLInputElement>('theme-file').click(),
+        },
         {
           label: '自定义主题说明',
           action: () => {
@@ -971,6 +998,14 @@ function bindUI(): void {
       }
       v.focus()
     })
+  })
+
+  // 移动外壳：底部动作栏 / 抽屉遮罩 / 菜单面板。窄屏才显示，桌面布局不变。
+  // 动作全部回调到本文件，编辑状态只有一处真源。
+  initMobileShell(buildMenus, {
+    open: () => void doOpen(),
+    save: () => void doSave(false),
+    toggleOutline: () => togglePane('outline'),
   })
 
   // 全局快捷键（与菜单上标注的一致）

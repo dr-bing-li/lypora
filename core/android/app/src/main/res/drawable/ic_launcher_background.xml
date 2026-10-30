@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 自适应图标背景：与 icon-512.png 同一套垂直线性渐变，矢量绘制，任意密度都精确 -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <gradient
+        android:type="linear"
+        android:angle="270"
+        android:startColor="#2F6FEB"
+        android:endColor="#1748A8" />
+</shape>

@@ -1,9 +1,11 @@
 {
   "appId": "app.lypora.editor",
   "appName": "Lypora",
-  "webDir": "../core/dist",
-  "bundledWebRuntime": false,
+  "webDir": "dist",
   "android": {
+    "minSdkVersion": 29,
+    "targetSdkVersion": 35,
+    "compileSdkVersion": 35,
     "allowMixedContent": false,
     "captureInput": true,
     "webContentsDebuggingEnabled": false
@@ -14,8 +16,7 @@
   "plugins": {
     "SplashScreen": {
       "launchAutoHide": true,
-      "backgroundColor": "#ffffff",
-      "androidSplashResourceName": "splash"
+      "backgroundColor": "#ffffff"
     }
   }
 }

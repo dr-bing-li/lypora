@@ -1395,11 +1395,11 @@ body.col-resizing * {
     display: none !important;
   }
   .mobile-toolbar {
-    box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.04);
+    box-shadow: none;
     display: flex;
     gap: 2px;
     overflow-x: auto;
-    padding: 5px max(6px, env(safe-area-inset-left)) calc(5px + env(safe-area-inset-bottom));
+    padding: 5px max(6px, env(safe-area-inset-left)) 4px;
     border-top: 1px solid var(--border-soft);
     background: var(--bg);
     flex: 0 0 auto;
@@ -1472,6 +1472,271 @@ body.col-resizing * {
     min-width: 200px;
   }
 }
+
+/* ==========================================================================
+   移动外壳（触屏）：底部动作栏 + 抽屉 + 分区面板
+   —— 桌面布局不受影响，全部规则挂在 860px 以下
+   ========================================================================== */
+.mobile-dock,
+.drawer-scrim,
+.sheet,
+.sheet-backdrop {
+  display: none;
+}
+
+@media (max-width: 860px) {
+  /* 外壳高度跟随视觉视口（mobile.ts 写入 --app-h）：软键盘弹出时工具栏自动贴到键盘上沿 */
+  .app {
+    height: var(--app-h, 100dvh);
+    padding-top: env(safe-area-inset-top);
+  }
+
+  .mobile-dock {
+    display: flex;
+    flex-direction: column;
+    flex: 0 0 auto;
+    background: var(--bg);
+    border-top: 1px solid var(--border-soft);
+    box-shadow: 0 -6px 18px rgba(0, 0, 0, 0.06);
+    z-index: 30;
+  }
+
+  /* 动作行：6 个拇指可及的主操作，命中区 ≥ 48px（Material 建议 48dp） */
+  .mobile-actions {
+    display: flex;
+    align-items: stretch;
+    gap: 2px;
+    padding: 2px max(4px, env(safe-area-inset-left)) calc(2px + env(safe-area-inset-bottom))
+      max(4px, env(safe-area-inset-right));
+  }
+  .ma-btn {
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 48px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1px;
+    padding: 4px 2px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--fg-chrome);
+    font-size: 10.5px;
+    line-height: 1.1;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .ma-btn svg {
+    opacity: 0.86;
+  }
+  .ma-btn:active {
+    background: var(--accent-soft);
+    color: var(--accent-text);
+  }
+
+  /* 抽屉遮罩：点空白处收起侧栏，避免手机上侧栏把正文全盖住还退不出去 */
+  .drawer-scrim {
+    display: block;
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.28);
+    z-index: 35;
+    animation: fade 0.16s var(--ease);
+  }
+  .drawer-scrim[hidden] {
+    display: none;
+  }
+  @keyframes fade {
+    from {
+      opacity: 0;
+    }
+  }
+  .sidebar {
+    width: min(84vw, 320px);
+  }
+  /* 触屏命中区：格式化按钮 40px 高 / 44px 宽。低于这个数在真机上很容易点错，
+     而 768–860 的平板同样是手指操作，所以规则挂在 860 断点而不是 767。 */
+  .mobile-toolbar button {
+    min-width: 44px;
+    height: 40px;
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 767px) {
+  /* 手机：7 个顶级菜单横向滚动也挤，收进「菜单」面板（底部工具栏最后一项） */
+  .menubar-items {
+    display: none;
+  }
+  .menubar {
+    border-bottom: 1px solid var(--border-soft);
+  }
+  .doc-title {
+    max-width: 62vw;
+  }
+  /* 状态栏的三组开关在「显示」菜单里都有，手机上让位给正文 */
+  .statusbar {
+    display: none;
+  }
+}
+
+/* 分区面板：把某个顶级菜单的所有条目摊成一个可滚动的底部面板 */
+.sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  max-height: 78vh;
+  background: var(--bg-elev);
+  color: var(--fg);
+  border-top-left-radius: 14px;
+  border-top-right-radius: 14px;
+  box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.28);
+  z-index: 120;
+  padding-bottom: env(safe-area-inset-bottom);
+  animation: sheet-up 0.18s var(--ease);
+}
+.sheet[hidden] {
+  display: none;
+}
+/* 面板遮罩是独立元素，不是 .sheet::before：
+   伪元素配 z-index:-1 在真机上会把面板自己的内容一起压暗（截图对比过），
+   拆成两个兄弟节点后层级关系一眼可见。 */
+.sheet-backdrop {
+  /* 上面的合并规则给了 display:none，这里必须显式覆盖回来，否则遮罩永远不出现 */
+  display: block;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.34);
+  z-index: 119;
+  animation: fade 0.16s var(--ease);
+}
+.sheet-backdrop[hidden] {
+  display: none;
+}
+@keyframes sheet-up {
+  from {
+    transform: translateY(14px);
+    opacity: 0.6;
+  }
+}
+.sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px 8px;
+  border-bottom: 1px solid var(--border-soft);
+  flex: 0 0 auto;
+}
+.sheet-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--fg-chrome-dim);
+  letter-spacing: 0.02em;
+}
+.sheet-close {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--fg-chrome-dim);
+}
+.sheet-close:active {
+  background: var(--accent-soft);
+}
+.sheet-body {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 4px 8px 12px;
+  overscroll-behavior: contain;
+}
+.sheet-section-title {
+  margin: 12px 8px 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--fg-chrome-faint);
+  text-transform: none;
+  letter-spacing: 0.04em;
+}
+.sheet-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 48px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--fg);
+  font-size: 14.5px;
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+}
+.sheet-row.nested {
+  min-height: 44px;
+  padding-left: 26px;
+  font-size: 14px;
+}
+.sheet-row:active {
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+.sheet-row.checked .sr-check {
+  color: var(--accent-text);
+}
+.sr-check {
+  width: 16px;
+  flex: 0 0 16px;
+  font-size: 12px;
+}
+.sr-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sr-shortcut {
+  flex: 0 0 auto;
+  font-size: 11px;
+  color: var(--fg-chrome-faint);
+}
+.sheet-sep {
+  height: 1px;
+  margin: 6px 10px;
+  background: var(--border-soft);
+}
+.sheet-sub {
+  margin: 8px 8px 2px;
+  font-size: 11px;
+  color: var(--fg-chrome-faint);
+}
+
+/* --------------------------------------------------------------------------
+   触屏（无 hover）：表格列分隔线不能靠悬停出现，改成常显 + 更宽的命中区
+   -------------------------------------------------------------------------- */
+@media (pointer: coarse) {
+  .cm-col-grip {
+    opacity: 0.55;
+    width: 24px;
+    margin-left: -12px;
+  }
+  .cm-col-grip:active {
+    opacity: 1;
+  }
+  /* 触屏上更重要的写法：拖到一半被滚动打断时不要留下 col-resize 光标 */
+  .cm-table-stage.manual .cm-col-grip {
+    opacity: 0.45;
+  }
+}
+
 
 /* 打印（导出 PDF 用） */
 @media print {

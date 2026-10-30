@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Lypora</string>
+    <string name="title_activity_main">Lypora</string>
+    <string name="package_name">app.lypora.editor</string>
+    <string name="custom_url_scheme">app.lypora.editor</string>
+</resources>

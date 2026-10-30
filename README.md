@@ -113,10 +113,20 @@ node tools/pack-win.mjs --zip
 Requires `desktop/node_modules/electron/dist` (`npm install` inside `desktop/` downloads it). The packer also
 stamps the icon and version metadata into the executable.
 
-**C. Android**
+**C. Android (APK included)**
 
-The Capacitor project and the PWA install instructions live in [`android/README.md`](android/README.md).
-Building an APK needs the Android SDK configured locally.
+```bash
+node tools/build-android.mjs
+# -> release/Lypora-0.4.0-android.apk    install with: adb install -r <file>
+```
+
+Needs **JDK 21** and an **Android SDK** with platform 35 + build-tools 35 — the script locates `ANDROID_HOME`
+and a JDK ≥ 21 by itself and fails loudly (with the missing piece named) if it can't. The Capacitor project
+lives in `core/android`, the touch shell in `core/src/ui/mobile.ts`; packaging notes in
+[`android/README.md`](android/README.md).
+
+The shipped APK is **debug-signed**: it installs on any device, but Google Play needs a release keystore.
+Minimum **Android 10 (API 29)**, target **API 35**.
 
 **D. Edge `--app` fallback**
 
@@ -130,6 +140,7 @@ cd core
 node verify.mjs            # 15 UI assertions + screenshots (needs `npm run preview` running)
 node export-check.mjs      # export path: HTML / @media print / real PDF / print iframe
 
+node mobile-check.mjs      # touch shell: 5 viewports, tap targets, drawer, menu sheet
 node ../tools/closetest.mjs --exe        # window-close guard, four scenarios
 node ../tools/interacttest.mjs           # real mouse events against the packaged build
 env -u ELECTRON_RUN_AS_NODE ./release/Lypora/Lypora.exe --selftest --shot=shot.png
@@ -280,9 +291,19 @@ node tools/pack-win.mjs --zip
 依赖 `desktop/node_modules/electron/dist`（在 `desktop/` 里 `npm install` 会下载）。打包脚本会把图标和
 版本信息写进 exe。
 
-**C. Android**
+**C. Android（已附带 APK）**
 
-Capacitor 工程与 PWA 安装说明见 [`android/README.md`](android/README.md)。出 APK 需要本机配好 Android SDK。
+```bash
+node tools/build-android.mjs
+# -> release/Lypora-0.4.0-android.apk    安装：adb install -r <文件>
+```
+
+需要 **JDK 21** 与 **Android SDK**（platform 35 + build-tools 35）。脚本会自己找 `ANDROID_HOME` 和 ≥21 的
+JDK，缺什么就报什么。Capacitor 工程在 `core/android`，触屏外壳在 `core/src/ui/mobile.ts`，
+打包细节见 [`android/README.md`](android/README.md)。
+
+提供的 APK 是 **debug 签名**：任何设备可直接安装，但上架 Google Play 需要 release keystore 重新签名。
+最低支持 **Android 10（API 29）**，target **API 35**。
 
 **D. Edge `--app` 兜底**
 
@@ -296,6 +317,7 @@ cd core
 node verify.mjs            # 15 步 UI 断言 + 截图（需先 npm run preview）
 node export-check.mjs      # 导出链路：HTML / @media print / 真 PDF / 打印 iframe
 
+node mobile-check.mjs      # 触屏外壳：5 种视口、点击区、抽屉、菜单面板
 node ../tools/closetest.mjs --exe        # 关窗拦截四场景
 node ../tools/interacttest.mjs           # 对打包版派发真实鼠标事件
 env -u ELECTRON_RUN_AS_NODE ./release/Lypora/Lypora.exe --selftest --shot=shot.png
