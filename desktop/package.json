@@ -14,5 +14,13 @@
     "rcedit": "^5.0.2"
   },
   "license": "MIT",
-  "author": "Lypora contributors"
+  "author": "dr-bing-li",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dr-bing-li/lypora.git"
+  },
+  "homepage": "https://github.com/dr-bing-li/lypora#readme",
+  "bugs": {
+    "url": "https://github.com/dr-bing-li/lypora/issues"
+  }
 }
