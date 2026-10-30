@@ -6,7 +6,7 @@
 
 ![Lypora 界面 / Lypora screenshot](docs/images/lypora.png)
 
-> **v0.4.0** — Windows x64 portable build, [`Lypora-0.4.0-win-x64.zip`](https://github.com/dr-bing-li/lypora/releases/download/v0.4.0/Lypora-0.4.0-win-x64.zip) · [all releases](https://github.com/dr-bing-li/lypora/releases)
+> **v0.4.0** — Windows x64 portable build [`Lypora-0.4.0-win-x64.zip`](https://github.com/dr-bing-li/lypora/releases/download/v0.4.0/Lypora-0.4.0-win-x64.zip) · Android 10+ [`Lypora-0.4.0-android.apk`](https://github.com/dr-bing-li/lypora/releases/download/v0.4.0/Lypora-0.4.0-android.apk) · [all releases](https://github.com/dr-bing-li/lypora/releases)
 
 ---
 
@@ -30,21 +30,29 @@ Latest: **[v0.4.0](https://github.com/dr-bing-li/lypora/releases/tag/v0.4.0)** �
 | File | Platform | Format | Size | SHA256 |
 |---|---|---|---|---|
 | [`Lypora-0.4.0-win-x64.zip`](https://github.com/dr-bing-li/lypora/releases/download/v0.4.0/Lypora-0.4.0-win-x64.zip) | Windows 10/11 x64 | Portable ZIP — unzip and run | 110.9 MiB | `adb223dd…cf911c2` |
-| [`SHA256SUMS.txt`](https://github.com/dr-bing-li/lypora/releases/download/v0.4.0/SHA256SUMS.txt) | any | Checksum list | 409 B | — |
+| [`Lypora-0.4.0-android.apk`](https://github.com/dr-bing-li/lypora/releases/download/v0.4.0/Lypora-0.4.0-android.apk) | Android 10+ (API 29+) | APK, debug-signed — sideload | 10.6 MiB | `9b6e4d72…4fc280d` |
+| [`SHA256SUMS.txt`](https://github.com/dr-bing-li/lypora/releases/download/v0.4.0/SHA256SUMS.txt) | any | Checksum list | 555 B | — |
 
-Unzip, keep the `Lypora\` folder intact, and run `Lypora\Lypora.exe`. No installer, no admin rights, no
+**Windows:** unzip, keep the `Lypora\` folder intact, and run `Lypora\Lypora.exe`. No installer, no admin rights, no
 auto-update — upgrading means downloading the next ZIP over it. **The executable is not code-signed**, so
 SmartScreen will warn once ("More info" → "Run anyway").
 
-Only Windows x64 is built and tested. macOS, Linux and an `.msi`/`.exe` installer are **not** shipped —
-see the [platform matrix](https://github.com/dr-bing-li/lypora/releases/tag/v0.4.0) for why, rather than
-publishing a package that downloads but does not run. The browser build and the Android project are built
-from source (below).
+**Android:** copy the APK to the phone and tap it, or `adb install -r Lypora-0.4.0-android.apk`. Android will ask
+you to allow installing from an unknown source — that is the normal sideload prompt. The touch build uses a separate
+shell (bottom action dock, menus in a bottom sheet, sidebar as a drawer); PDF export, "open folder" and third-party
+theme import are greyed out there. Documents are stored in the app-specific directory
+`Android/data/app.lypora.editor/files/Documents/Lypora/` — to get a file out, use **Export → system share sheet**.
+
+macOS, Linux and an `.msi`/`.exe` installer are **not** shipped — see the
+[platform matrix](https://github.com/dr-bing-li/lypora/releases/tag/v0.4.0) for why, rather than publishing a
+package that downloads but does not run. The browser build can be produced from source (below). The Android APK is
+debug-signed and has not been exercised on a physical device; layout is verified in Chromium at five viewports.
 
 Verify before running:
 
 ```bat
 certutil -hashfile Lypora-0.4.0-win-x64.zip SHA256
+certutil -hashfile Lypora-0.4.0-android.apk SHA256
 ```
 
 ### Why it exists (and what it is not)
@@ -121,8 +129,9 @@ node tools/build-android.mjs
 ```
 
 Needs **JDK 21** and an **Android SDK** with platform 35 + build-tools 35 — the script locates `ANDROID_HOME`
-and a JDK ≥ 21 by itself and fails loudly (with the missing piece named) if it can't. The Capacitor project
-lives in `core/android`, the touch shell in `core/src/ui/mobile.ts`; packaging notes in
+and a JDK by itself and fails loudly (with the missing piece named) if it can't. The JDK must be **exactly 21**:
+17 fails at Gradle's `toolchain languageVersion=21` check, and 25 cannot start Gradle 8.11 at all. The Capacitor
+project lives in `core/android`, the touch shell in `core/src/ui/mobile.ts`; packaging notes in
 [`android/README.md`](android/README.md).
 
 The shipped APK is **debug-signed**: it installs on any device, but Google Play needs a release keystore.
@@ -212,20 +221,28 @@ Lypora 是一个即时渲染的 Markdown 编辑器。你在编辑区里写 Markd
 | 文件 | 平台 | 格式 | 大小 | SHA256 |
 |---|---|---|---|---|
 | [`Lypora-0.4.0-win-x64.zip`](https://github.com/dr-bing-li/lypora/releases/download/v0.4.0/Lypora-0.4.0-win-x64.zip) | Windows 10/11 x64 | 便携版 ZIP，解压即用 | 110.9 MiB | `adb223dd…cf911c2` |
-| [`SHA256SUMS.txt`](https://github.com/dr-bing-li/lypora/releases/download/v0.4.0/SHA256SUMS.txt) | 任意 | 校验清单 | 409 B | — |
+| [`Lypora-0.4.0-android.apk`](https://github.com/dr-bing-li/lypora/releases/download/v0.4.0/Lypora-0.4.0-android.apk) | Android 10+（API 29+） | APK，debug 签名，直接侧载 | 10.6 MiB | `9b6e4d72…4fc280d` |
+| [`SHA256SUMS.txt`](https://github.com/dr-bing-li/lypora/releases/download/v0.4.0/SHA256SUMS.txt) | 任意 | 校验清单 | 555 B | — |
 
-解压后**保持 `Lypora\` 文件夹结构完整**，双击 `Lypora\Lypora.exe` 即可。无安装程序、无需管理员权限、
-没有自动更新——升级就是下载新版 ZIP 覆盖上去。**exe 未做代码签名**，所以 SmartScreen 会拦一次：
+**Windows：** 解压后**保持 `Lypora\` 文件夹结构完整**，双击 `Lypora\Lypora.exe` 即可。无安装程序、无需管理
+员权限、没有自动更新——升级就是下载新版 ZIP 覆盖上去。**exe 未做代码签名**，所以 SmartScreen 会拦一次：
 「更多信息」→「仍要运行」。
 
-只有 Windows x64 是构建并测试过的。macOS、Linux、`.msi` / `.exe` 安装包**均未提供**，原因写在
+**Android：** 把 APK 传到手机点开安装（或 `adb install -r Lypora-0.4.0-android.apk`）。系统会提示「允许安装
+未知来源应用」，这是侧载的正常提示。触屏版是另一套外壳（底部操作栏、菜单收进底部面板、侧栏变抽屉），
+导出 PDF、打开文件夹、导入第三方主题在手机上是置灰的。文档存在应用专属目录
+`Android/data/app.lypora.editor/files/Documents/Lypora/`，要交出去请用**导出 → 系统分享面板**。
+
+macOS、Linux、`.msi` / `.exe` 安装包**均未提供**，原因写在
 [平台矩阵](https://github.com/dr-bing-li/lypora/releases/tag/v0.4.0) 里：宁可不给，也不放一个「能下载但跑
-不起来」的包。浏览器版与 Android 工程按下面的步骤自行构建。
+不起来」的包。浏览器版可按下面步骤自行构建；Android 包是 debug 签名、未在真机上实测，布局用 Chromium
+在五档视口下验过。
 
 运行前先校验：
 
 ```bat
 certutil -hashfile Lypora-0.4.0-win-x64.zip SHA256
+certutil -hashfile Lypora-0.4.0-android.apk SHA256
 ```
 
 ### 为什么会有这个东西（以及它不是什么）
@@ -298,8 +315,9 @@ node tools/build-android.mjs
 # -> release/Lypora-0.4.0-android.apk    安装：adb install -r <文件>
 ```
 
-需要 **JDK 21** 与 **Android SDK**（platform 35 + build-tools 35）。脚本会自己找 `ANDROID_HOME` 和 ≥21 的
-JDK，缺什么就报什么。Capacitor 工程在 `core/android`，触屏外壳在 `core/src/ui/mobile.ts`，
+需要 **JDK 21** 与 **Android SDK**（platform 35 + build-tools 35）。脚本会自己找 `ANDROID_HOME` 和 JDK，缺什么
+就报什么。JDK 必须是**恰好 21**：17 会在 Gradle 的 `toolchain languageVersion=21` 处失败，25 连 Gradle 8.11
+都起不来。Capacitor 工程在 `core/android`，触屏外壳在 `core/src/ui/mobile.ts`，
 打包细节见 [`android/README.md`](android/README.md)。
 
 提供的 APK 是 **debug 签名**：任何设备可直接安装，但上架 Google Play 需要 release keystore 重新签名。

@@ -4,9 +4,13 @@
  *
  * 用法：
  *   GITHUB_TOKEN=xxx node tools/publish-release.mjs v0.4.0 \
- *     --notes artifacts/release/release-notes-v0.4.0.md \
+ *     --notes docs/releases/v0.4.0/notes.md \
  *     --asset release/Lypora-0.4.0-win-x64.zip \
- *     --asset artifacts/release/SHA256SUMS.txt
+ *     --asset docs/releases/v0.4.0/SHA256SUMS.txt
+ *
+ * 发布说明与校验清单放 docs/releases/<tag>/ 而不是 artifacts/：
+ *   artifacts/ 被 .gitignore 排除，说明改成"只在某台机器上存在"，换机就没法复现这次的发布。
+ *   文件名必须保持 SHA256SUMS.txt（上传时用的是 basename）。
  *
  * 为什么不用 gh CLI / fetch：
  *   1) 本机没有 gh；
