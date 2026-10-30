@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Usage / 使用问题
+    url: https://github.com/dr-bing-li/lypora#readme
+    about: Build, deployment and verification steps are in the README (bilingual). / 构建、部署与验证步骤见 README（中英双语）。
+  - name: Security issue / 安全问题
+    url: https://github.com/dr-bing-li/lypora/blob/main/SECURITY.md
+    about: Please report vulnerabilities privately rather than in a public issue. / 漏洞请私下报告，不要开公开 issue。
