@@ -114,6 +114,9 @@ const common = {
 const log = (...a) => console.log('[release]', ...a)
 
 const notes = notesPath && fs.existsSync(notesPath) ? fs.readFileSync(notesPath, 'utf8') : ''
+// 只在真的给了 --notes 时才动说明。否则 PATCH 会带一个空 body，把线上 Release 的
+// 说明整段清空（追加附件时极易踩到），这种"就想补传一个包"的场景不该有副作用。
+const hasNotes = Boolean(notesPath && fs.existsSync(notesPath))
 const title = `Lypora ${tag}`
 
 // 1. 取现有 release（可能之前建过草稿）
@@ -121,11 +124,11 @@ let res = await request(api(`/repos/${repo}/releases/tags/${tag}`), { headers: c
 let release
 if (res.status === 200) {
   release = res.json
-  log(`release 已存在：#${release.id}，更新说明`)
+  log(`release 已存在：#${release.id}${hasNotes ? '，更新说明' : '，未提供 --notes，保留原说明'}`)
   res = await request(api(`/repos/${repo}/releases/${release.id}`), {
     method: 'PATCH',
     headers: { ...common, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name: title, body: notes, draft }),
+    body: JSON.stringify(hasNotes ? { name: title, body: notes, draft } : { name: title, draft }),
     ip: API_IP,
   })
   if (res.status !== 200) throw new Error(`PATCH 失败 ${res.status}: ${res.raw.slice(0, 300)}`)
