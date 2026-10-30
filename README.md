@@ -140,6 +140,8 @@ because…", which is the most useful kind of feedback this project can get.
 - Please do not submit Typora theme files, icons or code snippets. Themes written by third parties may carry
   their own licences and are not ours to redistribute.
 
+The full ground rules (and the commands to run before opening a PR) are in [`CONTRIBUTING.md`](CONTRIBUTING.md).
+
 ### Licence
 
 [MIT](LICENSE), Copyright (c) 2026 dr-bing-li.
@@ -275,6 +277,8 @@ Lypora 想做的是，把那种写作方式搬到 Typora 自己跑不了的地�
 - 小而独立的修复欢迎提 PR。大改大重构大概会被拒——不是想法不好，而是这个代码库是靠胶带粘起来的，正经
   重写属于另一个项目。
 - 请不要提交 Typora 的主题文件、图标或代码片段。第三方主题可能有自己的许可证，我没有权利转分发。
+
+提 PR 前的检查命令与完整规则见 [`CONTRIBUTING.md`](CONTRIBUTING.md)。
 
 ### 许可证
 

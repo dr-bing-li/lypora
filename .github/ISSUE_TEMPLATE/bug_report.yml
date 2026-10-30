@@ -1,0 +1,51 @@
+name: Bug report
+description: Something is broken, or renders differently from what you expected
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time. Two things make a bug report 10× more useful:
+        a file that reproduces it, and what you expected to see instead.
+
+        感谢反馈。一份有用的 bug 报告只需要两样东西：能复现它的文件，以及你期望的结果。
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened / 发生了什么
+      description: What you saw, and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce / 复现步骤
+      placeholder: |
+        1. open the file below
+        2. click into the third table cell
+        3. drag the column divider
+    validations:
+      required: true
+  - type: input
+    id: build
+    attributes:
+      label: Which build / 哪个版本
+      description: Windows portable, browser/PWA, Android, or built from source. Include the version shown in Help → About.
+      placeholder: Lypora 0.4.0 · Windows portable
+    validations:
+      required: true
+  - type: textarea
+    id: sample
+    attributes:
+      label: Sample Markdown / 复现用的 Markdown
+      description: Paste the smallest snippet that still breaks, or drag the `.md` file in.
+      render: markdown
+  - type: checkboxes
+    id: compliance
+    attributes:
+      label: Before submitting / 提交前请确认
+      options:
+        - label: This report contains no Typora theme files, icons, or code snippets. / 本报告不含 Typora 的主题文件、图标或代码片段。
+          required: true
+        - label: I searched existing issues. / 我已搜索过已有 issue。
+          required: true
