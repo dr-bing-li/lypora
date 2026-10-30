@@ -116,7 +116,9 @@ const pkg = {
   version: JSON.parse(fs.readFileSync(path.join(ROOT, 'desktop', 'package.json'), 'utf8')).version,
   description: 'Lypora —— 独立实现的即时渲染 Markdown 编辑器',
   main: 'main.js',
-  author: 'Lypora',
+  author: 'dr-bing-li',
+  license: 'MIT',
+  homepage: 'https://github.com/dr-bing-li/lypora#readme',
 }
 fs.writeFileSync(path.join(APP_DIR, 'package.json'), JSON.stringify(pkg, null, 2) + '\n')
 
@@ -136,6 +138,12 @@ fs.writeFileSync(
     '4. 卸载 = 直接删除本文件夹（配置存在 %APPDATA%\\lypora-desktop，可一并删除）。',
     '',
     `版本：${pkg.version}`,
+    '',
+    '许可证：MIT。第三方组件（Electron / Chromium / CodeMirror 6 / Lezer / KaTeX）的许可文本',
+    '见同目录 LICENSE 与 LICENSES.chromium.html，完整清单见仓库 THIRD-PARTY-NOTICES.md。',
+    '',
+    '源码与问题反馈：https://github.com/dr-bing-li/lypora',
+    '本项目为独立实现，与任何第三方商业产品无关联，也未获其认可。',
     '',
   ].join('\r\n'),
   'utf8'
