@@ -1,7 +1,7 @@
 {
   "name": "lypora-core",
   "private": true,
-  "version": "0.4.0",
+  "version": "0.4.1",
   "type": "module",
   "description": "Lypora: cross-platform live-preview Markdown editor core",
   "scripts": {

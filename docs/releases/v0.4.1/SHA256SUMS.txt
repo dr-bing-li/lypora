@@ -1,0 +1,12 @@
+# Lypora v0.4.1 — SHA256 checksums
+# Generated 2026-10-31.
+#
+# v0.4.1 only ships a new Android APK; the Windows build is unchanged from v0.4.0
+# (its checksums live in docs/releases/v0.4.0/SHA256SUMS.txt).
+#
+# Verify on Windows:
+#   certutil -hashfile Lypora-0.4.1-android.apk SHA256
+# Verify on macOS / Linux:
+#   shasum -a 256 -c SHA256SUMS.txt     (or: sha256sum -c SHA256SUMS.txt)
+
+18e3b2759a15dea419288954db0dd4b84c4c0ee95ed63fad87e803aa03491ebb  Lypora-0.4.1-android.apk

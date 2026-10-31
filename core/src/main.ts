@@ -19,7 +19,7 @@ import {
 import { toast } from './ui/toast'
 import { initMobileShell } from './ui/mobile'
 import { openFile, saveFile, openWorkspace, desktop, type WorkspaceEntry } from './io/files'
-import { isNative, nativePlatform } from './io/native'
+import { bindIncomingIntent, consumeIncomingIntent, isNative, nativePlatform, type IncomingIntent } from './io/native'
 import { exportHtml, exportMarkdown, exportPdf } from './io/export'
 import { putDoc, listDocs, getDoc, readSetting, writeSetting, migrateLegacySettings } from './io/store'
 import { SAMPLE_MD, SAMPLE_NAME } from './sample'
@@ -101,6 +101,17 @@ function boot(): void {
   desktop()?.onOpenPath((payload) => {
     loadDocument(payload.content, payload.name, undefined, payload.path)
     toast(`已打开 ${payload.name}`)
+  })
+
+  // Android：接收"打开方式"(ACTION_VIEW) 与"分享"(ACTION_SEND) 进来的内容。
+  // 冷启动 payload 由原生暂存，这里领走；热启动走 window 'lyporaIntent' 事件。
+  const openIncoming = (d: IncomingIntent): void => {
+    loadDocument(d.content, d.name)
+    toast(`已打开 ${d.name}`)
+  }
+  bindIncomingIntent(openIncoming)
+  void consumeIncomingIntent().then((d) => {
+    if (d) openIncoming(d)
   })
 }
 

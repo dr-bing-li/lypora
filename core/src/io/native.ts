@@ -13,7 +13,7 @@
  *   代价是卸载应用即删除，用户要拿走文件得走「分享」面板（见 shareFile）。
  */
 
-import { Capacitor } from '@capacitor/core'
+import { Capacitor, registerPlugin } from '@capacitor/core'
 import { Directory, Encoding, Filesystem } from '@capacitor/filesystem'
 import { Share } from '@capacitor/share'
 
@@ -162,4 +162,65 @@ export async function docUri(name: string): Promise<string | null> {
   } catch {
     return null
   }
+}
+
+/* ---------------------------------------------------------------------------
+ * 「打开方式 / 分享」接收通道（Android IntentPipe 插件）
+ *
+ * 系统把 .md/.txt 用 Lypora 打开（ACTION_VIEW），或从分享面板发来文本/文件
+ * （ACTION_SEND）时，原生层把 {action,name,content,source} 暂存进 IntentPipe；
+ * 这里提供两个入口给 main.ts：
+ *   - consumeIncomingIntent()：冷启动兜底，boot 时领走暂存 payload
+ *   - bindIncomingIntent()：  热启动，原生直接派发 window 'lyporaIntent' 事件
+ * ------------------------------------------------------------------------- */
+
+interface IntentPipePluginShape {
+  getPending(): Promise<{ payload: string | null }>
+}
+
+const IntentPipe = registerPlugin<IntentPipePluginShape>('IntentPipe')
+
+export interface IncomingIntent {
+  action: string
+  name: string
+  content: string
+  source?: string
+}
+
+function normalizeIntentDetail(raw: unknown): IncomingIntent | null {
+  let d: any = raw
+  if (typeof d === 'string') {
+    try {
+      d = JSON.parse(d)
+    } catch {
+      return null
+    }
+  }
+  if (!d || typeof d !== 'object' || typeof d.content !== 'string') return null
+  return {
+    action: typeof d.action === 'string' ? d.action : '',
+    name: typeof d.name === 'string' && d.name ? d.name : '未命名.md',
+    content: d.content,
+    source: typeof d.source === 'string' ? d.source : undefined,
+  }
+}
+
+/** 冷启动：从原生暂存区领走 payload（领走即清空） */
+export async function consumeIncomingIntent(): Promise<IncomingIntent | null> {
+  if (!isNative()) return null
+  try {
+    const { payload } = await IntentPipe.getPending()
+    return normalizeIntentDetail(payload)
+  } catch {
+    return null
+  }
+}
+
+/** 热启动：监听原生派发的 window 事件 */
+export function bindIncomingIntent(handler: (d: IncomingIntent) => void): void {
+  if (!isNative()) return
+  window.addEventListener('lyporaIntent', (e) => {
+    const d = normalizeIntentDetail((e as CustomEvent).detail)
+    if (d) handler(d)
+  })
 }

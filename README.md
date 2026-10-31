@@ -6,7 +6,7 @@
 
 ![Lypora 界面 / Lypora screenshot](docs/images/lypora.png)
 
-> **v0.4.0** — Windows x64 portable build [`Lypora-0.4.0-win-x64.zip`](https://github.com/dr-bing-li/lypora/releases/download/v0.4.0/Lypora-0.4.0-win-x64.zip) · Android 10+ [`Lypora-0.4.0-android.apk`](https://github.com/dr-bing-li/lypora/releases/download/v0.4.0/Lypora-0.4.0-android.apk) · [all releases](https://github.com/dr-bing-li/lypora/releases)
+> **v0.4.1** — Android fix release: [`Lypora-0.4.1-android.apk`](https://github.com/dr-bing-li/lypora/releases/download/v0.4.1/Lypora-0.4.1-android.apk) — now listed in system "Open with" / "Share" sheets · Windows x64 portable build [`Lypora-0.4.0-win-x64.zip`](https://github.com/dr-bing-li/lypora/releases/download/v0.4.0/Lypora-0.4.0-win-x64.zip)（unchanged）· [all releases](https://github.com/dr-bing-li/lypora/releases)
 
 ---
 
@@ -24,35 +24,37 @@ three shells: an Electron desktop app, a browser/PWA build, and a Capacitor proj
 
 ### Download
 
-Latest: **[v0.4.0](https://github.com/dr-bing-li/lypora/releases/tag/v0.4.0)** · all builds on the
+Latest: **[v0.4.1](https://github.com/dr-bing-li/lypora/releases/tag/v0.4.1)** · all builds on the
 [Releases page](https://github.com/dr-bing-li/lypora/releases).
 
 | File | Platform | Format | Size | SHA256 |
 |---|---|---|---|---|
 | [`Lypora-0.4.0-win-x64.zip`](https://github.com/dr-bing-li/lypora/releases/download/v0.4.0/Lypora-0.4.0-win-x64.zip) | Windows 10/11 x64 | Portable ZIP — unzip and run | 110.9 MiB | `adb223dd…cf911c2` |
-| [`Lypora-0.4.0-android.apk`](https://github.com/dr-bing-li/lypora/releases/download/v0.4.0/Lypora-0.4.0-android.apk) | Android 10+ (API 29+) | APK, debug-signed — sideload | 10.6 MiB | `9b6e4d72…4fc280d` |
-| [`SHA256SUMS.txt`](https://github.com/dr-bing-li/lypora/releases/download/v0.4.0/SHA256SUMS.txt) | any | Checksum list | 555 B | — |
+| [`Lypora-0.4.1-android.apk`](https://github.com/dr-bing-li/lypora/releases/download/v0.4.1/Lypora-0.4.1-android.apk) | Android 10+ (API 29+) | APK, debug-signed — sideload | 10.6 MiB | `18e3b275…3491ebb` |
+| [`SHA256SUMS.txt`](https://github.com/dr-bing-li/lypora/releases/download/v0.4.1/SHA256SUMS.txt) | any | Checksum list (v0.4.1 APK) | 540 B | — |
 
 **Windows:** unzip, keep the `Lypora\` folder intact, and run `Lypora\Lypora.exe`. No installer, no admin rights, no
 auto-update — upgrading means downloading the next ZIP over it. **The executable is not code-signed**, so
 SmartScreen will warn once ("More info" → "Run anyway").
 
-**Android:** copy the APK to the phone and tap it, or `adb install -r Lypora-0.4.0-android.apk`. Android will ask
+**Android:** copy the APK to the phone and tap it, or `adb install -r Lypora-0.4.1-android.apk`. Android will ask
 you to allow installing from an unknown source — that is the normal sideload prompt. The touch build uses a separate
 shell (bottom action dock, menus in a bottom sheet, sidebar as a drawer); PDF export, "open folder" and third-party
 theme import are greyed out there. Documents are stored in the app-specific directory
 `Android/data/app.lypora.editor/files/Documents/Lypora/` — to get a file out, use **Export → system share sheet**.
+Since v0.4.1, Lypora also registers as a target in the system **"Open with"** list (tap a `.md`/`.txt` in any file
+manager) and in the **Share sheet** — received content opens directly in the editor.
 
 macOS, Linux and an `.msi`/`.exe` installer are **not** shipped — see the
 [platform matrix](https://github.com/dr-bing-li/lypora/releases/tag/v0.4.0) for why, rather than publishing a
 package that downloads but does not run. The browser build can be produced from source (below). The Android APK is
-debug-signed and has not been exercised on a physical device; layout is verified in Chromium at five viewports.
+debug-signed; it has been installed on physical devices, and v0.4.1 added system open/share integration.
 
 Verify before running:
 
 ```bat
 certutil -hashfile Lypora-0.4.0-win-x64.zip SHA256
-certutil -hashfile Lypora-0.4.0-android.apk SHA256
+certutil -hashfile Lypora-0.4.1-android.apk SHA256
 ```
 
 ### Why it exists (and what it is not)
@@ -215,23 +217,25 @@ Lypora 是一个即时渲染的 Markdown 编辑器。你在编辑区里写 Markd
 
 ### 下载
 
-最新版本：**[v0.4.0](https://github.com/dr-bing-li/lypora/releases/tag/v0.4.0)** · 全部构建见
+最新版本：**[v0.4.1](https://github.com/dr-bing-li/lypora/releases/tag/v0.4.1)** · 全部构建见
 [Releases 页面](https://github.com/dr-bing-li/lypora/releases)。
 
 | 文件 | 平台 | 格式 | 大小 | SHA256 |
 |---|---|---|---|---|
 | [`Lypora-0.4.0-win-x64.zip`](https://github.com/dr-bing-li/lypora/releases/download/v0.4.0/Lypora-0.4.0-win-x64.zip) | Windows 10/11 x64 | 便携版 ZIP，解压即用 | 110.9 MiB | `adb223dd…cf911c2` |
-| [`Lypora-0.4.0-android.apk`](https://github.com/dr-bing-li/lypora/releases/download/v0.4.0/Lypora-0.4.0-android.apk) | Android 10+（API 29+） | APK，debug 签名，直接侧载 | 10.6 MiB | `9b6e4d72…4fc280d` |
-| [`SHA256SUMS.txt`](https://github.com/dr-bing-li/lypora/releases/download/v0.4.0/SHA256SUMS.txt) | 任意 | 校验清单 | 555 B | — |
+| [`Lypora-0.4.1-android.apk`](https://github.com/dr-bing-li/lypora/releases/download/v0.4.1/Lypora-0.4.1-android.apk) | Android 10+（API 29+） | APK，debug 签名，直接侧载 | 10.6 MiB | `18e3b275…3491ebb` |
+| [`SHA256SUMS.txt`](https://github.com/dr-bing-li/lypora/releases/download/v0.4.1/SHA256SUMS.txt) | 任意 | 校验清单（v0.4.1 APK） | 540 B | — |
 
 **Windows：** 解压后**保持 `Lypora\` 文件夹结构完整**，双击 `Lypora\Lypora.exe` 即可。无安装程序、无需管理
 员权限、没有自动更新——升级就是下载新版 ZIP 覆盖上去。**exe 未做代码签名**，所以 SmartScreen 会拦一次：
 「更多信息」→「仍要运行」。
 
-**Android：** 把 APK 传到手机点开安装（或 `adb install -r Lypora-0.4.0-android.apk`）。系统会提示「允许安装
+**Android：** 把 APK 传到手机点开安装（或 `adb install -r Lypora-0.4.1-android.apk`）。系统会提示「允许安装
 未知来源应用」，这是侧载的正常提示。触屏版是另一套外壳（底部操作栏、菜单收进底部面板、侧栏变抽屉），
 导出 PDF、打开文件夹、导入第三方主题在手机上是置灰的。文档存在应用专属目录
 `Android/data/app.lypora.editor/files/Documents/Lypora/`，要交出去请用**导出 → 系统分享面板**。
+v0.4.1 起，Lypora 也注册进了系统的**「打开方式」**列表（在文件管理器里点 `.md`/`.txt`）和**「分享」**面板——
+收到的内容会直接载入编辑器。
 
 macOS、Linux、`.msi` / `.exe` 安装包**均未提供**，原因写在
 [平台矩阵](https://github.com/dr-bing-li/lypora/releases/tag/v0.4.0) 里：宁可不给，也不放一个「能下载但跑
@@ -242,7 +246,7 @@ macOS、Linux、`.msi` / `.exe` 安装包**均未提供**，原因写在
 
 ```bat
 certutil -hashfile Lypora-0.4.0-win-x64.zip SHA256
-certutil -hashfile Lypora-0.4.0-android.apk SHA256
+certutil -hashfile Lypora-0.4.1-android.apk SHA256
 ```
 
 ### 为什么会有这个东西（以及它不是什么）
