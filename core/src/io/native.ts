@@ -16,6 +16,7 @@
 import { Capacitor, registerPlugin } from '@capacitor/core'
 import { Directory, Encoding, Filesystem } from '@capacitor/filesystem'
 import { Share } from '@capacitor/share'
+import { t } from '../i18n'
 
 /** 应用自己的文稿目录（相对 Directory.Documents） */
 const APP_DIR = 'Lypora'
@@ -42,7 +43,7 @@ function joinPath(name: string): string {
 
 /** 把文件名规范成单层、无路径分隔符、带 .md 后缀 */
 export function safeName(raw: string): string {
-  const base = (raw || '未命名.md')
+  const base = (raw || t('app.untitled'))
     .replace(/[\\/:*?"<>|]/g, '_')
     .replace(/^[.\s]+/, '')
     .trim()
@@ -135,7 +136,7 @@ export async function shareFile(
     await Share.share({
       title: name,
       url: uri.uri,
-      dialogTitle: '导出 / Export',
+      dialogTitle: t('dock.export'),
     })
     return { ok: true, path }
   } catch {
@@ -199,7 +200,7 @@ function normalizeIntentDetail(raw: unknown): IncomingIntent | null {
   if (!d || typeof d !== 'object' || typeof d.content !== 'string') return null
   return {
     action: typeof d.action === 'string' ? d.action : '',
-    name: typeof d.name === 'string' && d.name ? d.name : '未命名.md',
+    name: typeof d.name === 'string' && d.name ? d.name : t('app.untitled'),
     content: d.content,
     source: typeof d.source === 'string' ? d.source : undefined,
   }

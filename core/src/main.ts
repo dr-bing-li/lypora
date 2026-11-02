@@ -2,11 +2,11 @@ import './style.css'
 import { EditorView } from '@codemirror/view'
 import { undo, redo, selectAll } from '@codemirror/commands'
 import { openSearchPanel } from '@codemirror/search'
-import { createEditorState } from './editor/setup'
+import { createEditorState, setEditorPlaceholder } from './editor/setup'
 import { previewSettings, refreshPreview } from './editor/live-preview'
 import { cmd } from './editor/commands'
 import { extractOutline, renderOutline, highlightOutline, type OutlineItem } from './ui/outline'
-import { createMenubar, type MenuDef } from './ui/menubar'
+import { createMenubar, type MenuDef, type MenubarHandle } from './ui/menubar'
 import {
   BUILTIN_THEMES,
   listCustomThemes,
@@ -17,7 +17,20 @@ import {
   type ThemeStats,
 } from './ui/themes'
 import { toast } from './ui/toast'
-import { initMobileShell } from './ui/mobile'
+import { initMobileShell, refreshMobileLabels } from './ui/mobile'
+import {
+  applyStaticDom,
+  getLocale,
+  getLocalePreference,
+  initI18n,
+  LANGUAGES,
+  localeName,
+  onLocaleChange,
+  setLocale,
+  t,
+  type LocalePref,
+  type MessageKey,
+} from './i18n'
 import { openFile, saveFile, openWorkspace, desktop, type WorkspaceEntry } from './io/files'
 import { bindIncomingIntent, consumeIncomingIntent, isNative, nativePlatform, type IncomingIntent } from './io/native'
 import { exportHtml, exportMarkdown, exportPdf } from './io/export'
@@ -26,6 +39,12 @@ import { SAMPLE_MD, SAMPLE_NAME } from './sample'
 import { fmtNum } from './util'
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string): T => document.getElementById(id) as T
+
+/** 菜单栏句柄：切语言时要整块重绘 */
+let menubar: MenubarHandle | null = null
+
+/** 版本号由 vite.config.ts 的 define 从 package.json 注入，只此一个来源 */
+const VERSION = __APP_VERSION__
 
 /** 内置主题 id 来自 ui/themes.ts（与参考实现同序的 6 套）；自定义主题用 `custom:<名称>` */
 type ThemeName = string
@@ -43,10 +62,12 @@ interface AppState {
 
 // 更名前缀迁移必须早于任何 readSetting（下面的 app 初始化就会读 fontSize）
 migrateLegacySettings()
+// 语言必须在任何 t() 之前定下来：下面的 app.fileName 就已经要用它了
+initI18n()
 
 const app: AppState = {
   view: null,
-  fileName: '未命名.md',
+  fileName: t('app.untitled'),
   dirty: false,
   outline: [],
   docId: '',
@@ -57,6 +78,7 @@ const app: AppState = {
  * 启动
  * ------------------------------------------------------------------ */
 function boot(): void {
+  applyStaticDom()
   applyTheme(readSetting<ThemeName>('theme', 'github'), true)
   applyFontSize(readSetting('fontSize', FONT_STD))
   fontReady = true
@@ -100,14 +122,14 @@ function boot(): void {
   // 桌面版：接收"用本应用打开文件"（双击 .md / 命令行参数 / 第二实例转发）
   desktop()?.onOpenPath((payload) => {
     loadDocument(payload.content, payload.name, undefined, payload.path)
-    toast(`已打开 ${payload.name}`)
+    toast(t('toast.opened', { name: payload.name }))
   })
 
   // Android：接收"打开方式"(ACTION_VIEW) 与"分享"(ACTION_SEND) 进来的内容。
   // 冷启动 payload 由原生暂存，这里领走；热启动走 window 'lyporaIntent' 事件。
   const openIncoming = (d: IncomingIntent): void => {
     loadDocument(d.content, d.name)
-    toast(`已打开 ${d.name}`)
+    toast(t('toast.opened', { name: d.name }))
   }
   bindIncomingIntent(openIncoming)
   void consumeIncomingIntent().then((d) => {
@@ -137,9 +159,10 @@ function updateCounts(doc: string): void {
   const chars = doc.replace(/\s/g, '').length
   const lines = doc.split('\n').length
   const st = $('st-words')
-  st.textContent = `${fmtNum(chars)} 字`
-  st.title = `中日韩字符 ${fmtNum(cjk)} · 西文词 ${fmtNum(words)} · 非空白字符 ${fmtNum(chars)}`
-  $('st-lines').textContent = `${fmtNum(lines)} 行`
+  // n 给单复数选型，value 给千分位显示（英文 "1 word" / "2,431 words" 都靠这一手）
+  st.textContent = t('status.words', { n: chars, value: fmtNum(chars) })
+  st.title = t('status.wordsTip', { cjk: fmtNum(cjk), words: fmtNum(words), chars: fmtNum(chars) })
+  $('st-lines').textContent = t('status.lines', { n: lines, value: fmtNum(lines) })
 }
 
 /* ------------------------------------------------------------------ *
@@ -183,7 +206,7 @@ function applyTheme(theme: ThemeName, silent = false): ThemeStats | null {
   if (meta) meta.setAttribute('content', dark ? '#282c34' : '#ffffff')
 
   writeSetting('theme', theme)
-  toast(`主题：${custom ? custom.name : builtin ? builtin.label : 'Github'}`, 1600, silent)
+  toast(t('toast.theme', { name: custom ? custom.name : builtin ? builtin.label : 'Github' }), 1600, silent)
   return stats
 }
 
@@ -291,11 +314,11 @@ type PageWidth = number | 'full'
 const WIDTH_MIN = 520
 const WIDTH_MAX = 1600
 const WIDTH_STD = 860
-const WIDTH_PRESETS: { label: string; value: PageWidth }[] = [
-  { label: '窄（620）', value: 620 },
-  { label: '标准（860）', value: WIDTH_STD },
-  { label: '宽（1080）', value: 1080 },
-  { label: '全宽', value: 'full' },
+const WIDTH_PRESETS: { labelKey: MessageKey; value: PageWidth }[] = [
+  { labelKey: 'view.narrow', value: 620 },
+  { labelKey: 'view.standard', value: WIDTH_STD },
+  { labelKey: 'view.wide', value: 1080 },
+  { labelKey: 'view.full', value: 'full' },
 ]
 
 function clampWidth(n: number): number {
@@ -314,7 +337,7 @@ function applyPageWidth(w: PageWidth, silent = false, persist = true): void {
   document.documentElement.style.setProperty('--content-width', v === 'full' ? '100%' : `${v}px`)
   document.body.classList.toggle('full-width', v === 'full')
   if (persist) writeSetting('pageWidth', v)
-  if (!silent) toast(v === 'full' ? '页面宽度：全宽' : `页面宽度：${v}px`, 1500)
+  if (!silent) toast(v === 'full' ? t('toast.pageWidthFull') : t('toast.pageWidth', { width: v }), 1500)
 }
 
 /**
@@ -377,7 +400,7 @@ function bindWidthGrip(): void {
       /* 指针已释放 */
     }
     applyPageWidth(pending, true)
-    toast(`页面宽度 ${pending}px（双击把手恢复标准）`, 1800)
+    toast(t('toast.pageWidthDragged', { px: pending }), 1800)
   }
   grip.addEventListener('pointerup', end)
   grip.addEventListener('pointercancel', end)
@@ -406,11 +429,11 @@ function askNumber(o: { title: string; hint: string; value: number; suffix?: str
     actions.className = 'modal-actions'
     const cancel = document.createElement('button')
     cancel.type = 'button'
-    cancel.textContent = '取消'
+    cancel.textContent = t('dialog.cancel')
     const ok = document.createElement('button')
     ok.type = 'button'
     ok.className = 'primary'
-    ok.textContent = '确定'
+    ok.textContent = t('dialog.ok')
     actions.append(cancel, ok)
     box.append(h, p, input, actions)
     mask.append(box)
@@ -458,23 +481,23 @@ function toggleSource(): void {
   previewSettings.sourceMode = !previewSettings.sourceMode
   $('editor-host').classList.toggle('source-mode', previewSettings.sourceMode)
   $('btn-source').classList.toggle('on', previewSettings.sourceMode)
-  $('chip-mode').textContent = previewSettings.sourceMode ? '源代码' : '实时预览'
+  $('chip-mode').textContent = previewSettings.sourceMode ? t('chip.source') : t('chip.preview')
   pushPreviewSettings()
-  toast(previewSettings.sourceMode ? '源代码模式' : '实时预览模式')
+  toast(previewSettings.sourceMode ? t('toast.sourceOn') : t('toast.sourceOff'))
 }
 
 function toggleFocus(): void {
   previewSettings.focusMode = !previewSettings.focusMode
   $('btn-focus').classList.toggle('on', previewSettings.focusMode)
   pushPreviewSettings()
-  toast(previewSettings.focusMode ? '专注模式开' : '专注模式关')
+  toast(previewSettings.focusMode ? t('toast.focusOn') : t('toast.focusOff'))
 }
 
 function toggleTypewriter(): void {
   previewSettings.typewriter = !previewSettings.typewriter
   $('btn-typewriter').classList.toggle('on', previewSettings.typewriter)
   applyTypewriter()
-  toast(previewSettings.typewriter ? '打字机模式开' : '打字机模式关')
+  toast(previewSettings.typewriter ? t('toast.typewriterOn') : t('toast.typewriterOff'))
 }
 
 function applyTypewriter(): void {
@@ -494,7 +517,7 @@ async function doOpen(): Promise<void> {
   loadDocument(res.content, res.name, res.handle, res.path)
   await persistCurrent()
   void renderRecents()
-  toast(`已打开 ${res.name}`)
+  toast(t('toast.opened', { name: res.name }))
 }
 
 function loadDocument(
@@ -535,8 +558,8 @@ async function doSave(forceAs: boolean): Promise<boolean> {
   void renderRecents()
   toast(
     isNative()
-      ? `已保存到应用文稿目录（${nativePlatform() === 'android' ? 'Documents/Lypora' : 'Lypora'}）`
-      : `已保存 ${res.name}`,
+      ? t('toast.savedToAppDir', { dir: nativePlatform() === 'android' ? 'Documents/Lypora' : 'Lypora' })
+      : t('toast.saved', { name: res.name }),
   )
   return true
 }
@@ -560,18 +583,21 @@ function scheduleAutosave(): void {
 async function doOpenWorkspace(): Promise<void> {
   const ws = await openWorkspace()
   if (!ws) {
-    toast('当前环境不支持目录访问（PWA 沙盒限制），可用桌面版或 Chrome/Edge', 3000)
+    toast(t('toast.folderUnsupported'), 3000)
     return
   }
   renderWorkspace(ws.root, ws.entries)
-  toast(`已加载文件夹 ${ws.root}（${ws.entries.length} 个文档）`)
+  toast(t('toast.folderLoaded', { n: ws.entries.length, root: ws.root }))
 }
 
 function renderWorkspace(root: string, entries: WorkspaceEntry[]): void {
   const box = $('filetree')
   box.innerHTML = ''
   if (!entries.length) {
-    box.innerHTML = '<div class="empty-hint">该文件夹下没有 Markdown 文件</div>'
+    const hint = document.createElement('div')
+    hint.className = 'empty-hint'
+    hint.textContent = t('sidebar.noMarkdown')
+    box.appendChild(hint)
     return
   }
   const head = document.createElement('div')
@@ -591,7 +617,7 @@ function renderWorkspace(root: string, entries: WorkspaceEntry[]): void {
     node.appendChild(nm)
     node.addEventListener('click', async () => {
       const res = await e.open()
-      if (!res) return toast('读取失败')
+      if (!res) return toast(t('toast.readFailed'))
       loadDocument(res.content, res.name, res.handle, res.path)
       document.querySelectorAll('.filetree .node').forEach((n) => n.classList.remove('active'))
       node.classList.add('active')
@@ -605,7 +631,10 @@ async function renderRecents(): Promise<void> {
   const box = $('recent-list')
   box.innerHTML = ''
   if (!docs.length) {
-    box.innerHTML = '<div class="empty-hint">暂无最近文件</div>'
+    const hint = document.createElement('div')
+    hint.className = 'empty-hint'
+    hint.textContent = t('sidebar.noRecents')
+    box.appendChild(hint)
     return
   }
   for (const d of docs.slice(0, 30)) {
@@ -620,9 +649,9 @@ async function renderRecents(): Promise<void> {
     node.append(nm, sub)
     node.addEventListener('click', async () => {
       const fresh = await getDoc(d.id)
-      if (!fresh) return toast('记录已失效')
+      if (!fresh) return toast(t('toast.recordExpired'))
       loadDocument(fresh.content, fresh.name)
-      toast(`已打开 ${fresh.name}`)
+      toast(t('toast.opened', { name: fresh.name }))
     })
     box.appendChild(node)
   }
@@ -631,12 +660,12 @@ async function renderRecents(): Promise<void> {
 function timeAgo(ts: number): string {
   const diff = Date.now() - ts
   const m = Math.floor(diff / 60000)
-  if (m < 1) return '刚刚'
-  if (m < 60) return `${m} 分钟前`
+  if (m < 1) return t('time.justNow')
+  if (m < 60) return t('time.minutes', { n: m })
   const h = Math.floor(m / 60)
-  if (h < 24) return `${h} 小时前`
+  if (h < 24) return t('time.hours', { n: h })
   const d = Math.floor(h / 24)
-  return d < 30 ? `${d} 天前` : new Date(ts).toLocaleDateString('zh-CN')
+  return d < 30 ? t('time.days', { n: d }) : new Date(ts).toLocaleDateString(getLocale())
 }
 
 /* ------------------------------------------------------------------ *
@@ -649,17 +678,17 @@ function doExport(kind: 'md' | 'html' | 'pdf'): void {
   // Android 壳里没有打印管线（WebView 的 window.print 不弹系统打印），
   // PDF 一律由菜单置灰，这里再兜一层，避免用户点了没反应。
   if (kind === 'pdf' && isNative()) {
-    toast('手机版请先「导出 HTML」，再用浏览器或文档应用转 PDF', 3200)
+    toast(t('toast.pdfOnMobile'), 3200)
     return
   }
   if (kind === 'md') {
     exportMarkdown(content, name)
-    toast(isNative() ? '已生成 Markdown，正在唤起分享…' : '已导出 Markdown')
+    toast(isNative() ? t('toast.exportedMdShare') : t('toast.exportedMd'))
   } else if (kind === 'html') {
     exportHtml(content, name)
-    toast(isNative() ? '已生成 HTML，正在唤起分享…' : '已导出 HTML')
+    toast(isNative() ? t('toast.exportedHtmlShare') : t('toast.exportedHtml'))
   } else {
-    toast('正在唤起打印，选择"另存为 PDF"即可', 2600)
+    toast(t('toast.printing'), 2600)
     exportPdf(content, name)
   }
 }
@@ -721,11 +750,11 @@ async function copySelection(cut: boolean): Promise<void> {
   const view = app.view
   if (!view) return
   const { from, to } = view.state.selection.main
-  if (from === to) return toast('没有选中内容')
+  if (from === to) return toast(t('toast.noSelection'))
   try {
     await navigator.clipboard.writeText(view.state.sliceDoc(from, to))
   } catch {
-    return toast('当前环境不允许访问剪贴板，请用 Ctrl+C')
+    return toast(t('toast.clipboardDenied'))
   }
   if (cut) view.dispatch({ changes: { from, to, insert: '' } })
   view.focus()
@@ -740,7 +769,7 @@ async function pasteClipboard(): Promise<void> {
     view.dispatch({ changes: { from, to, insert: text }, selection: { anchor: from + text.length } })
     view.focus()
   } catch {
-    toast('浏览器拒绝读取剪贴板，请用 Ctrl+V')
+    toast(t('toast.clipboardReadDenied'))
   }
 }
 
@@ -748,7 +777,7 @@ function clearFormat(): void {
   const view = app.view
   if (!view) return
   const { from, to } = view.state.selection.main
-  if (from === to) return toast('选中要清除格式的文字')
+  if (from === to) return toast(t('toast.selectToClear'))
   const plain = view.state.sliceDoc(from, to).replace(/(\*\*|__|~~|`|\*|_)/g, '')
   view.dispatch({ changes: { from, to, insert: plain }, selection: { anchor: from + plain.length } })
   view.focus()
@@ -764,108 +793,201 @@ function buildMenus(): MenuDef[] {
   const custom = listCustomThemes()
   const cur = currentTheme()
   const curWidth = currentPageWidth()
+  // 手机壳里没有打印管线、没有目录句柄、没有主题文件落点，三项置灰并写明原因
+  const native = isNative()
+  const pref = getLocalePreference()
 
   return [
     {
-      label: '文件',
+      id: 'file',
+      label: t('menu.file'),
       items: [
-        { label: '新建', shortcut: 'Ctrl+N', action: () => { loadDocument('# 新文档\n\n', '未命名.md'); toast('已新建文档') } },
-        { label: '打开…', shortcut: 'Ctrl+O', action: () => void doOpen() },
         {
-          label: isNative() ? '打开文件夹（手机版不支持）' : '打开文件夹…',
-          shortcut: isNative() ? undefined : 'Ctrl+Shift+O',
-          disabled: isNative(),
+          id: 'file-create',
+          label: t('file.create'),
+          shortcut: 'Ctrl+N',
+          action: () => {
+            loadDocument(`# ${t('app.newDoc')}\n\n`, t('app.untitled'))
+            toast(t('toast.created'))
+          },
+        },
+        { id: 'file-open', label: t('file.open'), shortcut: 'Ctrl+O', action: () => void doOpen() },
+        {
+          id: 'file-open-folder',
+          label: native ? t('file.openFolderUnsupported') : t('file.openFolder'),
+          shortcut: native ? undefined : 'Ctrl+Shift+O',
+          disabled: native,
           action: () => void doOpenWorkspace(),
         },
         { sep: true },
-        { label: '保存', shortcut: 'Ctrl+S', action: () => void doSave(false) },
-        { label: '另存为…', shortcut: 'Ctrl+Shift+S', action: () => void doSave(true) },
-        { sep: true },
-        { label: '导出 Markdown', action: () => doExport('md') },
-        { label: '导出 HTML', action: () => doExport('html') },
+        { id: 'file-save', label: t('file.save'), shortcut: 'Ctrl+S', action: () => void doSave(false) },
         {
-          label: isNative() ? '导出 PDF（手机版不支持）' : '导出 PDF（打印）',
-          disabled: isNative(),
+          id: 'file-save-as',
+          label: t('file.saveAs'),
+          shortcut: 'Ctrl+Shift+S',
+          action: () => void doSave(true),
+        },
+        { sep: true },
+        { id: 'file-export-md', label: t('file.exportMd'), action: () => doExport('md') },
+        { id: 'file-export-html', label: t('file.exportHtml'), action: () => doExport('html') },
+        {
+          id: 'file-export-pdf',
+          label: native ? t('file.exportPdfUnsupported') : t('file.exportPdf'),
+          disabled: native,
           action: () => doExport('pdf'),
         },
       ],
     },
     {
-      label: '编辑',
+      id: 'edit',
+      label: t('menu.edit'),
       items: [
-        { label: '撤销', shortcut: 'Ctrl+Z', action: withView(undo) },
-        { label: '重做', shortcut: 'Ctrl+Y', action: withView(redo) },
+        { id: 'edit-undo', label: t('edit.undo'), shortcut: 'Ctrl+Z', action: withView(undo) },
+        { id: 'edit-redo', label: t('edit.redo'), shortcut: 'Ctrl+Y', action: withView(redo) },
         { sep: true },
-        { label: '剪切', shortcut: 'Ctrl+X', action: () => void copySelection(true) },
-        { label: '复制', shortcut: 'Ctrl+C', action: () => void copySelection(false) },
-        { label: '粘贴', shortcut: 'Ctrl+V', action: () => void pasteClipboard() },
+        { id: 'edit-cut', label: t('edit.cut'), shortcut: 'Ctrl+X', action: () => void copySelection(true) },
+        { id: 'edit-copy', label: t('edit.copy'), shortcut: 'Ctrl+C', action: () => void copySelection(false) },
+        { id: 'edit-paste', label: t('edit.paste'), shortcut: 'Ctrl+V', action: () => void pasteClipboard() },
         { sep: true },
-        { label: '全选', shortcut: 'Ctrl+A', action: withView(selectAll) },
-        { label: '查找与替换', shortcut: 'Ctrl+F', action: withView(openSearchPanel) },
+        { id: 'edit-select-all', label: t('edit.selectAll'), shortcut: 'Ctrl+A', action: withView(selectAll) },
+        { id: 'edit-find', label: t('edit.find'), shortcut: 'Ctrl+F', action: withView(openSearchPanel) },
       ],
     },
     {
-      label: '段落',
+      id: 'paragraph',
+      label: t('menu.paragraph'),
       items: [
         ...[1, 2, 3, 4, 5, 6].map((lv) => ({
-          label: `标题 ${lv}`,
+          id: `paragraph-h${lv}`,
+          label: t('paragraph.heading', { level: lv }),
           shortcut: `Ctrl+${lv}`,
           action: withView((v) => cmd.heading(v, lv)),
         })),
-        { label: '段落', shortcut: 'Ctrl+0', action: withView((v) => cmd.heading(v, 0)) },
-        { sep: true },
-        { label: '无序列表', shortcut: 'Ctrl+Shift+]', action: withView(cmd.bulletList) },
-        { label: '有序列表', shortcut: 'Ctrl+Shift+[', action: withView(cmd.orderedList) },
-        { label: '任务列表', action: withView(cmd.taskList) },
-        { label: '引用', shortcut: 'Ctrl+Shift+Q', action: withView(cmd.quote) },
-        { sep: true },
-        { label: '代码块', shortcut: 'Ctrl+Shift+K', action: withView(cmd.codeBlock) },
-        { label: '公式块', shortcut: 'Ctrl+Shift+M', action: withView(cmd.mathBlock) },
-        { label: '表格', shortcut: 'Ctrl+Shift+T', action: withView(cmd.table) },
-        { label: '分隔线', action: withView(cmd.horizontalRule) },
-      ],
-    },
-    {
-      label: '格式',
-      items: [
-        { label: '加粗', shortcut: 'Ctrl+B', action: withView(cmd.bold) },
-        { label: '斜体', shortcut: 'Ctrl+I', action: withView(cmd.italic) },
-        { label: '删除线', shortcut: 'Alt+Shift+5', action: withView(cmd.strike) },
-        { label: '行内代码', shortcut: 'Ctrl+E', action: withView(cmd.code) },
-        { sep: true },
-        { label: '超链接', shortcut: 'Ctrl+K', action: withView(cmd.link) },
-        { label: '图像', shortcut: 'Ctrl+Shift+I', action: withView(cmd.image) },
-        { sep: true },
-        { label: '清除格式', action: clearFormat },
-      ],
-    },
-    {
-      label: '显示',
-      items: [
-        { label: '侧边栏', shortcut: 'Ctrl+Shift+L', checked: isSidebarOpen(), action: () => setSidebar(!isSidebarOpen()) },
-        { label: '大纲', shortcut: 'Ctrl+Shift+1', checked: isSidebarOpen() && currentPane === 'outline', action: () => togglePane('outline') },
-        { label: '文件树', shortcut: 'Ctrl+Shift+2', checked: isSidebarOpen() && currentPane === 'files', action: () => togglePane('files') },
-        { sep: true },
-        { label: '源代码模式', shortcut: 'Ctrl+/', checked: previewSettings.sourceMode, action: toggleSource },
-        { label: '专注模式', shortcut: 'F8', checked: previewSettings.focusMode, action: toggleFocus },
-        { label: '打字机模式', shortcut: 'F9', checked: previewSettings.typewriter, action: toggleTypewriter },
+        {
+          id: 'paragraph-body',
+          label: t('paragraph.body'),
+          shortcut: 'Ctrl+0',
+          action: withView((v) => cmd.heading(v, 0)),
+        },
         { sep: true },
         {
-          label: '页面宽度',
+          id: 'paragraph-bullet',
+          label: t('paragraph.bullet'),
+          shortcut: 'Ctrl+Shift+]',
+          action: withView(cmd.bulletList),
+        },
+        {
+          id: 'paragraph-ordered',
+          label: t('paragraph.ordered'),
+          shortcut: 'Ctrl+Shift+[',
+          action: withView(cmd.orderedList),
+        },
+        { id: 'paragraph-task', label: t('paragraph.task'), action: withView(cmd.taskList) },
+        {
+          id: 'paragraph-quote',
+          label: t('paragraph.quote'),
+          shortcut: 'Ctrl+Shift+Q',
+          action: withView(cmd.quote),
+        },
+        { sep: true },
+        {
+          id: 'paragraph-code',
+          label: t('paragraph.code'),
+          shortcut: 'Ctrl+Shift+K',
+          action: withView(cmd.codeBlock),
+        },
+        {
+          id: 'paragraph-math',
+          label: t('paragraph.math'),
+          shortcut: 'Ctrl+Shift+M',
+          action: withView(cmd.mathBlock),
+        },
+        { id: 'paragraph-table', label: t('paragraph.table'), shortcut: 'Ctrl+Shift+T', action: withView(cmd.table) },
+        { id: 'paragraph-hr', label: t('paragraph.hr'), action: withView(cmd.horizontalRule) },
+      ],
+    },
+    {
+      id: 'format',
+      label: t('menu.format'),
+      items: [
+        { id: 'format-bold', label: t('format.bold'), shortcut: 'Ctrl+B', action: withView(cmd.bold) },
+        { id: 'format-italic', label: t('format.italic'), shortcut: 'Ctrl+I', action: withView(cmd.italic) },
+        { id: 'format-strike', label: t('format.strike'), shortcut: 'Alt+Shift+5', action: withView(cmd.strike) },
+        { id: 'format-code', label: t('format.code'), shortcut: 'Ctrl+E', action: withView(cmd.code) },
+        { sep: true },
+        { id: 'format-link', label: t('format.link'), shortcut: 'Ctrl+K', action: withView(cmd.link) },
+        { id: 'format-image', label: t('format.image'), shortcut: 'Ctrl+Shift+I', action: withView(cmd.image) },
+        { sep: true },
+        { id: 'format-clear', label: t('format.clear'), action: clearFormat },
+      ],
+    },
+    {
+      id: 'view',
+      label: t('menu.view'),
+      items: [
+        {
+          id: 'view-sidebar',
+          label: t('view.sidebar'),
+          shortcut: 'Ctrl+Shift+L',
+          checked: isSidebarOpen(),
+          action: () => setSidebar(!isSidebarOpen()),
+        },
+        {
+          id: 'view-outline',
+          label: t('view.outline'),
+          shortcut: 'Ctrl+Shift+1',
+          checked: isSidebarOpen() && currentPane === 'outline',
+          action: () => togglePane('outline'),
+        },
+        {
+          id: 'view-files',
+          label: t('view.files'),
+          shortcut: 'Ctrl+Shift+2',
+          checked: isSidebarOpen() && currentPane === 'files',
+          action: () => togglePane('files'),
+        },
+        { sep: true },
+        {
+          id: 'view-source',
+          label: t('view.source'),
+          shortcut: 'Ctrl+/',
+          checked: previewSettings.sourceMode,
+          action: toggleSource,
+        },
+        {
+          id: 'view-focus',
+          label: t('view.focus'),
+          shortcut: 'F8',
+          checked: previewSettings.focusMode,
+          action: toggleFocus,
+        },
+        {
+          id: 'view-typewriter',
+          label: t('view.typewriter'),
+          shortcut: 'F9',
+          checked: previewSettings.typewriter,
+          action: toggleTypewriter,
+        },
+        { sep: true },
+        {
+          id: 'view-page-width',
+          label: t('view.pageWidth'),
           items: [
             ...WIDTH_PRESETS.map((pr) => ({
-              label: pr.label,
+              id: `view-width-${pr.value}`,
+              label: t(pr.labelKey),
               checked: curWidth === pr.value,
               action: () => applyPageWidth(pr.value),
             })),
             { sep: true as const },
             {
-              label: '自定义…',
+              id: 'view-width-custom',
+              label: t('view.custom'),
               action: () => {
                 const cur = currentPageWidth()
                 void askNumber({
-                  title: '自定义页面宽度',
-                  hint: `正文栏宽 ${WIDTH_MIN}–${WIDTH_MAX} 像素；也可以直接拖正文右边缘的竖条。`,
+                  title: t('view.customTitle'),
+                  hint: t('view.customHint', { min: WIDTH_MIN, max: WIDTH_MAX }),
                   value: cur === 'full' ? WIDTH_STD : cur,
                 }).then((v) => {
                   if (v) applyPageWidth(v)
@@ -875,35 +997,54 @@ function buildMenus(): MenuDef[] {
           ],
         },
         { sep: true },
-        { label: '放大', shortcut: 'Ctrl+Shift+=', action: () => applyFontSize(app.fontSize + 1) },
-        { label: '缩小', shortcut: 'Ctrl+-', action: () => applyFontSize(app.fontSize - 1) },
-        { label: '实际大小', shortcut: 'Ctrl+Shift+0', action: () => applyFontSize(16) },
-        { label: '全屏', shortcut: 'F11', action: () => void toggleFullscreen() },
+        {
+          id: 'view-zoom-in',
+          label: t('view.zoomIn'),
+          shortcut: 'Ctrl+Shift+=',
+          action: () => applyFontSize(app.fontSize + 1),
+        },
+        {
+          id: 'view-zoom-out',
+          label: t('view.zoomOut'),
+          shortcut: 'Ctrl+-',
+          action: () => applyFontSize(app.fontSize - 1),
+        },
+        {
+          id: 'view-zoom-reset',
+          label: t('view.zoomReset'),
+          shortcut: 'Ctrl+Shift+0',
+          action: () => applyFontSize(16),
+        },
+        { id: 'view-fullscreen', label: t('view.fullscreen'), shortcut: 'F11', action: () => void toggleFullscreen() },
       ],
     },
     {
-      label: '主题',
+      id: 'theme',
+      label: t('menu.theme'),
       items: [
-        ...BUILTIN_THEMES.map((t) => ({
-          label: t.label,
-          checked: cur === t.id,
-          action: () => applyTheme(t.id),
+        ...BUILTIN_THEMES.map((th) => ({
+          id: `theme-${th.id}`,
+          label: th.label,
+          checked: cur === th.id,
+          action: () => applyTheme(th.id),
         })),
         ...(custom.length
           ? ([
               { sep: true },
-              ...custom.map((t) => ({
-                label: t.name,
-                checked: cur === `custom:${t.name}`,
-                action: () => applyTheme(`custom:${t.name}`),
+              ...custom.map((th) => ({
+                id: `theme-custom-${th.name}`,
+                label: th.name,
+                checked: cur === `custom:${th.name}`,
+                action: () => applyTheme(`custom:${th.name}`),
               })),
               { sep: true },
-              ...custom.map((t) => ({
-                label: `删除自定义主题「${t.name}」`,
+              ...custom.map((th) => ({
+                id: `theme-del-${th.name}`,
+                label: th.name,
                 action: () => {
-                  removeCustomTheme(t.name)
+                  removeCustomTheme(th.name)
                   applyTheme('github')
-                  toast(`已删除主题 ${t.name}`)
+                  toast(t('toast.themeDeleted', { name: th.name }))
                 },
               })),
             ] as MenuDef['items'])
@@ -912,33 +1053,81 @@ function buildMenus(): MenuDef[] {
         {
           // 手机版不提供主题导入：文件选择器拿到 .css 后没有稳定的存放位置，
           // 且导入的是第三方主题时授权链说不清（见 docs/05 §3.2）
-          label: isNative() ? '导入自定义主题（手机版不支持）' : '导入自定义主题…',
-          disabled: isNative(),
+          id: 'theme-import',
+          label: native ? t('theme.importCustomUnsupported') : t('theme.importCustom'),
+          disabled: native,
           action: () => $<HTMLInputElement>('theme-file').click(),
         },
         {
-          label: '自定义主题说明',
+          id: 'theme-help',
+          label: t('theme.customHelp'),
           action: () => {
             void navigator.clipboard
               ?.writeText(THEME_TEMPLATE)
-              .then(() => toast('主题模板已复制到剪贴板，改值后存成 .css 再导入', 3200))
-              .catch(() => toast('主题变量见 docs/03-架构与技术规格.md', 3200))
+              .then(() => toast(t('toast.themeTemplateCopied'), 3200))
+              .catch(() => toast(t('toast.themeDocRef'), 3200))
           },
         },
       ],
     },
     {
-      label: '帮助',
+      // 语言单独一个顶级菜单：语言是"整个界面"的属性，藏在显示/帮助里没人找得到
+      id: 'language',
+      label: t('menu.language'),
       items: [
-        { label: '快捷键', shortcut: 'F1', action: showHelp },
         {
-          label: '关于 Lypora',
-          // 版本号与 desktop/package.json 保持一致（v0.4.0 起产品定名 Lypora）
-          action: () => toast('Lypora 0.4.0 · 独立实现的即时渲染 Markdown 编辑器 · MIT', 3600),
+          id: 'lang-system',
+          label: t('language.followSystem'),
+          checked: pref === 'system',
+          action: () => applyLocale('system'),
         },
+        { sep: true },
+        // 各语言一律用母语名显示，不翻译（否则找不到自己那一项）
+        ...LANGUAGES.map((l) => ({
+          id: `lang-${l.id}`,
+          label: l.native,
+          checked: pref === l.id,
+          action: () => applyLocale(l.id),
+        })),
+      ],
+    },
+    {
+      id: 'help',
+      label: t('menu.help'),
+      items: [
+        { id: 'help-shortcuts', label: t('help.shortcuts'), shortcut: 'F1', action: showHelp },
+        { id: 'help-about', label: t('help.about'), action: () => toast(t('help.aboutText', { version: VERSION }), 3600) },
       ],
     },
   ]
+}
+
+/* ------------------------------------------------------------------ *
+ * 语言切换：偏好 → 重绘
+ * ------------------------------------------------------------------ */
+/** 菜单项被点中时走这里；语言没变也会提示一次，避免"点了没反应" */
+function applyLocale(pref: LocalePref): void {
+  const next = setLocale(pref)
+  toast(t('language.changed', { name: localeName(next) }), 1800)
+}
+
+/**
+ * 把已经渲染出去的文字全部重画一遍。
+ * 静态节点靠 data-i18n 标记 + applyStaticDom，动态节点（菜单、dock、大纲、统计）逐个刷新。
+ */
+function refreshLocaleUi(): void {
+  applyStaticDom()
+  menubar?.redraw()
+  refreshMobileLabels()
+  if (app.view) setEditorPlaceholder(app.view)
+  // 静态标记里的 chip 写死的是"实时预览"，源码模式下要改回来
+  $('chip-mode').textContent = previewSettings.sourceMode ? t('chip.source') : t('chip.preview')
+  updateTitle()
+  const doc = app.view?.state.doc.toString() ?? ''
+  updateCounts(doc)
+  refreshOutline(doc)
+  if (currentPane === 'recent') void renderRecents()
+  syncStatusToggles()
 }
 
 /* ------------------------------------------------------------------ *
@@ -946,7 +1135,7 @@ function buildMenus(): MenuDef[] {
  * ------------------------------------------------------------------ */
 function bindUI(): void {
   updateTitle()
-  createMenubar($('menubar-items'), buildMenus)
+  menubar = createMenubar($('menubar-items'), buildMenus)
   initWheelZoom()
 
   // 侧栏页签：点已激活的页签 = 收起侧栏（与参考实现点开当前视图即收起一致）
@@ -973,13 +1162,18 @@ function bindUI(): void {
     if (!file) return
     const reader = new FileReader()
     reader.onload = () => {
-      const name = file.name.replace(/\.css$/i, '') || '自定义主题'
+      const name = file.name.replace(/\.css$/i, '') || t('menu.theme')
       addCustomTheme(name, String(reader.result ?? ''))
       const stats = applyTheme(`custom:${name}`)
       toast(
         stats?.foreign
-          ? `已导入「${name}」：第三方主题格式，映射 ${stats.kept}/${stats.rules} 条规则、${stats.vars} 个变量`
-          : `已导入主题 ${name}，可在「主题」菜单切换`,
+          ? t('toast.themeImportedForeign', {
+              name,
+              kept: stats.kept,
+              rules: stats.rules,
+              vars: stats.vars,
+            })
+          : t('toast.themeImported', { name }),
         3600,
       )
     }
@@ -1010,6 +1204,9 @@ function bindUI(): void {
       v.focus()
     })
   })
+
+  // 语言变化：重绘所有已经渲染出去的文字（切换点只有一个，这里统一兜住）
+  onLocaleChange(() => refreshLocaleUi())
 
   // 移动外壳：底部动作栏 / 抽屉遮罩 / 菜单面板。窄屏才显示，桌面布局不变。
   // 动作全部回调到本文件，编辑状态只有一处真源。
@@ -1050,8 +1247,8 @@ function bindUI(): void {
     }
     if (mod && !e.shiftKey && e.key.toLowerCase() === 'n') {
       e.preventDefault()
-      loadDocument('# 新文档\n\n', '未命名.md')
-      toast('已新建文档')
+      loadDocument(`# ${t('app.newDoc')}\n\n`, t('app.untitled'))
+      toast(t('toast.created'))
       return
     }
     if (mod && e.key === '/') {
@@ -1140,7 +1337,7 @@ function bindUI(): void {
     if (!f) return
     if (/\.(md|markdown|txt)$/i.test(f.name)) {
       loadDocument(await f.text(), f.name)
-      toast(`已打开 ${f.name}`)
+      toast(t('toast.opened', { name: f.name }))
     } else if (f.type === 'text/css') {
       const css = await f.text()
       const name = f.name.replace(/\.css$/i, '')
@@ -1148,8 +1345,13 @@ function bindUI(): void {
       const stats = applyTheme(`custom:${name}`)
       toast(
         stats?.foreign
-          ? `已导入「${name}」：映射 ${stats.kept}/${stats.rules} 条规则、${stats.vars} 个变量`
-          : `已导入主题 ${name}`,
+          ? t('toast.themeImportedForeign', {
+              name,
+              kept: stats.kept,
+              rules: stats.rules,
+              vars: stats.vars,
+            })
+          : t('toast.themeImported', { name }),
         3200,
       )
     } else if (f.type.startsWith('image/')) {
@@ -1161,7 +1363,7 @@ function bindUI(): void {
         const r = v.state.selection.main
         const insert = `![${f.name}](${src})`
         v.dispatch({ changes: { from: r.from, to: r.to, insert }, selection: { anchor: r.from + insert.length } })
-        toast('已插入图片（内嵌 base64）')
+        toast(t('toast.imageInserted'))
       }
       reader.readAsDataURL(f)
     }
@@ -1182,12 +1384,12 @@ async function toggleFullscreen(): Promise<void> {
     if (!document.fullscreenElement) await document.documentElement.requestFullscreen()
     else await document.exitFullscreen()
   } catch {
-    toast('当前环境不支持全屏')
+    toast(t('toast.fullscreenUnsupported'))
   }
 }
 
 function showHelp(): void {
-  toast('Ctrl+B 粗体 · Ctrl+K 链接 · Ctrl+1~6 标题 · Ctrl+/ 源码 · F8 专注 · F9 打字机 · Ctrl+S 保存', 4200)
+  toast(t('help.shortcutsTip'), 4200)
 }
 
 function registerServiceWorker(): void {

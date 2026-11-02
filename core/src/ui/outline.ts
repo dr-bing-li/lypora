@@ -1,3 +1,5 @@
+import { t } from '../i18n'
+
 export interface OutlineItem {
   level: number
   text: string
@@ -30,7 +32,7 @@ export function extractOutline(doc: string): OutlineItem[] {
       if (m) {
         items.push({
           level: m[1].length,
-          text: m[2].replace(/[*_`~]/g, '') || '（空标题）',
+          text: m[2].replace(/[*_`~]/g, '') || t('editor.emptyHeading'),
           from: offset,
           line: items.length,
         })
@@ -48,7 +50,10 @@ export function renderOutline(
 ): void {
   container.innerHTML = ''
   if (!items.length) {
-    container.innerHTML = '<div class="empty-hint">文档无标题</div>'
+    const hint = document.createElement('div')
+    hint.className = 'empty-hint'
+    hint.textContent = t('sidebar.noHeading')
+    container.appendChild(hint)
     return
   }
   const frag = document.createDocumentFragment()

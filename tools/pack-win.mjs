@@ -55,52 +55,76 @@ fs.renameSync(path.join(OUT_DIR, 'electron.exe'), path.join(OUT_DIR, 'Lypora.exe
 const EXE = path.join(OUT_DIR, 'Lypora.exe')
 const ICO = path.join(ROOT, 'desktop', 'icon.ico')
 if (fs.existsSync(ICO)) {
-  // 直接改目标文件偶发 "Unable to commit changes"（资源段被占用/杀软扫描）。
-  // 改成：先在临时副本上改，成功后再原子替换。
-  const TMP = path.join(os.tmpdir(), 'lypora-rcedit.tmp.exe')
-  try {
-    fs.copyFileSync(EXE, TMP)
-    const rceditUrl = pathToFileURL(path.join(ROOT, 'desktop', 'node_modules', 'rcedit', 'lib', 'index.js')).href
-    const { rcedit } = await import(rceditUrl)
-    await rcedit(TMP, {
-      icon: ICO,
-      'file-version': WIN_VERSION,
-      'product-version': WIN_VERSION,
-      'version-string': {
-        CompanyName: 'Lypora',
-        FileDescription: 'Lypora Markdown 编辑器',
-        ProductName: 'Lypora',
-        LegalCopyright: 'Independent implementation. Not affiliated with, or endorsed by, any third-party product.',
-        OriginalFilename: 'Lypora.exe',
-      },
-    })
-    // 用覆盖写而不是"删掉再改名"：部分环境（沙箱回收站 / 杀软）会拦删除。
-    // 覆盖写偶发 EBUSY：刚 rename 出来的 188MB exe 常被 Defender 实时扫描占住，
-    // 等一会儿就放开了——重试 4 次，每次 1.2s 退避（docs/04 V18）。
-    let wrote = false
-    for (let attempt = 1; attempt <= 4 && !wrote; attempt++) {
+  // 换图标/版本信息有两条路，成败都记日志：
+  //   ① 就地改：最快。刚 rename 出来的 188MB exe 偶发被 Defender 扫住
+  //      （"Unable to commit changes"），所以带退避重试。
+  //   ② 临时副本改完再覆盖回来：①彻底失败时的兜底。
+  // v0.5.0 起先试①：上一版直接走②时，在 %TEMP% 里改 PE 文件被拦，rcedit 返回 1，
+  // 图标就悄悄退回 Electron 默认标（日志里只有一行"失败，不影响功能"，很容易漏看）。
+  const rceditUrl = pathToFileURL(
+    path.join(ROOT, 'desktop', 'node_modules', 'rcedit', 'lib', 'index.js'),
+  ).href
+  const { rcedit } = await import(rceditUrl)
+  const OPTS = {
+    icon: ICO,
+    'file-version': WIN_VERSION,
+    'product-version': WIN_VERSION,
+    'version-string': {
+      CompanyName: 'Lypora',
+      FileDescription: 'Lypora Markdown 编辑器',
+      ProductName: 'Lypora',
+      LegalCopyright:
+        'Independent implementation. Not affiliated with, or endorsed by, any third-party product.',
+      OriginalFilename: 'Lypora.exe',
+    },
+  }
+
+  let done = false
+  let lastErr = null
+  for (let attempt = 1; attempt <= 3 && !done; attempt++) {
+    try {
+      await rcedit(EXE, OPTS)
+      done = true
+      log(`rcedit 就地写入成功（第 ${attempt} 次）`)
+    } catch (e) {
+      lastErr = e
+      log(`rcedit 就地写入第 ${attempt} 次失败：${String(e.message).split('\n')[0].slice(0, 120)}`)
+      await new Promise((r) => setTimeout(r, 1200 * attempt))
+    }
+  }
+
+  if (!done) {
+    const TMP = path.join(os.tmpdir(), 'lypora-rcedit.tmp.exe')
+    try {
+      fs.copyFileSync(EXE, TMP)
+      await rcedit(TMP, OPTS)
+      // 覆盖写而不是"删掉再改名"：部分环境（沙箱回收站 / 杀软）会拦删除
+      for (let attempt = 1; attempt <= 4; attempt++) {
+        try {
+          fs.copyFileSync(TMP, EXE)
+          done = true
+          break
+        } catch (e) {
+          if (attempt === 4) throw e
+          await new Promise((r) => setTimeout(r, 1200))
+        }
+      }
+      log('rcedit 临时副本写入成功')
+    } catch (e) {
+      lastErr = e
+    } finally {
       try {
-        fs.copyFileSync(TMP, EXE)
-        wrote = true
-      } catch (e) {
-        if (attempt === 4) throw e
-        log(`覆盖 exe 被占用，第 ${attempt} 次重试…`)
-        await new Promise((r) => setTimeout(r, 1200))
+        fs.rmSync(TMP, { force: true })
+      } catch {
+        /* 临时文件删不掉不影响打包 */
       }
     }
-    try {
-      fs.unlinkSync(TMP)
-    } catch {
-      /* 临时文件删不掉不影响产物 */
-    }
-    log('已写入 exe 图标与版本信息')
-  } catch (e) {
-    try {
-      fs.unlinkSync(TMP)
-    } catch {
-      /* 忽略 */
-    }
-    log(`rcedit 失败（图标保持默认，不影响功能）：${String(e.message).split('\n')[0]}`)
+  }
+
+  if (!done) {
+    // 不静默：图标没换成是可见缺陷，构建日志必须写清楚，别让它混进发布包
+    log(`⚠ rcedit 彻底失败，exe 仍是 Electron 默认图标：${String(lastErr?.message).split('\n')[0]}`)
+    process.exitCode = 2
   }
 }
 

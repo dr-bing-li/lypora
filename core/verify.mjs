@@ -10,7 +10,7 @@ fs.mkdirSync(OUT, { recursive: true })
 const browser = await chromium.launch({ executablePath: EDGE, headless: true })
 const errors = []
 
-const page = await browser.newPage({ viewport: { width: 1440, height: 940 }, deviceScaleFactor: 2 })
+const page = await browser.newPage({ viewport: { width: 1440, height: 940 }, deviceScaleFactor: 2, locale: 'zh-CN' })
 page.on('console', (m) => {
   if (m.type() === 'error') errors.push('[console] ' + m.text())
 })
@@ -203,13 +203,9 @@ try {
     page.waitForEvent('download', { timeout: 8000 }),
     page.evaluate(() => {
       // 文件菜单里「导出 HTML」是第 7 项（含分隔线不影响 .menu-item 索引）
-      const items = [...document.querySelectorAll('#menubar-items .menu-root')]
-      const fileBtn = items.find((e) => e.textContent.trim() === '文件')
+      const fileBtn = document.querySelector('#menubar-items .menu-root[data-menu="file"]')
       fileBtn.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }))
-      const pop = document.querySelector('.menu-drop')
-      const labels = [...pop.querySelectorAll('.menu-item .mi-label')].map((e) => e.textContent)
-      const idx = labels.indexOf('导出 HTML')
-      pop.querySelectorAll('.menu-item')[idx].click()
+      document.querySelector('.menu-drop .menu-item[data-mi="file-export-html"]').click()
     }),
   ])
   const target = `${OUT}/export-test.html`
@@ -239,6 +235,7 @@ report.steps.layout = await page.evaluate(async () => {
   const ed = document.querySelector('.editor-wrap').getBoundingClientRect()
   const out = {
     menuRoots: [...document.querySelectorAll('#menubar-items .menu-root')].map((e) => e.textContent.trim()),
+    menuIds: [...document.querySelectorAll('#menubar-items .menu-root')].map((e) => e.dataset.menu),
     sidebarOnLeft: sb.right <= ed.left + 2,
     sidebarWidth: Math.round(sb.width),
     statusToggles: [...document.querySelectorAll('.statusbar .status-toggle')].map((e) => ({
@@ -616,6 +613,7 @@ const mobile = await browser.newPage({
   deviceScaleFactor: 3,
   isMobile: true,
   hasTouch: true,
+  locale: 'zh-CN',
   userAgent:
     'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125 Mobile Safari/537.36',
 })
@@ -629,7 +627,7 @@ report.steps.mobile = {
 }
 await mobile.screenshot({ path: `${OUT}/09-mobile.png` })
 
-const tablet = await browser.newPage({ viewport: { width: 834, height: 1112 }, deviceScaleFactor: 2 })
+const tablet = await browser.newPage({ viewport: { width: 834, height: 1112 }, deviceScaleFactor: 2, locale: 'zh-CN' })
 await tablet.goto(PAGE_URL, { waitUntil: 'networkidle' })
 await tablet.waitForTimeout(600)
 await tablet.screenshot({ path: `${OUT}/10-tablet.png` })

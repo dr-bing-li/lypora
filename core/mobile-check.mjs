@@ -30,6 +30,9 @@ const DEVICES = [
 
 const report = { url: PAGE_URL, devices: [], pass: false, errors: [] }
 
+/** 与 main.ts 的菜单 id 一一对应（面板分区用它做 key，不随语言变） */
+const MENU_IDS = ['file', 'edit', 'paragraph', 'format', 'view', 'theme', 'language', 'help']
+
 const browser = await chromium.launch({ executablePath: EDGE, headless: true })
 
 for (const dev of DEVICES) {
@@ -40,6 +43,8 @@ for (const dev of DEVICES) {
     deviceScaleFactor: dev.dpr,
     isMobile: dev.mobile,
     hasTouch: dev.touch,
+    // 界面语言会影响面板分区名与按钮文案：钉死中文，断言才与文案无关地稳定
+    locale: 'zh-CN',
   })
   const page = await ctx.newPage()
   page.on('console', (m) => {
@@ -164,7 +169,8 @@ for (const dev of DEVICES) {
       els.map((e) => e.dataset.section),
     )
     r.sheetSections = secs
-    r.checks.sheetHas7Menus = secs.length === 7
+    // 8 个分区：文件/编辑/段落/格式/显示/主题/语言/帮助
+    r.checks.sheetHasAllMenus = secs.length === 8 && MENU_IDS.every((id) => secs.includes(id))
     const rows = await page.$$eval('#menu-sheet .sheet-row', (els) =>
       els.map((e) => ({ h: Math.round(e.getBoundingClientRect().height), text: e.textContent.trim() })),
     )
@@ -184,7 +190,7 @@ for (const dev of DEVICES) {
     await page.waitForTimeout(260)
     r.checks.exportJumpsToFileSection = await page.evaluate(() => {
       const body = document.getElementById('sheet-body')
-      const sec = document.querySelector('.sheet-section[data-section="文件"]')
+      const sec = document.querySelector('.sheet-section[data-section="file"]')
       if (!body || !sec) return false
       return Math.abs(body.scrollTop - Math.max(0, sec.offsetTop - 8)) < 4 || body.scrollTop === 0
     })
@@ -224,9 +230,10 @@ for (const dev of DEVICES) {
 
   // 9) 桌面回归：菜单栏存在、工具栏不存在
   if (!isNarrow) {
-    r.checks.desktopMenubar = await page.evaluate(
-      () => document.querySelectorAll('#menubar-items .menu-root').length === 7,
-    )
+    r.checks.desktopMenubar = await page.evaluate((ids) => {
+      const got = [...document.querySelectorAll('#menubar-items .menu-root')].map((e) => e.dataset.menu)
+      return got.length === ids.length && ids.every((id) => got.includes(id))
+    }, MENU_IDS)
     r.checks.desktopSidebarDefault = await page.evaluate(
       () => !document.getElementById('sidebar').classList.contains('collapsed'),
     )

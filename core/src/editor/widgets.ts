@@ -3,6 +3,7 @@ import { renderBlockMath, renderInlineMath } from './math'
 import { escapeHtml, parseTable, renderInlineMd } from '../util'
 import { clearColRatios, loadColRatios, saveColRatios, tableSignature } from './table-widths'
 import { toast } from '../ui/toast'
+import { t } from '../i18n'
 
 /* ------------------------------------------------------------------ *
  * 任务复选框
@@ -28,7 +29,7 @@ export class TaskBoxWidget extends WidgetType {
     box.className = 'cm-task-box' + (this.checked ? ' is-checked' : '')
     box.setAttribute('role', 'checkbox')
     box.setAttribute('aria-checked', String(this.checked))
-    box.title = this.checked ? '标记为未完成' : '标记为已完成'
+    box.title = this.checked ? t('editor.taskDone') : t('editor.taskTodo')
     box.addEventListener('mousedown', (e) => {
       e.preventDefault()
       e.stopPropagation()
@@ -124,7 +125,7 @@ export class ImageWidget extends WidgetType {
     img.alt = this.alt
     img.loading = 'lazy'
     img.addEventListener('error', () => {
-      wrap.textContent = `🖼 ${this.alt || this.src}（图片无法加载）`
+      wrap.textContent = t('editor.imageBroken', { alt: this.alt || this.src })
       wrap.style.color = 'var(--fg-muted)'
       wrap.style.fontSize = '0.85em'
     })
@@ -371,7 +372,7 @@ export class TableWidget extends WidgetType {
         setRatios(even)
         syncGrips()
         saveColRatios(sig, even)
-        toast('列宽已均分', 1200)
+        toast(t('toast.columnEven'), 1200)
       }
 
       const end = (e: PointerEvent) => {
@@ -402,7 +403,7 @@ export class TableWidget extends WidgetType {
         lastTap = 0
         if (pending) {
           saveColRatios(sig, pending)
-          toast(`列宽 ${Math.round(pending[i] * total)} px（双击分隔线均分）`, 1400)
+          toast(t('toast.columnPx', { px: Math.round(pending[i] * total) }), 1400)
         }
       }
 
@@ -421,7 +422,7 @@ export class TableWidget extends WidgetType {
         const grip = document.createElement('div')
         grip.className = 'cm-col-grip'
         grip.dataset.col = String(i)
-        grip.title = '拖动调整列宽 · 双击均分'
+        grip.title = t('editor.columnGrip')
         layer.appendChild(grip)
         grips.push(grip)
         bindGrip(grip, i)
@@ -515,7 +516,7 @@ export class MermaidWidget extends WidgetType {
       pre.textContent = this.src
       wrap.appendChild(pre)
       const tip = document.createElement('div')
-      tip.textContent = 'Mermaid 未加载，显示源码'
+      tip.textContent = t('editor.mermaidFallback')
       tip.style.cssText = 'font-size:10.5px;color:var(--fg-faint);margin-top:4px'
       wrap.appendChild(tip)
       return wrap

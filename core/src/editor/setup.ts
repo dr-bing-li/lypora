@@ -1,4 +1,4 @@
-import { EditorState, Prec } from '@codemirror/state'
+import { Compartment, EditorState, Prec } from '@codemirror/state'
 import { EditorView, keymap, drawSelection, dropCursor, placeholder } from '@codemirror/view'
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands'
 import { search, searchKeymap, highlightSelectionMatches } from '@codemirror/search'
@@ -6,6 +6,7 @@ import { markdown, markdownLanguage, insertNewlineContinueMarkup, deleteMarkupBa
 import { bracketMatching } from '@codemirror/language'
 import { livePreview, blockDecosField } from './live-preview'
 import { cmd } from './commands'
+import { t } from '../i18n'
 
 export interface EditorHooks {
   onChange?: (doc: string) => void
@@ -13,6 +14,18 @@ export interface EditorHooks {
   onSave?: () => void
   onSearch?: () => void
   onSourceToggle?: () => void
+}
+
+/**
+ * 占位文案单独装在一个 Compartment 里。
+ * 切界面语言时要能换掉它，而 placeholder() 是构造期扩展——不隔一层就只能重建整个
+ * EditorState，那会把撤销历史和光标一起丢掉。
+ */
+export const placeholderComp = new Compartment()
+
+/** 切语言后调用：只重配占位符，文档、历史、选区都不动 */
+export function setEditorPlaceholder(view: EditorView): void {
+  view.dispatch({ effects: placeholderComp.reconfigure(placeholder(t('editor.placeholder'))) })
 }
 
 const themeSpec = EditorView.theme({
@@ -54,7 +67,7 @@ export function buildExtensions(hooks: EditorHooks) {
     bracketMatching(),
     highlightSelectionMatches(),
     search({ top: true }),
-    placeholder('开始写点什么…  支持 Markdown、公式、表格、代码块'),
+    placeholderComp.of(placeholder(t('editor.placeholder'))),
 
     markdown({ base: markdownLanguage, addKeymap: false }),
 

@@ -9,6 +9,12 @@
  */
 
 export interface MenuEntry {
+  /**
+   * 稳定的动作标识（与显示语言无关）。给两处用：
+   *   ① 自动化测试按 `[data-mi="export-html"]` 定位，切了语言也不会失配；
+   *   ② 移动端面板按 id 滚到对应菜单，不靠中文标签当 key。
+   */
+  id?: string
   label?: string
   shortcut?: string
   action?: () => void
@@ -22,11 +28,17 @@ export interface MenuEntry {
 }
 
 export interface MenuDef {
+  id: string
   label: string
   items: MenuEntry[]
 }
 
-export function createMenubar(host: HTMLElement, getMenus: () => MenuDef[]): void {
+export interface MenubarHandle {
+  /** 重新取菜单数据并重绘（切语言、菜单项状态变化时用） */
+  redraw: () => void
+}
+
+export function createMenubar(host: HTMLElement, getMenus: () => MenuDef[]): MenubarHandle {
   let openIndex = -1
   let pop: HTMLElement | null = null
   let subPop: HTMLElement | null = null
@@ -59,6 +71,7 @@ export function createMenubar(host: HTMLElement, getMenus: () => MenuDef[]): voi
       const btn = document.createElement('button')
       btn.type = 'button'
       btn.className = 'menu-item'
+      if (it.id) btn.dataset.mi = it.id
       if (it.disabled) btn.disabled = true
       if (it.checked) btn.classList.add('checked')
 
@@ -147,6 +160,7 @@ export function createMenubar(host: HTMLElement, getMenus: () => MenuDef[]): voi
       const btn = document.createElement('button')
       btn.type = 'button'
       btn.className = 'menu-root'
+      btn.dataset.menu = m.id
       btn.textContent = m.label
       btn.addEventListener('mousedown', (e) => {
         // mousedown 而不是 click：避免与"点击外部关闭"的 document click 抢跑
@@ -186,4 +200,12 @@ export function createMenubar(host: HTMLElement, getMenus: () => MenuDef[]): voi
   window.addEventListener('blur', () => {
     if (openIndex >= 0) close()
   })
+
+  return {
+    redraw: () => {
+      // 下拉层开着时重绘会把定位算法算在旧尺寸上，先收再画最省事
+      close()
+      draw()
+    },
+  }
 }

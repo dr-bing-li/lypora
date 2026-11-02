@@ -4,7 +4,7 @@
 
 | 路线 | 产物 | 谁适合 |
 |---|---|---|
-| **A. APK（Capacitor）** | `release/Lypora-0.4.0-android.apk`（10.6 MiB） | 想在手机上像正常应用一样打开 `.md`、离线写作 |
+| **A. APK（Capacitor）** | `release/Lypora-0.5.0-android.apk`（10.6 MiB） | 想在手机上像正常应用一样打开 `.md`、离线写作 |
 | **B. PWA** | `core/dist` 静态托管 | 不想装包、手机浏览器直接用 |
 
 工程位置：**Capacitor 工程在 `core/android/`**，配置是 `core/capacitor.config.json`，触屏界面在
@@ -24,8 +24,8 @@ node tools/build-android.mjs
 # [android] 已清空 assets/public（旧 hash 文件不清会残留上一版样式）
 # [android] 资源比对通过（63 个文件，逐字节一致）
 # [android] gradle assembleDebug …
-# [android] 产物 release/Lypora-0.4.0-android.apk  10.6 MiB
-# [android] sha256 9b6e4d72…
+# [android] 产物 release/Lypora-0.5.0-android.apk  10.6 MiB
+# [android] sha256 ab567f6a…
 ```
 
 脚本做四件事，顺序不能换：
@@ -51,7 +51,7 @@ node tools/build-android.mjs
 | 项 | 值 |
 |---|---|
 | 包名 | `app.lypora.editor` |
-| 版本 | `versionName 0.4.0` / `versionCode 4` |
+| 版本 | `versionName 0.5.0` / `versionCode 6` |
 | minSdk / targetSdk | **29（Android 10）/ 35** |
 | 权限 | 仅 `INTERNET`（应用专属目录不需要存储权限） |
 | 签名 | Android Debug（`CN=Android Debug`），可直接安装，**不能上架 Google Play** |
@@ -82,7 +82,7 @@ python tools/gen-android-assets.py     # 需要 Pillow
 ### 安装到手机
 
 ```bash
-adb install -r release/Lypora-0.4.0-android.apk
+adb install -r release/Lypora-0.5.0-android.apk
 ```
 
 或者把 APK 传到手机（微信/网盘/数据线），点开安装，首次需要允许「安装未知来源应用」。
@@ -135,7 +135,7 @@ cd core && npm run build
 
 | 桌面 | 手机 |
 |---|---|
-| 顶部 7 个菜单按钮 | 收进「菜单」底部面板（分区展示，每行 ≥48px） |
+| 顶部 8 个菜单按钮 | 收进「菜单」底部面板（8 个分区 / 70 行，每行 ≥48px） |
 | 左侧栏常驻 | 抽屉 + 半透明遮罩，点遮罩收起 |
 | 底栏只有格式化条 | 两行：格式化条 + 6 个主操作（打开/保存/大纲/导出/主题/菜单） |
 | 表格列分隔线靠 hover 出现 | 常显、命中区 24px（`@media (pointer: coarse)`） |

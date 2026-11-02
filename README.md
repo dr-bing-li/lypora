@@ -6,7 +6,7 @@
 
 ![Lypora 界面 / Lypora screenshot](docs/images/lypora.png)
 
-> **v0.4.1** — Android fix release: [`Lypora-0.4.1-android.apk`](https://github.com/dr-bing-li/lypora/releases/download/v0.4.1/Lypora-0.4.1-android.apk) — now listed in system "Open with" / "Share" sheets · Windows x64 portable build [`Lypora-0.4.0-win-x64.zip`](https://github.com/dr-bing-li/lypora/releases/download/v0.4.0/Lypora-0.4.0-win-x64.zip)（unchanged）· [all releases](https://github.com/dr-bing-li/lypora/releases)
+> **v0.5.0** — 7 interface languages (中文 / English / 日本語 / 한국어 / Español / Français / Deutsch), switchable at runtime or by system locale · Windows x64: [`Lypora-0.5.0-win-x64.zip`](https://github.com/dr-bing-li/lypora/releases/download/v0.5.0/Lypora-0.5.0-win-x64.zip) · Android 10+: [`Lypora-0.5.0-android.apk`](https://github.com/dr-bing-li/lypora/releases/download/v0.5.0/Lypora-0.5.0-android.apk) · [all releases](https://github.com/dr-bing-li/lypora/releases)
 
 ---
 
@@ -24,20 +24,20 @@ three shells: an Electron desktop app, a browser/PWA build, and a Capacitor proj
 
 ### Download
 
-Latest: **[v0.4.1](https://github.com/dr-bing-li/lypora/releases/tag/v0.4.1)** · all builds on the
+Latest: **[v0.5.0](https://github.com/dr-bing-li/lypora/releases/tag/v0.5.0)** · all builds on the
 [Releases page](https://github.com/dr-bing-li/lypora/releases).
 
 | File | Platform | Format | Size | SHA256 |
 |---|---|---|---|---|
-| [`Lypora-0.4.0-win-x64.zip`](https://github.com/dr-bing-li/lypora/releases/download/v0.4.0/Lypora-0.4.0-win-x64.zip) | Windows 10/11 x64 | Portable ZIP — unzip and run | 110.9 MiB | `adb223dd…cf911c2` |
-| [`Lypora-0.4.1-android.apk`](https://github.com/dr-bing-li/lypora/releases/download/v0.4.1/Lypora-0.4.1-android.apk) | Android 10+ (API 29+) | APK, debug-signed — sideload | 10.6 MiB | `18e3b275…3491ebb` |
-| [`SHA256SUMS.txt`](https://github.com/dr-bing-li/lypora/releases/download/v0.4.1/SHA256SUMS.txt) | any | Checksum list (v0.4.1 APK) | 540 B | — |
+| [`Lypora-0.5.0-win-x64.zip`](https://github.com/dr-bing-li/lypora/releases/download/v0.5.0/Lypora-0.5.0-win-x64.zip) | Windows 10/11 x64 | Portable ZIP — unzip and run | 111.0 MiB | `7eb16a6b…4297b3` |
+| [`Lypora-0.5.0-android.apk`](https://github.com/dr-bing-li/lypora/releases/download/v0.5.0/Lypora-0.5.0-android.apk) | Android 10+ (API 29+) | APK, debug-signed — sideload | 10.6 MiB | `ab567f6a…3854c9` |
+| [`SHA256SUMS.txt`](https://github.com/dr-bing-li/lypora/releases/download/v0.5.0/SHA256SUMS.txt) | any | Checksum list | 182 B | `977028e4…f30cce` |
 
 **Windows:** unzip, keep the `Lypora\` folder intact, and run `Lypora\Lypora.exe`. No installer, no admin rights, no
 auto-update — upgrading means downloading the next ZIP over it. **The executable is not code-signed**, so
 SmartScreen will warn once ("More info" → "Run anyway").
 
-**Android:** copy the APK to the phone and tap it, or `adb install -r Lypora-0.4.1-android.apk`. Android will ask
+**Android:** copy the APK to the phone and tap it, or `adb install -r Lypora-0.5.0-android.apk`. Android will ask
 you to allow installing from an unknown source — that is the normal sideload prompt. The touch build uses a separate
 shell (bottom action dock, menus in a bottom sheet, sidebar as a drawer); PDF export, "open folder" and third-party
 theme import are greyed out there. Documents are stored in the app-specific directory
@@ -45,16 +45,21 @@ theme import are greyed out there. Documents are stored in the app-specific dire
 Since v0.4.1, Lypora also registers as a target in the system **"Open with"** list (tap a `.md`/`.txt` in any file
 manager) and in the **Share sheet** — received content opens directly in the editor.
 
+**What is verified and what is not:** the APK is built and inspected (`aapt2`/`apksigner`), the touch layout is
+asserted in five viewports under Chromium emulation, and the packaged Windows build runs its `--selftest`. No physical
+Android device was attached to this machine, so cold start, native file IO and the share sheet are **not** verified on
+real hardware. Say so rather than pretend.
+
 macOS, Linux and an `.msi`/`.exe` installer are **not** shipped — see the
-[platform matrix](https://github.com/dr-bing-li/lypora/releases/tag/v0.4.0) for why, rather than publishing a
+[platform matrix](https://github.com/dr-bing-li/lypora/releases/tag/v0.5.0) for why, rather than publishing a
 package that downloads but does not run. The browser build can be produced from source (below). The Android APK is
-debug-signed; it has been installed on physical devices, and v0.4.1 added system open/share integration.
+debug-signed, and since v0.4.1 it registers for the system "Open with" / "Share" intents.
 
 Verify before running:
 
 ```bat
-certutil -hashfile Lypora-0.4.0-win-x64.zip SHA256
-certutil -hashfile Lypora-0.4.1-android.apk SHA256
+certutil -hashfile Lypora-0.5.0-win-x64.zip SHA256
+certutil -hashfile Lypora-0.5.0-android.apk SHA256
 ```
 
 ### Why it exists (and what it is not)
@@ -80,7 +85,8 @@ the code as a working draft, not as a reference implementation.
 | Editing | Seamless block/inline source toggle, clickable task checkboxes, list continuation, smart Enter, Tab indent, formatting shortcuts, find & replace, undo/redo, drag-and-drop open / image insert / theme import |
 | Typography | `Ctrl` + mouse wheel for continuous font sizing (10–40 px, 300 ms debounce before persisting), on-screen `px · %` indicator, `Ctrl+Shift+=` / `Ctrl+-` stepping, `Ctrl+Shift+0` reset |
 | Tables | Column dividers appear on hover with a `col-resize` cursor; drag to resize adjacent columns live, double-click to even them out. Column widths are stored locally by header signature and never touch your Markdown |
-| Layout | 7 top-level menus with submenus, sidebar with outline / file tree / recent, source mode, focus mode, typewriter mode, full screen, adjustable page width (620 / 860 / 1080 / full / custom, or drag the handle) |
+| Layout | 8 top-level menus with submenus, sidebar with outline / file tree / recent, source mode, focus mode, typewriter mode, full screen, adjustable page width (620 / 860 / 1080 / full / custom, or drag the handle) |
+| Languages | 7 UI languages — 简体中文 / English / 日本語 / 한국어 / Español / Français / Deutsch. Switch at runtime from the **Language** menu, or follow the system language; the choice is remembered |
 | Files | Open / save / save-as, recent files, workspace tree, export to Markdown / single-file HTML / PDF (KaTeX CSS and fonts are inlined, so exports render correctly offline) |
 | Desktop | Native dialogs, single-instance lock, close-with-unsaved-changes guard, file association |
 
@@ -117,7 +123,7 @@ backend required. Serving it over HTTPS gives you installable PWA behaviour and 
 ```bash
 node tools/pack-win.mjs --zip
 # -> release/Lypora/Lypora.exe           double-click to run
-# -> release/Lypora-0.4.0-win-x64.zip    ready to hand out
+# -> release/Lypora-0.5.0-win-x64.zip    ready to hand out
 ```
 
 Requires `desktop/node_modules/electron/dist` (`npm install` inside `desktop/` downloads it). The packer also
@@ -127,7 +133,7 @@ stamps the icon and version metadata into the executable.
 
 ```bash
 node tools/build-android.mjs
-# -> release/Lypora-0.4.0-android.apk    install with: adb install -r <file>
+# -> release/Lypora-0.5.0-android.apk    install with: adb install -r <file>
 ```
 
 Needs **JDK 21** and an **Android SDK** with platform 35 + build-tools 35 — the script locates `ANDROID_HOME`
@@ -152,6 +158,7 @@ node verify.mjs            # 15 UI assertions + screenshots (needs `npm run prev
 node export-check.mjs      # export path: HTML / @media print / real PDF / print iframe
 
 node mobile-check.mjs      # touch shell: 5 viewports, tap targets, drawer, menu sheet
+node i18n-check.mjs        # i18n: 7 locales × key parity / placeholders / real DOM rendering
 node ../tools/closetest.mjs --exe        # window-close guard, four scenarios
 node ../tools/interacttest.mjs           # real mouse events against the packaged build
 env -u ELECTRON_RUN_AS_NODE ./release/Lypora/Lypora.exe --selftest --shot=shot.png
@@ -217,20 +224,20 @@ Lypora 是一个即时渲染的 Markdown 编辑器。你在编辑区里写 Markd
 
 ### 下载
 
-最新版本：**[v0.4.1](https://github.com/dr-bing-li/lypora/releases/tag/v0.4.1)** · 全部构建见
+最新版本：**[v0.5.0](https://github.com/dr-bing-li/lypora/releases/tag/v0.5.0)** · 全部构建见
 [Releases 页面](https://github.com/dr-bing-li/lypora/releases)。
 
 | 文件 | 平台 | 格式 | 大小 | SHA256 |
 |---|---|---|---|---|
-| [`Lypora-0.4.0-win-x64.zip`](https://github.com/dr-bing-li/lypora/releases/download/v0.4.0/Lypora-0.4.0-win-x64.zip) | Windows 10/11 x64 | 便携版 ZIP，解压即用 | 110.9 MiB | `adb223dd…cf911c2` |
-| [`Lypora-0.4.1-android.apk`](https://github.com/dr-bing-li/lypora/releases/download/v0.4.1/Lypora-0.4.1-android.apk) | Android 10+（API 29+） | APK，debug 签名，直接侧载 | 10.6 MiB | `18e3b275…3491ebb` |
-| [`SHA256SUMS.txt`](https://github.com/dr-bing-li/lypora/releases/download/v0.4.1/SHA256SUMS.txt) | 任意 | 校验清单（v0.4.1 APK） | 540 B | — |
+| [`Lypora-0.5.0-win-x64.zip`](https://github.com/dr-bing-li/lypora/releases/download/v0.5.0/Lypora-0.5.0-win-x64.zip) | Windows 10/11 x64 | 便携版 ZIP，解压即用 | 111.0 MiB | `7eb16a6b…4297b3` |
+| [`Lypora-0.5.0-android.apk`](https://github.com/dr-bing-li/lypora/releases/download/v0.5.0/Lypora-0.5.0-android.apk) | Android 10+（API 29+） | APK，debug 签名，直接侧载 | 10.6 MiB | `ab567f6a…3854c9` |
+| [`SHA256SUMS.txt`](https://github.com/dr-bing-li/lypora/releases/download/v0.5.0/SHA256SUMS.txt) | 任意 | 校验清单 | 182 B | `977028e4…f30cce` |
 
 **Windows：** 解压后**保持 `Lypora\` 文件夹结构完整**，双击 `Lypora\Lypora.exe` 即可。无安装程序、无需管理
 员权限、没有自动更新——升级就是下载新版 ZIP 覆盖上去。**exe 未做代码签名**，所以 SmartScreen 会拦一次：
 「更多信息」→「仍要运行」。
 
-**Android：** 把 APK 传到手机点开安装（或 `adb install -r Lypora-0.4.1-android.apk`）。系统会提示「允许安装
+**Android：** 把 APK 传到手机点开安装（或 `adb install -r Lypora-0.5.0-android.apk`）。系统会提示「允许安装
 未知来源应用」，这是侧载的正常提示。触屏版是另一套外壳（底部操作栏、菜单收进底部面板、侧栏变抽屉），
 导出 PDF、打开文件夹、导入第三方主题在手机上是置灰的。文档存在应用专属目录
 `Android/data/app.lypora.editor/files/Documents/Lypora/`，要交出去请用**导出 → 系统分享面板**。
@@ -238,15 +245,18 @@ v0.4.1 起，Lypora 也注册进了系统的**「打开方式」**列表（在�
 收到的内容会直接载入编辑器。
 
 macOS、Linux、`.msi` / `.exe` 安装包**均未提供**，原因写在
-[平台矩阵](https://github.com/dr-bing-li/lypora/releases/tag/v0.4.0) 里：宁可不给，也不放一个「能下载但跑
-不起来」的包。浏览器版可按下面步骤自行构建；Android 包是 debug 签名、未在真机上实测，布局用 Chromium
-在五档视口下验过。
+[平台矩阵](https://github.com/dr-bing-li/lypora/releases/tag/v0.5.0) 里：宁可不给，也不放一个「能下载但跑
+不起来」的包。浏览器版可按下面步骤自行构建。
+
+**验过什么、没验什么说清楚：** APK 是构建后逐项读元数据核对的（`aapt2` / `apksigner`），触屏布局在
+Chromium 模拟的五档视口下逐条断言，Windows 打包版跑过 `--selftest`。这台机器没接安卓真机，所以冷启动、
+原生文件读写、系统分享面板**没有**在真实硬件上验证过——没验就说没验。
 
 运行前先校验：
 
 ```bat
-certutil -hashfile Lypora-0.4.0-win-x64.zip SHA256
-certutil -hashfile Lypora-0.4.1-android.apk SHA256
+certutil -hashfile Lypora-0.5.0-win-x64.zip SHA256
+certutil -hashfile Lypora-0.5.0-android.apk SHA256
 ```
 
 ### 为什么会有这个东西（以及它不是什么）
@@ -269,7 +279,8 @@ Lypora 是一个**小小的、刻意不做大的替代品**，用来临时顶一
 | 编辑 | 块级 / 行内源码双态无缝切换、可勾选任务框、列表自动续行、智能回车、Tab 缩进、格式化快捷键、查找替换、撤销重做、拖放打开 / 插图 / 导入主题 |
 | 字号 | `Ctrl` + 滚轮连续平滑调字号（10–40px，停手 300ms 才落盘），浮层实时显示 `px · 百分比`；`Ctrl+Shift+=` / `Ctrl+-` 步进、`Ctrl+Shift+0` 复位 |
 | 表格 | 悬停列间隔出现 `col-resize` 光标，拖动实时调整相邻两列宽度，双击均分；列宽按表头签名记在本地，不写进 Markdown |
-| 版式 | 7 个顶级菜单（含二级）、左侧栏大纲 / 文件树 / 最近、源代码模式、专注模式、打字机模式、全屏、页面宽度可调（620 / 860 / 1080 / 全宽 / 自定义，或拖右边缘把手） |
+| 版式 | 8 个顶级菜单（含二级）、左侧栏大纲 / 文件树 / 最近、源代码模式、专注模式、打字机模式、全屏、页面宽度可调（620 / 860 / 1080 / 全宽 / 自定义，或拖右边缘把手） |
+| 多语言 | 7 种界面语言：简体中文 / English / 日本語 / 한국어 / Español / Français / Deutsch。可在**语言**菜单里运行时切换，或跟随系统语言；选择会被记住 |
 | 文件 | 打开 / 保存 / 另存、最近文件、工作区文件树、导出 Markdown / 单文件 HTML / PDF（KaTeX 的 CSS 与字体内联，离线打开公式也是对的） |
 | 桌面 | 原生对话框、单实例、关窗前未保存拦截、文件关联 |
 
@@ -306,7 +317,7 @@ cd core && npm run build
 ```bash
 node tools/pack-win.mjs --zip
 # -> release/Lypora/Lypora.exe           双击即用
-# -> release/Lypora-0.4.0-win-x64.zip    可直接分发
+# -> release/Lypora-0.5.0-win-x64.zip    可直接分发
 ```
 
 依赖 `desktop/node_modules/electron/dist`（在 `desktop/` 里 `npm install` 会下载）。打包脚本会把图标和
@@ -316,7 +327,7 @@ node tools/pack-win.mjs --zip
 
 ```bash
 node tools/build-android.mjs
-# -> release/Lypora-0.4.0-android.apk    安装：adb install -r <文件>
+# -> release/Lypora-0.5.0-android.apk    安装：adb install -r <文件>
 ```
 
 需要 **JDK 21** 与 **Android SDK**（platform 35 + build-tools 35）。脚本会自己找 `ANDROID_HOME` 和 JDK，缺什么
@@ -340,6 +351,7 @@ node verify.mjs            # 15 步 UI 断言 + 截图（需先 npm run preview�
 node export-check.mjs      # 导出链路：HTML / @media print / 真 PDF / 打印 iframe
 
 node mobile-check.mjs      # 触屏外壳：5 种视口、点击区、抽屉、菜单面板
+node i18n-check.mjs        # 国际化：7 种语言 × 键齐备 / 占位符 / 真实 DOM 渲染
 node ../tools/closetest.mjs --exe        # 关窗拦截四场景
 node ../tools/interacttest.mjs           # 对打包版派发真实鼠标事件
 env -u ELECTRON_RUN_AS_NODE ./release/Lypora/Lypora.exe --selftest --shot=shot.png

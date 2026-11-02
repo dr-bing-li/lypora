@@ -12,6 +12,7 @@
  */
 
 import { isNative, nativePlatform, readDoc, safeName, shareFile, writeDoc } from './native'
+import { t } from '../i18n'
 
 export interface OpenResult {
   name: string
@@ -103,7 +104,7 @@ export async function openFile(): Promise<OpenResult | null> {
       ).showOpenFilePicker({
         types: [
           {
-            description: 'Markdown 文档',
+            description: t('io.markdownDoc'),
             accept: {
               'text/markdown': ['.md', '.markdown', '.mdown', '.mkd'],
               'text/plain': ['.txt'],
@@ -184,7 +185,7 @@ export async function saveFile(
         window as never as { showSaveFilePicker: (o: unknown) => Promise<FileSystemFileHandle> }
       ).showSaveFilePicker({
         suggestedName,
-        types: [{ description: 'Markdown 文档', accept: { 'text/markdown': ['.md'] } }],
+        types: [{ description: t('io.markdownDoc'), accept: { 'text/markdown': ['.md'] } }],
       })
       const w = await h.createWritable()
       await w.write(content)

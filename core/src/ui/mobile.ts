@@ -15,6 +15,7 @@
  */
 
 import type { MenuDef, MenuEntry } from './menubar'
+import { t, type MessageKey } from '../i18n'
 
 export const MOBILE_BREAKPOINT = 860
 
@@ -28,19 +29,47 @@ export interface MobileHandlers {
 }
 
 /** 底部工具栏的 6 个动作；`sheet` 表示"打开分区面板并滚到该菜单" */
-const DOCK: Array<{ id: string; label: string; icon: string }> = [
-  { id: 'open', label: '打开', icon: '<path d="M2.5 5.2A1.2 1.2 0 013.7 4h2.9l1.1 1.4h4.6a1.2 1.2 0 011.2 1.2v5.2A1.2 1.2 0 0112.3 13H3.7A1.2 1.2 0 012.5 11.8V5.2z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>' },
-  { id: 'save', label: '保存', icon: '<path d="M3.5 2.6h6.6L13.4 5.9v7.5H3.5z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M5.6 2.6v3.6h4.3V2.6M5.6 13.4V9.1h4.8v4.3" fill="none" stroke="currentColor" stroke-width="1.2"/>' },
-  { id: 'outline', label: '大纲', icon: '<path d="M3 4h4M3 8h7M3 12h10" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" fill="none"/>' },
-  { id: 'export', label: '导出', icon: '<path d="M8 2.6v7.2M5.2 7l2.8 2.8L10.8 7" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M2.8 11v1.8h10.4V11" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>' },
-  { id: 'theme', label: '主题', icon: '<circle cx="8" cy="8" r="5.2" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M8 2.8v10.4a5.2 5.2 0 000-10.4z" fill="currentColor"/>' },
-  { id: 'menu', label: '菜单', icon: '<path d="M3 4.5h10M3 8h10M3 11.5h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/>' },
+const DOCK: Array<{ id: string; labelKey: MessageKey; icon: string; sheet?: string }> = [
+  { id: 'open', labelKey: 'dock.open', icon: '<path d="M2.5 5.2A1.2 1.2 0 013.7 4h2.9l1.1 1.4h4.6a1.2 1.2 0 011.2 1.2v5.2A1.2 1.2 0 0112.3 13H3.7A1.2 1.2 0 012.5 11.8V5.2z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>' },
+  { id: 'save', labelKey: 'dock.save', icon: '<path d="M3.5 2.6h6.6L13.4 5.9v7.5H3.5z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M5.6 2.6v3.6h4.3V2.6M5.6 13.4V9.1h4.8v4.3" fill="none" stroke="currentColor" stroke-width="1.2"/>' },
+  { id: 'outline', labelKey: 'dock.outline', icon: '<path d="M3 4h4M3 8h7M3 12h10" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" fill="none"/>' },
+  { id: 'export', labelKey: 'dock.export', icon: '<path d="M8 2.6v7.2M5.2 7l2.8 2.8L10.8 7" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M2.8 11v1.8h10.4V11" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>', sheet: 'file' },
+  { id: 'theme', labelKey: 'dock.theme', icon: '<circle cx="8" cy="8" r="5.2" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M8 2.8v10.4a5.2 5.2 0 000-10.4z" fill="currentColor"/>', sheet: 'theme' },
+  { id: 'menu', labelKey: 'dock.menu', icon: '<path d="M3 4.5h10M3 8h10M3 11.5h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/>' },
 ]
 
 let sheetEl: HTMLElement | null = null
 let sheetBackdrop: HTMLElement | null = null
 let scrimEl: HTMLElement | null = null
 let dockEl: HTMLElement | null = null
+let menusRef: (() => MenuDef[]) | null = null
+
+/** 按钮的可见文案与 aria-label 同源，切语言时整块重画 */
+function paintDockButton(btn: HTMLButtonElement, item: (typeof DOCK)[number]): void {
+  const label = t(item.labelKey)
+  btn.setAttribute('aria-label', label)
+  btn.innerHTML = `<svg viewBox="0 0 16 16" width="21" height="21" aria-hidden="true">${item.icon}</svg><span>${label}</span>`
+}
+
+/**
+ * 切语言后重画移动端的文字（dock 按钮、面板标题、面板内容）。
+ * 由 main.ts 在 locale 变化时调用；面板没打开时不重铺内容，省一次渲染。
+ */
+export function refreshMobileLabels(): void {
+  if (dockEl) {
+    for (const item of DOCK) {
+      const btn = dockEl.querySelector<HTMLButtonElement>(`.ma-btn[data-act="${item.id}"]`)
+      if (btn) paintDockButton(btn, item)
+    }
+  }
+  const title = sheetEl?.querySelector('.sheet-title')
+  if (title) title.textContent = t('dock.menu')
+  const close = sheetEl?.querySelector<HTMLElement>('.sheet-close')
+  if (close) close.setAttribute('aria-label', t('dock.close'))
+  if (sheetEl && !sheetEl.hidden && menusRef) {
+    fillSheet(sheetEl, menusRef(), () => {})
+  }
+}
 
 export function isMobileViewport(): boolean {
   return window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT}px)`).matches
@@ -90,8 +119,7 @@ function buildDock(handlers: MobileHandlers, openSheet: (section?: string) => vo
     btn.type = 'button'
     btn.className = 'ma-btn'
     btn.dataset.act = item.id
-    btn.setAttribute('aria-label', item.label)
-    btn.innerHTML = `<svg viewBox="0 0 16 16" width="21" height="21" aria-hidden="true">${item.icon}</svg><span>${item.label}</span>`
+    paintDockButton(btn, item)
     btn.addEventListener('click', () => {
       switch (item.id) {
         case 'open':
@@ -104,10 +132,10 @@ function buildDock(handlers: MobileHandlers, openSheet: (section?: string) => vo
           handlers.toggleOutline()
           break
         case 'export':
-          openSheet('文件')
+          openSheet('file')
           break
         case 'theme':
-          openSheet('主题')
+          openSheet('theme')
           break
         default:
           openSheet()
@@ -146,6 +174,7 @@ function renderEntries(items: MenuEntry[], depth: number, onDone: () => void): H
     const row = document.createElement('button')
     row.type = 'button'
     row.className = 'sheet-row'
+    if (it.id) row.dataset.mi = it.id
     if (depth > 0) row.classList.add('nested')
     if (it.disabled) row.disabled = true
     if (it.checked) row.classList.add('checked')
@@ -182,11 +211,11 @@ function buildSheet(getMenus: () => MenuDef[], closeSheet: () => void): HTMLElem
   head.className = 'sheet-head'
   const title = document.createElement('span')
   title.className = 'sheet-title'
-  title.textContent = '菜单'
+  title.textContent = t('dock.menu')
   const close = document.createElement('button')
   close.type = 'button'
   close.className = 'sheet-close'
-  close.setAttribute('aria-label', '关闭')
+  close.setAttribute('aria-label', t('dock.close'))
   close.innerHTML = '<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>'
   close.addEventListener('click', closeSheet)
   head.append(title, close)
@@ -218,7 +247,8 @@ function fillSheet(sheet: HTMLElement, menus: MenuDef[], onDone: () => void): vo
   for (const menu of menus) {
     const sec = document.createElement('section')
     sec.className = 'sheet-section'
-    sec.dataset.section = menu.label
+    // 用菜单 id 而不是显示名做 key：切语言后 data-section 不变，滚动定位与测试都稳
+    sec.dataset.section = menu.id
     const h = document.createElement('h4')
     h.className = 'sheet-section-title'
     h.textContent = menu.label
@@ -272,6 +302,7 @@ function bindDrawer(): void {
  * ------------------------------------------------------------------ */
 export function initMobileShell(getMenus: () => MenuDef[], handlers: MobileHandlers): void {
   bindViewport()
+  menusRef = getMenus
 
   let closeSheet = () => {}
   const sheet = buildSheet(getMenus, () => closeSheet())

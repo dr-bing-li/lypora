@@ -1,5 +1,6 @@
 import katex from 'katex'
 import 'katex/dist/katex.min.css'
+import { t } from '../i18n'
 
 const inlineCache = new Map<string, string>()
 const blockCache = new Map<string, string>()
@@ -21,7 +22,7 @@ function render(src: string, displayMode: boolean): string {
     })
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
-    html = `<span class="cm-math-error">公式错误：${escapeHtml(msg)}</span>`
+    html = `<span class="cm-math-error">${escapeHtml(t('editor.mathError', { msg }))}</span>`
   }
   // 缓存上限，避免长时间编辑把内存吃穿
   if (cache.size > 400) cache.clear()

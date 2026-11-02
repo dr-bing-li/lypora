@@ -23,7 +23,7 @@
         <div class="menubar-right">
           <span class="dirty-dot" id="dirty-dot" hidden></span>
           <span class="doc-title" id="doc-title">功能演示.md</span>
-          <span class="chip" id="chip-mode">实时预览</span>
+          <span class="chip" id="chip-mode" data-i18n="chip.preview">实时预览</span>
         </div>
       </header>
 
@@ -32,34 +32,34 @@
         <aside class="sidebar" id="sidebar">
           <div class="sidebar-head">
             <div class="sidebar-tabs" role="tablist">
-              <button class="tab active" data-tab="outline" title="大纲 (Ctrl+Shift+1)" aria-label="大纲">
+              <button class="tab active" data-tab="outline" data-i18n-title="sidebar.outline" data-i18n-aria="sidebar.outline" title="大纲">
                 <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><path d="M3 4h4M3 8h7M3 12h10" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" fill="none"/></svg>
               </button>
-              <button class="tab" data-tab="files" title="文件树 (Ctrl+Shift+2)" aria-label="文件树">
+              <button class="tab" data-tab="files" data-i18n-title="sidebar.files" data-i18n-aria="sidebar.files" title="文件树">
                 <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><path d="M2 4.2A1.2 1.2 0 013.2 3h2.6l1.2 1.5h5.8A1.2 1.2 0 0114 5.7v6.1A1.2 1.2 0 0112.8 13H3.2A1.2 1.2 0 012 11.8V4.2z" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linejoin="round"/></svg>
               </button>
-              <button class="tab" data-tab="recent" title="最近文件" aria-label="最近文件">
+              <button class="tab" data-tab="recent" data-i18n-title="sidebar.recent" data-i18n-aria="sidebar.recent" title="最近文件">
                 <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><circle cx="8" cy="8" r="5.4" stroke="currentColor" stroke-width="1.3" fill="none"/><path d="M8 4.8V8l2.2 1.4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" fill="none"/></svg>
               </button>
             </div>
-            <button class="icon-btn" id="btn-collapse-sidebar" title="收起侧栏 (Ctrl+Shift+L)" aria-label="收起侧栏">
+            <button class="icon-btn" id="btn-collapse-sidebar" data-i18n-title="sidebar.collapse" data-i18n-aria="sidebar.collapse" title="收起侧栏">
               <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M9.5 4.5L6 8l3.5 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
             </button>
           </div>
           <div class="sidebar-body">
             <div class="pane" id="pane-outline">
               <div class="outline-body" id="outline-body">
-                <div class="empty-hint">文档无标题</div>
+                <div class="empty-hint" data-i18n="sidebar.noHeading">文档无标题</div>
               </div>
             </div>
             <div class="pane" id="pane-files" hidden>
               <div class="filetree" id="filetree">
-                <div class="empty-hint">尚未打开文件夹<br /><span>用「文件 → 打开文件夹」选择目录</span></div>
+                <div class="empty-hint"><span data-i18n="sidebar.noFolder">尚未打开文件夹</span><br /><span data-i18n="sidebar.noFolderHint">用「文件 → 打开文件夹」选择目录</span></div>
               </div>
             </div>
             <div class="pane" id="pane-recent" hidden>
               <div class="filetree" id="recent-list">
-                <div class="empty-hint">暂无最近文件</div>
+                <div class="empty-hint" data-i18n="sidebar.noRecents">暂无最近文件</div>
               </div>
             </div>
           </div>
@@ -70,23 +70,23 @@
             <div id="editor-host" class="editor-host"></div>
           </div>
           <!-- 页面宽度拖拽把手：贴在正文右边缘，拖动即改宽度，双击恢复标准 -->
-          <div class="width-grip" id="width-grip" title="拖动调整页面宽度（双击恢复标准）" role="separator" aria-orientation="vertical"></div>
+          <div class="width-grip" id="width-grip" data-i18n-title="view.widthGrip" title="拖动调整页面宽度（双击恢复标准）" role="separator" aria-orientation="vertical"></div>
           <div class="width-badge" id="width-badge" hidden></div>
           <!-- 字号浮层：Ctrl+滚轮 / 放大缩小时在正文顶部显示当前值与百分比 -->
           <div class="font-osd" id="font-osd" aria-live="polite"></div>
           <div class="mobile-toolbar" id="mobile-toolbar">
-            <button data-cmd="bold" title="粗体"><b>B</b></button>
-            <button data-cmd="italic" title="斜体"><i>I</i></button>
-            <button data-cmd="strike" title="删除线"><s>S</s></button>
-            <button data-cmd="code" title="行内代码"><code>&lt;&gt;</code></button>
-            <button data-cmd="h1" title="一级标题">H1</button>
-            <button data-cmd="ul" title="无序列表">•</button>
-            <button data-cmd="task" title="任务列表">☑</button>
-            <button data-cmd="quote" title="引用">❝</button>
-            <button data-cmd="table" title="表格">▦</button>
-            <button data-cmd="math" title="公式">∑</button>
-            <button data-cmd="link" title="链接">🔗</button>
-            <button data-cmd="image" title="图片">🖼</button>
+            <button data-cmd="bold" data-i18n-title="format.bold" title="粗体"><b>B</b></button>
+            <button data-cmd="italic" data-i18n-title="format.italic" title="斜体"><i>I</i></button>
+            <button data-cmd="strike" data-i18n-title="format.strike" title="删除线"><s>S</s></button>
+            <button data-cmd="code" data-i18n-title="format.code" title="行内代码"><code>&lt;&gt;</code></button>
+            <button data-cmd="h1" data-i18n-title="paragraph.heading1" title="一级标题">H1</button>
+            <button data-cmd="ul" data-i18n-title="paragraph.bullet" title="无序列表">•</button>
+            <button data-cmd="task" data-i18n-title="paragraph.task" title="任务列表">☑</button>
+            <button data-cmd="quote" data-i18n-title="paragraph.quote" title="引用">❝</button>
+            <button data-cmd="table" data-i18n-title="paragraph.table" title="表格">▦</button>
+            <button data-cmd="math" data-i18n-title="paragraph.math" title="公式">∑</button>
+            <button data-cmd="link" data-i18n-title="format.link" title="链接">🔗</button>
+            <button data-cmd="image" data-i18n-title="format.image" title="图片">🖼</button>
           </div>
         </main>
       </div>
@@ -94,8 +94,8 @@
       <!-- ③ 状态栏：左侧与主流编辑器一致的「大纲」入口 -->
       <footer class="statusbar">
         <div class="status-left">
-          <button class="status-toggle" id="btn-outline" title="大纲 (Ctrl+Shift+1)">大纲</button>
-          <button class="status-toggle only-desktop" id="btn-files" title="文件树 (Ctrl+Shift+2)">文件树</button>
+          <button class="status-toggle" id="btn-outline" data-i18n-title="sidebar.outline" data-i18n="sidebar.outline" title="大纲">大纲</button>
+          <button class="status-toggle only-desktop" id="btn-files" data-i18n-title="sidebar.files" data-i18n="sidebar.files" title="文件树">文件树</button>
         </div>
         <div class="status-right">
           <span id="st-words">0 字</span>
@@ -106,9 +106,9 @@
           <span class="sep only-desktop">·</span>
           <span class="only-desktop">Markdown</span>
           <span class="sep">·</span>
-          <button class="status-toggle" id="btn-source" title="源代码模式 (Ctrl+/)">源码模式</button>
-          <button class="status-toggle" id="btn-focus" title="专注模式 (F8)">专注</button>
-          <button class="status-toggle" id="btn-typewriter" title="打字机模式 (F9)">打字机</button>
+          <button class="status-toggle" id="btn-source" data-i18n-title="view.source" data-i18n="view.source" title="源代码模式">源码模式</button>
+          <button class="status-toggle" id="btn-focus" data-i18n-title="view.focus" data-i18n="view.focus" title="专注模式">专注</button>
+          <button class="status-toggle" id="btn-typewriter" data-i18n-title="view.typewriter" data-i18n="view.typewriter" title="打字机模式">打字机</button>
         </div>
       </footer>
     </div>

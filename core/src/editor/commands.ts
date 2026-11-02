@@ -5,6 +5,7 @@
 
 import { EditorView } from '@codemirror/view'
 import { EditorSelection } from '@codemirror/state'
+import { t } from '../i18n'
 
 function eachSelectedLine(view: EditorView, fn: (line: { from: number; to: number; text: string }, index: number) => { text: string; caretOffset?: number } | null) {
   const { state } = view
@@ -139,7 +140,7 @@ export const cmd = {
 
   link: (v: EditorView) => {
     const r = v.state.selection.main
-    const text = r.empty ? '链接文字' : v.state.sliceDoc(r.from, r.to)
+    const text = r.empty ? t('editor.linkText') : v.state.sliceDoc(r.from, r.to)
     const insert = `[${text}](https://)`
     v.dispatch({
       changes: { from: r.from, to: r.to, insert },
@@ -150,13 +151,19 @@ export const cmd = {
 
   image: (v: EditorView) => {
     const r = v.state.selection.main
-    const alt = r.empty ? '图片' : v.state.sliceDoc(r.from, r.to)
+    const alt = r.empty ? t('editor.imageAlt') : v.state.sliceDoc(r.from, r.to)
     const insert = `![${alt}](./assets/image.png)`
     v.dispatch({ changes: { from: r.from, to: r.to, insert }, selection: { anchor: r.from + 2, head: r.from + 2 + alt.length } })
     return true
   },
 
-  table: (v: EditorView) => insertBlock(v, '| 列 1 | 列 2 | 列 3 |\n| --- | --- | --- |\n| 内容 | 内容 | 内容 |\n', 2, 2),
+  table: (v: EditorView) => {
+    const c = t('editor.tableCell')
+    const b = t('editor.tableBody')
+    const block = `| ${c} 1 | ${c} 2 | ${c} 3 |\n| --- | --- | --- |\n| ${b} | ${b} | ${b} |\n`
+    // 落点固定在"| "之后（第 1 行第 3 列）：模板首行永远是 `| 空格`，与语言无关
+    return insertBlock(v, block, 2, 2)
+  },
   mathBlock: (v: EditorView) => insertBlock(v, '$$\n\n$$\n', 3, 3),
   codeBlock: (v: EditorView) => insertBlock(v, '```\n\n```\n', 4, 4),
 

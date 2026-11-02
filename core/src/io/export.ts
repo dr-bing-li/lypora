@@ -10,6 +10,7 @@ import katex from 'katex'
 import { escapeHtml } from '../util'
 import { downloadBlob } from './files'
 import { toast } from '../ui/toast'
+import { t } from '../i18n'
 import { KATEX_CSS } from './katex-inline'
 
 /* ------------------------------------------------------------------ *
@@ -490,7 +491,7 @@ export function exportPdf(content: string, name: string): void {
 function openInNewWindow(html: string): void {
   const w = window.open('', '_blank')
   if (!w) {
-    toast('浏览器拦截了弹出窗口，请允许后重试')
+    toast(t('toast.popupBlocked'))
     return
   }
   w.document.write(html)
