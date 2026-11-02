@@ -87,8 +87,14 @@
 | 11 | `node tools/build-android.mjs` | `BUILD SUCCESSFUL`，APK 11,101,106 B |
 | 12 | APK 反向解包抽查译文 | `Gliederung`×3 / `Vista previa`×1 / `ファイル`×7 / `跟随系统`×1 等，证明词表进包 |
 | 13 | 同步 docs/03、docs/04、docs/05、android/README、README | 版本号与实测数字全部对齐 |
-| 14 | 提交 + 推送 `origin/main` | 见 §4 校验值 |
-| 15 | 创建 GitHub Release v0.5.0 并上传 3 个资产 | 见 Release 页面 |
+| 14 | 提交 + 推送 `origin/main` + 打标签 `v0.5.0` | `a2010b7..1301e20  main -> main`；`[new tag] v0.5.0 -> v0.5.0` |
+| 15 | 创建 GitHub Release v0.5.0 并上传 3 个资产 | release `#431581844`；asset `702085552`(zip) / `702086819`(apk) / `702087388`(SUMS)，`state=uploaded` |
+
+**首次上传失败的记录（保持可追溯，不粉饰）**：第一次调用时把 `GITHUB_API_IP` 与 `GITHUB_UPLOAD_IP`
+设成了同一个 IP（`140.82.112.6`），上传被打到 api 那台机器上，返回 `404 Not Found`——
+`uploads.github.com` 与 `api.github.com` 是两套服务，共用 IP 必然 404（脚本注释里本来就写了这条，
+是执行时自己踩了）。Release 本身已建成，改作「只钉 API、上传走系统 DNS」重跑，三个附件一次通过。
+回读的 `digest` 与本地 `sha256` 逐字节一致，见 §4。
 
 ---
 
