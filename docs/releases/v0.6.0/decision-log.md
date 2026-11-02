@@ -94,7 +94,7 @@
 | Apple Developer ID 签名与公证 | **未做** | 需付费开发者账号与 macOS 环境；当前为 ad-hoc 签名，首次启动需右键打开 |
 | macOS / Linux 真机启动验证 | **未做** | 构建机是 Windows；结构断言全绿 ≠ 能启动。三处文档均已声明 |
 | `.dmg` / `.deb` / `.rpm` / AppImage / Flatpak | **未做** | 均需 macOS 或 Linux 宿主工具链 |
-| GitHub Release 上传 | 待执行 | 5 个资产 + `SHA256SUMS.txt`；PAT 从会话记录取，不落盘 |
+| GitHub Release 上传 | **已完成**（2026-11-03 00:42 北京时间） | 5 个资产 + `SHA256SUMS.txt` 全部 `uploaded`，见 §5 |
 | 本地目录改名 `typora-x` → `lypora` | 未做 | 宿主机文件监视器锁根目录，`mv` 报 `Permission denied`；需关闭宿主后手动改 |
 
 ---
@@ -108,3 +108,33 @@
 | `core/src/ui/keys.ts` | 删除文件并回退 `menubar.ts` / `main.ts` 的 import 与两处调用，快捷键显示退回 `Ctrl+B` |
 | 版本号 | 三处 `package.json` / `build.gradle` 回退至 0.5.0、`versionCode 6` |
 | 产物 | `release/Lypora-0.6.0-*.tar.gz` 可直接删除，不影响 0.5.0 资产 |
+
+---
+
+## 5. 发布结果（2026-11-03 00:42 北京时间）
+
+| 项 | 值 |
+|---|---|
+| tag | `v0.6.0` → `3c0b88f`（`git rev-parse v0.6.0^{commit}`） |
+| release | `id=431711572` · https://github.com/dr-bing-li/lypora/releases/tag/v0.6.0 |
+| 状态 | `draft=false` / `prerelease=false`，说明正文 21,719 字符（由 `notes.md` 原样上传） |
+| 上传耗时 | 5 个包共约 87 秒（最快 apk 3.1s，最慢 win zip 22.9s） |
+
+远端资产与本地 sha256 逐条一致（GitHub 自算的 `digest` 字段）：
+
+| 资产 | 字节 | sha256 |
+|---|---|---|
+| `Lypora-0.6.0-win-x64.zip` | 116,353,625 | `a6ff8da5…eda2bc5` |
+| `Lypora-0.6.0-android.apk` | 11,101,470 | `b364e225…66171d0` |
+| `Lypora-0.6.0-macos-arm64.tar.gz` | 100,500,131 | `871c6e24…0af47f9f` |
+| `Lypora-0.6.0-macos-x64.tar.gz` | 105,112,292 | `513f93ae…e42664d` |
+| `Lypora-0.6.0-linux-x64.tar.gz` | 107,409,395 | `981dafd1…c9f6dcf8` |
+| `SHA256SUMS.txt` | 472 | `4e04277b…aa46507` |
+
+发布前的两道确认：`sha256sum -c docs/releases/v0.6.0/SHA256SUMS.txt` 五项全 OK（重打 macOS 包后
+哈希已刷新）；`GET /releases` 确认远端尚无 `v0.6.0`，因此走的是"创建"而非"追加资产"分支。
+
+**环境注记**：本次沿用会话记录里已有的 fine-grained PAT（`github_pat_1…49HEyC`，有效期至
+2026-11-06 09:09:47 UTC）；更早一个 `github_pat_3…84RDsU` 已失效（HTTP 401），不再可用。
+命令仍只需钉 `GITHUB_API_IP=140.82.112.6`，**不能设** `GITHUB_UPLOAD_IP`——设成 API 的 IP 会让
+附件上传返回 404（`uploads.github.com` 是另一套服务）。
