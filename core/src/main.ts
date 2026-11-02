@@ -17,6 +17,7 @@ import {
   type ThemeStats,
 } from './ui/themes'
 import { toast } from './ui/toast'
+import { formatShortcutText } from './ui/keys'
 import { initMobileShell, refreshMobileLabels } from './ui/mobile'
 import {
   applyStaticDom,
@@ -1389,7 +1390,8 @@ async function toggleFullscreen(): Promise<void> {
 }
 
 function showHelp(): void {
-  toast(t('help.shortcutsTip'), 4200)
+  // 帮助提示整句里嵌着 Ctrl+X，macOS 上要显示成 ⌘X（词表本身不按平台分叉）
+  toast(formatShortcutText(t('help.shortcutsTip')), 4200)
 }
 
 function registerServiceWorker(): void {

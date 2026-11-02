@@ -1,12 +1,12 @@
 # Lypora
 
-**An instant-render Markdown editor for Windows, the browser and Android — written in one TypeScript core.**
+**An instant-render Markdown editor for Windows, macOS, Linux, the browser and Android — one TypeScript core, five builds.**
 
 [English](#english) · [简体中文](#简体中文)
 
 ![Lypora 界面 / Lypora screenshot](docs/images/lypora.png)
 
-> **v0.5.0** — 7 interface languages (中文 / English / 日本語 / 한국어 / Español / Français / Deutsch), switchable at runtime or by system locale · Windows x64: [`Lypora-0.5.0-win-x64.zip`](https://github.com/dr-bing-li/lypora/releases/download/v0.5.0/Lypora-0.5.0-win-x64.zip) · Android 10+: [`Lypora-0.5.0-android.apk`](https://github.com/dr-bing-li/lypora/releases/download/v0.5.0/Lypora-0.5.0-android.apk) · [all releases](https://github.com/dr-bing-li/lypora/releases)
+> **v0.6.0** — now also builds for **macOS** (Apple Silicon & Intel) and **Linux** (x86_64), feature-for-feature with the Windows build · Windows x64: [`Lypora-0.6.0-win-x64.zip`](https://github.com/dr-bing-li/lypora/releases/download/v0.6.0/Lypora-0.6.0-win-x64.zip) · macOS: [`arm64`](https://github.com/dr-bing-li/lypora/releases/download/v0.6.0/Lypora-0.6.0-macos-arm64.tar.gz) / [`x64`](https://github.com/dr-bing-li/lypora/releases/download/v0.6.0/Lypora-0.6.0-macos-x64.tar.gz) · Linux: [`tar.gz`](https://github.com/dr-bing-li/lypora/releases/download/v0.6.0/Lypora-0.6.0-linux-x64.tar.gz) · Android 10+: [`Lypora-0.6.0-android.apk`](https://github.com/dr-bing-li/lypora/releases/download/v0.6.0/Lypora-0.6.0-android.apk) · [all releases](https://github.com/dr-bing-li/lypora/releases)
 
 ---
 
@@ -24,20 +24,33 @@ three shells: an Electron desktop app, a browser/PWA build, and a Capacitor proj
 
 ### Download
 
-Latest: **[v0.5.0](https://github.com/dr-bing-li/lypora/releases/tag/v0.5.0)** · all builds on the
+Latest: **[v0.6.0](https://github.com/dr-bing-li/lypora/releases/tag/v0.6.0)** · all builds on the
 [Releases page](https://github.com/dr-bing-li/lypora/releases).
 
 | File | Platform | Format | Size | SHA256 |
 |---|---|---|---|---|
-| [`Lypora-0.5.0-win-x64.zip`](https://github.com/dr-bing-li/lypora/releases/download/v0.5.0/Lypora-0.5.0-win-x64.zip) | Windows 10/11 x64 | Portable ZIP — unzip and run | 111.0 MiB | `7eb16a6b…4297b3` |
-| [`Lypora-0.5.0-android.apk`](https://github.com/dr-bing-li/lypora/releases/download/v0.5.0/Lypora-0.5.0-android.apk) | Android 10+ (API 29+) | APK, debug-signed — sideload | 10.6 MiB | `ab567f6a…3854c9` |
-| [`SHA256SUMS.txt`](https://github.com/dr-bing-li/lypora/releases/download/v0.5.0/SHA256SUMS.txt) | any | Checksum list | 182 B | `977028e4…f30cce` |
+| [`Lypora-0.6.0-win-x64.zip`](https://github.com/dr-bing-li/lypora/releases/download/v0.6.0/Lypora-0.6.0-win-x64.zip) | Windows 10/11 x64 | Portable ZIP — unzip and run | 111.0 MiB | `a6ff8da5…2bc5` |
+| [`Lypora-0.6.0-macos-arm64.tar.gz`](https://github.com/dr-bing-li/lypora/releases/download/v0.6.0/Lypora-0.6.0-macos-arm64.tar.gz) | macOS 11+ Apple Silicon | `.app` in tar.gz — run `mac-finalize.command` once | 95.8 MiB | `871c6e24…47f9f` |
+| [`Lypora-0.6.0-macos-x64.tar.gz`](https://github.com/dr-bing-li/lypora/releases/download/v0.6.0/Lypora-0.6.0-macos-x64.tar.gz) | macOS 11+ Intel | `.app` in tar.gz — run `mac-finalize.command` once | 100.2 MiB | `513f93ae…2664d` |
+| [`Lypora-0.6.0-linux-x64.tar.gz`](https://github.com/dr-bing-li/lypora/releases/download/v0.6.0/Lypora-0.6.0-linux-x64.tar.gz) | Linux x86_64, glibc ≥2.31 | Self-contained dir in tar.gz — `./lypora.sh` or `./install.sh` | 102.4 MiB | `981dafd1…dcf8` |
+| [`Lypora-0.6.0-android.apk`](https://github.com/dr-bing-li/lypora/releases/download/v0.6.0/Lypora-0.6.0-android.apk) | Android 10+ (API 29+) | APK, debug-signed — sideload | 10.6 MiB | `b364e225…71d0` |
+| [`SHA256SUMS.txt`](https://github.com/dr-bing-li/lypora/releases/download/v0.6.0/SHA256SUMS.txt) | any | Checksum list for all five builds | see file | — |
 
 **Windows:** unzip, keep the `Lypora\` folder intact, and run `Lypora\Lypora.exe`. No installer, no admin rights, no
 auto-update — upgrading means downloading the next ZIP over it. **The executable is not code-signed**, so
 SmartScreen will warn once ("More info" → "Run anyway").
 
-**Android:** copy the APK to the phone and tap it, or `adb install -r Lypora-0.5.0-android.apk`. Android will ask
+**macOS:** extract the tar.gz, then **run `bash mac-finalize.command` once** — it strips the quarantine attribute and
+re-signs the bundle ad-hoc. Skipping it means Gatekeeper blocks the app, and on Apple Silicon an unsigned binary is
+killed outright. Then open `Lypora.app`. Right-click → Open is still needed on first launch, because the bundle is
+**not notarized** (no Apple Developer ID on this machine). Pick `arm64` for Apple Silicon, `x64` for Intel.
+
+**Linux:** extract, `cd Lypora`, then either `./lypora.sh` (no install) or `./install.sh` (adds it to the application
+menu under `~/.local`, no root needed). Electron's SUID sandbox needs `chrome-sandbox` to be `root:root 4755`;
+`install.sh` tries to fix that via sudo, and `lypora.sh` falls back to `--no-sandbox` with a warning when it cannot.
+No AppImage/deb/rpm — `appimagetool` and `dpkg-deb` are Linux binaries and the build machine is Windows.
+
+**Android:** copy the APK to the phone and tap it, or `adb install -r Lypora-0.6.0-android.apk`. Android will ask
 you to allow installing from an unknown source — that is the normal sideload prompt. The touch build uses a separate
 shell (bottom action dock, menus in a bottom sheet, sidebar as a drawer); PDF export, "open folder" and third-party
 theme import are greyed out there. Documents are stored in the app-specific directory
@@ -46,20 +59,24 @@ Since v0.4.1, Lypora also registers as a target in the system **"Open with"** li
 manager) and in the **Share sheet** — received content opens directly in the editor.
 
 **What is verified and what is not:** the APK is built and inspected (`aapt2`/`apksigner`), the touch layout is
-asserted in five viewports under Chromium emulation, and the packaged Windows build runs its `--selftest`. No physical
-Android device was attached to this machine, so cold start, native file IO and the share sheet are **not** verified on
-real hardware. Say so rather than pretend.
+asserted in five viewports under Chromium emulation, and the packaged Windows build runs its `--selftest`.
+For macOS and Linux, what exists is **structural evidence**: `tools/check-package.py` reads the archives back and
+asserts 20 things (Mach-O architecture `0100000c`/`01000007`, 14 preserved framework symlinks, `Info.plist` keys,
+the four renamed helper bundles, ELF headers, `setuid` on `chrome-sandbox`, 55 Chromium locale packs, `.desktop`
+keys, icon dimensions) plus byte-for-byte identity with `core/dist`. **Neither package has been launched on real
+hardware** — there is no Mac and no Linux installation on this machine (WSL is blocked by policy, Docker is absent).
+Reports that only prove "the archive is well-formed" are not reports that prove "it runs".
 
-macOS, Linux and an `.msi`/`.exe` installer are **not** shipped — see the
-[platform matrix](https://github.com/dr-bing-li/lypora/releases/tag/v0.5.0) for why, rather than publishing a
-package that downloads but does not run. The browser build can be produced from source (below). The Android APK is
-debug-signed, and since v0.4.1 it registers for the system "Open with" / "Share" intents.
+An `.msi`/`.exe` installer and a `.dmg` are **not** shipped: `hdiutil`/`makensis` would be needed and neither runs on
+this build host. The browser build can be produced from source (below).
 
 Verify before running:
 
+```bash
+sha256sum -c SHA256SUMS.txt                 # macOS / Linux
+```
 ```bat
-certutil -hashfile Lypora-0.5.0-win-x64.zip SHA256
-certutil -hashfile Lypora-0.5.0-android.apk SHA256
+certutil -hashfile Lypora-0.6.0-win-x64.zip SHA256
 ```
 
 ### Why it exists (and what it is not)
@@ -89,6 +106,7 @@ the code as a working draft, not as a reference implementation.
 | Languages | 7 UI languages — 简体中文 / English / 日本語 / 한국어 / Español / Français / Deutsch. Switch at runtime from the **Language** menu, or follow the system language; the choice is remembered |
 | Files | Open / save / save-as, recent files, workspace tree, export to Markdown / single-file HTML / PDF (KaTeX CSS and fonts are inlined, so exports render correctly offline) |
 | Desktop | Native dialogs, single-instance lock, close-with-unsaved-changes guard, file association |
+| Platforms | Windows portable `.exe` + zip, macOS `.app` bundle (Apple Silicon and Intel), Linux x64 tarball with `.desktop` integration, Android APK, and a plain browser / PWA build — one TypeScript core, five shells |
 
 ### Quick start
 
@@ -123,17 +141,66 @@ backend required. Serving it over HTTPS gives you installable PWA behaviour and 
 ```bash
 node tools/pack-win.mjs --zip
 # -> release/Lypora/Lypora.exe           double-click to run
-# -> release/Lypora-0.5.0-win-x64.zip    ready to hand out
+# -> release/Lypora-0.6.0-win-x64.zip    ready to hand out
 ```
 
 Requires `desktop/node_modules/electron/dist` (`npm install` inside `desktop/` downloads it). The packer also
 stamps the icon and version metadata into the executable.
 
-**C. Android (APK included)**
+**C. macOS (Apple Silicon and Intel)**
+
+```bash
+# official prebuilt Electron binaries — no npm install involved
+curl -LO https://github.com/electron/electron/releases/download/v33.4.11/electron-v33.4.11-darwin-arm64.zip
+python tools/pack-mac.py --zip electron-v33.4.11-darwin-arm64.zip --arch arm64
+python tools/pack-mac.py --zip electron-v33.4.11-darwin-x64.zip   --arch x64
+# -> release/Lypora-0.6.0-macos-arm64.tar.gz
+# -> release/Lypora-0.6.0-macos-x64.tar.gz
+```
+
+The packer rebuilds Electron's prebuilt zip into a real `Lypora.app` bundle — rewritten `Info.plist`
+(bundle id, document types, minimum OS), renamed `Lypora Helper*.app` helpers, regenerated `.icns`, and the
+same `Resources/app` payload the Windows build ships — then re-emits it as `.tar.gz`. It streams zip entries
+directly into tar entries on purpose: Windows cannot create symlinks, and a `.app` contains 14 of them inside
+the Electron Framework. Bundle layout, signing layers and the byte-level contract are documented in
+[`docs/06-跨平台构建与平台规范.md`](docs/06-跨平台构建与平台规范.md).
+
+The result is **ad-hoc signed, not notarised** — there is no Developer ID certificate behind it. The first
+launch will be stopped by Gatekeeper; either **right-click → Open → Open** once, or use the bundled helper:
+
+```bash
+tar xzf Lypora-0.6.0-macos-arm64.tar.gz && cd Lypora-0.6.0-macos-arm64
+sh mac-finalize.command     # strip quarantine, ad-hoc re-sign, verify
+```
+
+Minimum **macOS 11 (Big Sur)**. The arm64 build runs natively on Apple Silicon; the x64 build runs on Intel
+and under Rosetta.
+
+**D. Linux x64**
+
+```bash
+curl -LO https://github.com/electron/electron/releases/download/v33.4.11/electron-v33.4.11-linux-x64.zip
+python tools/pack-linux.py --zip electron-v33.4.11-linux-x64.zip
+# -> release/Lypora-0.6.0-linux-x64.tar.gz
+```
+
+```bash
+tar xzf Lypora-0.6.0-linux-x64.tar.gz && cd Lypora
+./install.sh          # per-user: ~/.local/share/lypora, .desktop entry, hicolor icons
+./lypora.sh           # ...or just run it in place
+```
+
+`install.sh` copies the tree into `$XDG_DATA_HOME/lypora`, installs the icons and a `.desktop` entry, adds a
+`~/.local/bin/lypora` shim, and sets `chrome-sandbox` to `root:root 4755` with `sudo` — Chromium's sandbox
+refuses to start otherwise. Decline the `sudo` prompt and you still get a working app: `lypora.sh` checks the
+SUID bit at launch and falls back to `--no-sandbox` with a warning. `./install.sh --uninstall` removes
+everything it added. Target **x86-64, glibc ≥ 2.31** (Ubuntu 20.04+, Debian 11+, Fedora 32+).
+
+**E. Android (APK included)**
 
 ```bash
 node tools/build-android.mjs
-# -> release/Lypora-0.5.0-android.apk    install with: adb install -r <file>
+# -> release/Lypora-0.6.0-android.apk    install with: adb install -r <file>
 ```
 
 Needs **JDK 21** and an **Android SDK** with platform 35 + build-tools 35 — the script locates `ANDROID_HOME`
@@ -145,7 +212,7 @@ project lives in `core/android`, the touch shell in `core/src/ui/mobile.ts`; pac
 The shipped APK is **debug-signed**: it installs on any device, but Google Play needs a release keystore.
 Minimum **Android 10 (API 29)**, target **API 35**.
 
-**D. Edge `--app` fallback**
+**F. Edge `--app` fallback**
 
 If you want a window without the browser chrome on a machine without a packaged build, run `desktop/app.cjs`
 as described in [`desktop/README.md`](desktop/README.md).
@@ -162,9 +229,16 @@ node i18n-check.mjs        # i18n: 7 locales × key parity / placeholders / real
 node ../tools/closetest.mjs --exe        # window-close guard, four scenarios
 node ../tools/interacttest.mjs           # real mouse events against the packaged build
 env -u ELECTRON_RUN_AS_NODE ./release/Lypora/Lypora.exe --selftest --shot=shot.png
+
+# package structure: 20 assertions across the macOS / Linux tarballs
+python ../tools/check-package.py
 ```
 
-Details, measured numbers and the list of traps we hit are in [`docs/04-验证方案.md`](docs/04-验证方案.md).
+Be clear about what the last command proves: it parses the Mach-O and ELF headers, `Info.plist`,
+`.desktop`, icon sizes, symlink targets and file modes inside the archives, but it does **not** boot the app
+on macOS or Linux — this project is developed on Windows, and there is no macOS or Linux machine in the loop.
+Windows and Android are the two platforms with real runtime evidence. Details, measured numbers and the list
+of traps we hit are in [`docs/04-验证方案.md`](docs/04-验证方案.md).
 
 ### A tribute, and a disclaimer
 
@@ -224,39 +298,75 @@ Lypora 是一个即时渲染的 Markdown 编辑器。你在编辑区里写 Markd
 
 ### 下载
 
-最新版本：**[v0.5.0](https://github.com/dr-bing-li/lypora/releases/tag/v0.5.0)** · 全部构建见
+最新版本：**[v0.6.0](https://github.com/dr-bing-li/lypora/releases/tag/v0.6.0)** · 全部构建见
 [Releases 页面](https://github.com/dr-bing-li/lypora/releases)。
 
 | 文件 | 平台 | 格式 | 大小 | SHA256 |
 |---|---|---|---|---|
-| [`Lypora-0.5.0-win-x64.zip`](https://github.com/dr-bing-li/lypora/releases/download/v0.5.0/Lypora-0.5.0-win-x64.zip) | Windows 10/11 x64 | 便携版 ZIP，解压即用 | 111.0 MiB | `7eb16a6b…4297b3` |
-| [`Lypora-0.5.0-android.apk`](https://github.com/dr-bing-li/lypora/releases/download/v0.5.0/Lypora-0.5.0-android.apk) | Android 10+（API 29+） | APK，debug 签名，直接侧载 | 10.6 MiB | `ab567f6a…3854c9` |
-| [`SHA256SUMS.txt`](https://github.com/dr-bing-li/lypora/releases/download/v0.5.0/SHA256SUMS.txt) | 任意 | 校验清单 | 182 B | `977028e4…f30cce` |
+| [`Lypora-0.6.0-win-x64.zip`](https://github.com/dr-bing-li/lypora/releases/download/v0.6.0/Lypora-0.6.0-win-x64.zip) | Windows 10/11 x64 | 便携版 ZIP，解压即用 | 111.0 MiB | `a6ff8da5…eda2bc5` |
+| [`Lypora-0.6.0-macos-arm64.tar.gz`](https://github.com/dr-bing-li/lypora/releases/download/v0.6.0/Lypora-0.6.0-macos-arm64.tar.gz) | macOS 11+（Apple Silicon） | `.app` bundle，ad-hoc 签名 | 95.8 MiB | `871c6e24…a47f9f` |
+| [`Lypora-0.6.0-macos-x64.tar.gz`](https://github.com/dr-bing-li/lypora/releases/download/v0.6.0/Lypora-0.6.0-macos-x64.tar.gz) | macOS 11+（Intel） | `.app` bundle，ad-hoc 签名 | 100.2 MiB | `513f93ae…e42664d` |
+| [`Lypora-0.6.0-linux-x64.tar.gz`](https://github.com/dr-bing-li/lypora/releases/download/v0.6.0/Lypora-0.6.0-linux-x64.tar.gz) | Linux x86-64（glibc ≥ 2.31） | tar.gz + `install.sh` + `.desktop` | 102.4 MiB | `981dafd1…c9f6dcf8` |
+| [`Lypora-0.6.0-android.apk`](https://github.com/dr-bing-li/lypora/releases/download/v0.6.0/Lypora-0.6.0-android.apk) | Android 10+（API 29+） | APK，debug 签名，直接侧载 | 10.6 MiB | `b364e225…66171d0` |
+| [`SHA256SUMS.txt`](https://github.com/dr-bing-li/lypora/releases/download/v0.6.0/SHA256SUMS.txt) | 任意 | 校验清单 | 见文件 | — |
 
 **Windows：** 解压后**保持 `Lypora\` 文件夹结构完整**，双击 `Lypora\Lypora.exe` 即可。无安装程序、无需管理
 员权限、没有自动更新——升级就是下载新版 ZIP 覆盖上去。**exe 未做代码签名**，所以 SmartScreen 会拦一次：
 「更多信息」→「仍要运行」。
 
-**Android：** 把 APK 传到手机点开安装（或 `adb install -r Lypora-0.5.0-android.apk`）。系统会提示「允许安装
+**macOS：** 解压得到 `Lypora-0.6.0-macos-<arch>/`，里面是 `Lypora.app`。**这是 ad-hoc 签名，没有 Apple
+Developer ID，也没有公证**，所以首次打开会被 Gatekeeper 拦下。两个办法任选：右键 `Lypora.app` →「打开」→
+再点「打开」；或者先用包里的脚本处理一遍：
+
+```bash
+tar xzf Lypora-0.6.0-macos-arm64.tar.gz && cd Lypora-0.6.0-macos-arm64
+sh mac-finalize.command        # 去 quarantine + ad-hoc 重签 + 校验
+open Lypora.app
+```
+
+Apple Silicon 请下载 arm64 包，Intel 下载 x64（x64 也能在 Apple Silicon 上经 Rosetta 跑，但没必要）。
+没有 `.dmg`，只有 tar.gz——打 dmg 需要 `hdiutil`，构建机是 Windows，做不出来。默认**不抢** `.md` 的系统关联
+（`LSHandlerRank = Alternate`）；想关联：右键任意 `.md` → 打开方式 → 其他 → 选 Lypora → 勾「始终以此方式打开」。
+
+**Linux：** 解压得到 `Lypora/`，然后二选一：
+
+```bash
+tar xzf Lypora-0.6.0-linux-x64.tar.gz && cd Lypora
+./install.sh      # 安装到 ~/.local/share/lypora，并写入应用菜单项与图标
+./lypora.sh       # 或者不安装，就地跑
+```
+
+`install.sh` 会用 `sudo` 把 `chrome-sandbox` 设成 `root:root 4755`——Chromium 的沙箱没有它就不肯起来。
+不想给 sudo 也行：`lypora.sh` 启动时会自己检查 SUID 位，不满足就带 `--no-sandbox` 起来并打一行警告，
+功能一样能用，只是少了进程隔离。卸载：`./install.sh --uninstall`。要求 **x86-64 + glibc ≥ 2.31**
+（Ubuntu 20.04+ / Debian 11+ / Fedora 32+）。
+
+**Android：** 把 APK 传到手机点开安装（或 `adb install -r Lypora-0.6.0-android.apk`）。系统会提示「允许安装
 未知来源应用」，这是侧载的正常提示。触屏版是另一套外壳（底部操作栏、菜单收进底部面板、侧栏变抽屉），
 导出 PDF、打开文件夹、导入第三方主题在手机上是置灰的。文档存在应用专属目录
 `Android/data/app.lypora.editor/files/Documents/Lypora/`，要交出去请用**导出 → 系统分享面板**。
 v0.4.1 起，Lypora 也注册进了系统的**「打开方式」**列表（在文件管理器里点 `.md`/`.txt`）和**「分享」**面板——
 收到的内容会直接载入编辑器。
 
-macOS、Linux、`.msi` / `.exe` 安装包**均未提供**，原因写在
-[平台矩阵](https://github.com/dr-bing-li/lypora/releases/tag/v0.5.0) 里：宁可不给，也不放一个「能下载但跑
-不起来」的包。浏览器版可按下面步骤自行构建。
+**验过什么、没验什么，分开说：**
 
-**验过什么、没验什么说清楚：** APK 是构建后逐项读元数据核对的（`aapt2` / `apksigner`），触屏布局在
-Chromium 模拟的五档视口下逐条断言，Windows 打包版跑过 `--selftest`。这台机器没接安卓真机，所以冷启动、
-原生文件读写、系统分享面板**没有**在真实硬件上验证过——没验就说没验。
+- **运行时证据只有 Windows 和 Android。** Windows 打包版跑过 `--selftest`（原生菜单 8 项、桥接 API 9 项、
+  Electron 33.4.11，退出码 0）、真实鼠标事件、关窗拦截四场景；APK 是构建后用 `aapt2` / `apksigner` 逐项核
+  元数据，触屏布局在 Chromium 五档视口下逐条断言。这台机器没接安卓真机，所以冷启动、原生文件读写、系统
+  分享面板**没有**在真实硬件上验证过。
+- **macOS 和 Linux 只有结构证据。** 没有 Mac、没有 Linux 发行版，WSL 与 Docker 在本机不可用，所以这两个包
+  **没在真机上启动过**。能验的都验了：Mach-O 架构与代码签名段、ELF 类型、`Info.plist` 九个键、`.desktop`
+  七个键、8 档图标尺寸、14 个符号链接、SUID 位、包内前端与 `core/dist` 逐文件 sha256 一致——这些由
+  `python tools/check-package.py` 断言，全绿。**它证明的是"包是对的"，不是"能起来"。** 装完打不开请开 issue。
 
 运行前先校验：
 
 ```bat
-certutil -hashfile Lypora-0.5.0-win-x64.zip SHA256
-certutil -hashfile Lypora-0.5.0-android.apk SHA256
+certutil -hashfile Lypora-0.6.0-win-x64.zip SHA256
+certutil -hashfile Lypora-0.6.0-android.apk SHA256
+```
+```bash
+shasum -a 256 -c SHA256SUMS.txt      # macOS / Linux 通用
 ```
 
 ### 为什么会有这个东西（以及它不是什么）
@@ -283,6 +393,7 @@ Lypora 是一个**小小的、刻意不做大的替代品**，用来临时顶一
 | 多语言 | 7 种界面语言：简体中文 / English / 日本語 / 한국어 / Español / Français / Deutsch。可在**语言**菜单里运行时切换，或跟随系统语言；选择会被记住 |
 | 文件 | 打开 / 保存 / 另存、最近文件、工作区文件树、导出 Markdown / 单文件 HTML / PDF（KaTeX 的 CSS 与字体内联，离线打开公式也是对的） |
 | 桌面 | 原生对话框、单实例、关窗前未保存拦截、文件关联 |
+| 平台 | Windows 便携版 `.exe` + ZIP、macOS `.app`（Apple Silicon 与 Intel）、Linux x64 tar.gz（带 `.desktop` 集成）、Android APK、以及浏览器 / PWA 版——一个 TypeScript 核心，五套外壳 |
 
 ### 快速开始
 
@@ -317,17 +428,53 @@ cd core && npm run build
 ```bash
 node tools/pack-win.mjs --zip
 # -> release/Lypora/Lypora.exe           双击即用
-# -> release/Lypora-0.5.0-win-x64.zip    可直接分发
+# -> release/Lypora-0.6.0-win-x64.zip    可直接分发
 ```
 
 依赖 `desktop/node_modules/electron/dist`（在 `desktop/` 里 `npm install` 会下载）。打包脚本会把图标和
 版本信息写进 exe。
 
-**C. Android（已附带 APK）**
+**C. macOS（Apple Silicon + Intel）**
+
+```bash
+# 用 Electron 官方预编译包，不需要 npm install
+curl -LO https://github.com/electron/electron/releases/download/v33.4.11/electron-v33.4.11-darwin-arm64.zip
+python tools/pack-mac.py --zip electron-v33.4.11-darwin-arm64.zip --arch arm64
+python tools/pack-mac.py --zip electron-v33.4.11-darwin-x64.zip   --arch x64
+# -> release/Lypora-0.6.0-macos-arm64.tar.gz
+# -> release/Lypora-0.6.0-macos-x64.tar.gz
+```
+
+打包脚本把 Electron 的预编译 zip 重建成一个真正的 `Lypora.app`——重写 `Info.plist`（bundle id、
+文档类型、最低系统版本）、把 helper 跟着主程序改名（`Lypora Helper*.app`）、重新生成 `.icns`、塞入与
+Windows 版同一份 `Resources/app` 前端——最后输出 tar.gz。
+
+它**故意不解压到磁盘**，而是把 zip 条目直接灌进 tar 条目：Windows 建不了符号链接（`ln -s` 报
+`Operation not permitted`），而一个 `.app` 的 Electron Framework 里有 14 个符号链接。bundle 结构、签名分层
+和逐项约束写在 [`docs/06-跨平台构建与平台规范.md`](docs/06-跨平台构建与平台规范.md)。
+
+产物是 **ad-hoc 签名、未公证**的，没有 Apple Developer ID 证书在后面。首次启动会被 Gatekeeper 拦一次，
+右键「打开」或跑包里的 `mac-finalize.command` 都可。最低 **macOS 11（Big Sur）**，arm64 原生、x64 走 Intel
+或 Rosetta。
+
+**D. Linux x64**
+
+```bash
+curl -LO https://github.com/electron/electron/releases/download/v33.4.11/electron-v33.4.11-linux-x64.zip
+python tools/pack-linux.py --zip electron-v33.4.11-linux-x64.zip
+# -> release/Lypora-0.6.0-linux-x64.tar.gz
+```
+
+包内结构是 `Lypora/` 目录 + `lypora.sh`（启动器）+ `install.sh` / `uninstall.sh`（安装、卸载）+
+`lypora.desktop` + 8 档 hicolor 图标。`install.sh` 装到 `$XDG_DATA_HOME/lypora`、写菜单项和
+`~/.local/bin/lypora`，并且会用 `sudo` 给 `chrome-sandbox` 打 `root:root 4755`；不给 sudo 时
+`lypora.sh` 自动退回 `--no-sandbox`。目标平台 **x86-64，glibc ≥ 2.31**。
+
+**E. Android（已附带 APK）**
 
 ```bash
 node tools/build-android.mjs
-# -> release/Lypora-0.5.0-android.apk    安装：adb install -r <文件>
+# -> release/Lypora-0.6.0-android.apk    安装：adb install -r <文件>
 ```
 
 需要 **JDK 21** 与 **Android SDK**（platform 35 + build-tools 35）。脚本会自己找 `ANDROID_HOME` 和 JDK，缺什么
@@ -338,7 +485,7 @@ node tools/build-android.mjs
 提供的 APK 是 **debug 签名**：任何设备可直接安装，但上架 Google Play 需要 release keystore 重新签名。
 最低支持 **Android 10（API 29）**，target **API 35**。
 
-**D. Edge `--app` 兜底**
+**F. Edge `--app` 兜底**
 
 没打安装包、又想要一个没有浏览器工具栏的窗口时，按 [`desktop/README.md`](desktop/README.md) 里的说明跑
 `desktop/app.cjs`。
@@ -355,7 +502,13 @@ node i18n-check.mjs        # 国际化：7 种语言 × 键齐备 / 占位符 / 
 node ../tools/closetest.mjs --exe        # 关窗拦截四场景
 node ../tools/interacttest.mjs           # 对打包版派发真实鼠标事件
 env -u ELECTRON_RUN_AS_NODE ./release/Lypora/Lypora.exe --selftest --shot=shot.png
+
+python ../tools/check-package.py        # macOS / Linux 包结构：20 项断言
 ```
+
+最后一条能证明什么、不能证明什么，得说清楚：它会解析包里的 Mach-O / ELF 头、`Info.plist`、`.desktop`、
+图标尺寸、符号链接指向和文件权限位，但**它不会在 macOS 或 Linux 上把应用跑起来**——这台构建机是 Windows，
+手上没有 Mac，也没有 Linux 环境。有真机运行证据的只有 Windows 和 Android 两个平台。
 
 细节、实测数字和踩过的坑都在 [`docs/04-验证方案.md`](docs/04-验证方案.md)。
 

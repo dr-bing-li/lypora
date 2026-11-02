@@ -20,6 +20,42 @@ let allowClose = false
 let askingClose = false
 
 /**
+ * macOS 冷启动待打开文件队列。
+ * `open-file` 可能在窗口创建之前触发（双击 .md 启动时就是如此），此时没有 webContents
+ * 可投递，只能先存下来，等渲染层订阅好回调再发。Windows/Linux 的命令行参数走同一条队列，
+ * 三端行为一致。
+ */
+const pendingOpen = []
+let winReady = false
+
+const MD_RE = /\.(md|markdown|mdown|mkd|txt)$/i
+
+function queueOpenPath(filePath) {
+  if (!filePath || !MD_RE.test(filePath)) return
+  pendingOpen.push(filePath)
+  flushPendingOpen()
+}
+
+function flushPendingOpen() {
+  if (!winReady || !win || win.isDestroyed()) return
+  while (pendingOpen.length) {
+    const filePath = pendingOpen.shift()
+    fs.readFile(filePath, 'utf8')
+      .then((content) => {
+        if (!win || win.isDestroyed()) return
+        win.webContents.send('app:open-path', {
+          name: path.basename(filePath),
+          path: filePath,
+          content,
+        })
+      })
+      .catch(() => {
+        /* 读不到就跳过（文件已被移走 / 权限不足），不打断其它待开文件 */
+      })
+  }
+}
+
+/**
  * 定位前端入口：两种部署形态都要能找到 index.html
  *  1) 开发/源码态：desktop/../core/dist/index.html
  *  2) 便携包：resources/app/web/index.html（由 tools/pack-win.mjs 拷贝而来）
@@ -57,6 +93,11 @@ function resolveIcon() {
 }
 
 function createWindow() {
+  // 每次建窗都要复位：macOS 上关窗不退出应用，激活时重建窗口。
+  // 若沿用上一个窗口留下的 allowClose=true，新窗口的关窗守卫会被整段跳过（脏数据直接丢）。
+  allowClose = false
+  winReady = false
+
   win = new BrowserWindow({
     width: 1240,
     height: 820,
@@ -66,6 +107,7 @@ function createWindow() {
     show: false,
     autoHideMenuBar: true,
     title: 'Lypora',
+    // macOS 的窗口图标与 Dock 图标由 .app 包的 .icns 决定，此参数在 darwin 上被忽略
     icon: resolveIcon(),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -130,24 +172,15 @@ function createWindow() {
   if (isSelfTest) runSelfTest(win)
   if (CLOSE_TEST) runCloseTest(win, CLOSE_TEST)
 
-  // 首次启动带文件参数：等渲染进程订阅好回调再投递
-  const argvFile = process.argv.find((a) => /\.(md|markdown|mdown|mkd|txt)$/i.test(a))
-  if (argvFile) {
-    win.webContents.once('did-finish-load', () => {
-      setTimeout(async () => {
-        try {
-          const content = await fs.readFile(argvFile, 'utf8')
-          win.webContents.send('app:open-path', {
-            name: path.basename(argvFile),
-            path: argvFile,
-            content,
-          })
-        } catch {
-          /* 忽略 */
-        }
-      }, 400)
-    })
-  }
+  // 首次启动带文件参数（Windows / Linux）：等渲染进程订阅好回调再投递。
+  // macOS 双击文件不走命令行，走下面的 app.on('open-file')。
+  win.webContents.once('did-finish-load', () => {
+    // 400ms 是给渲染层挂 onOpenPath 回调的余量（与 v0.4.x 相同，实测够用）
+    setTimeout(() => {
+      winReady = true
+      flushPendingOpen()
+    }, 400)
+  })
 }
 
 
@@ -382,8 +415,49 @@ ipcMain.handle('app:info', () => ({
 
 /* ---------------- 应用生命周期 ---------------- */
 
+/**
+ * macOS 应用菜单：只保留「关于 / 隐藏 / 退出」与「窗口」两组 role。
+ *
+ * 为什么不给「编辑」菜单（role:'editMenu'）：菜单加速键在 Electron 里**先于页面 keydown**
+ * 被处理，一旦挂上 role:'undo'，Cmd+Z 会走 webContents 的原生撤销而不是 CM6 的 history，
+ * 撤销粒度与范围全错。而 Chromium 在没有菜单时也照样能处理 contenteditable 里的
+ * Cmd+C/V/X/A/Z，所以「不给编辑菜单」才是正确做法，不是偷懒。
+ *
+ * Windows/Linux 保持 setApplicationMenu(null)：菜单由渲染层自绘，系统菜单栏必须让位。
+ */
+function installApplicationMenu() {
+  if (process.platform !== 'darwin') {
+    Menu.setApplicationMenu(null)
+    return
+  }
+  Menu.setApplicationMenu(
+    Menu.buildFromTemplate([
+      { role: 'appMenu' },
+      { role: 'windowMenu' },
+    ]),
+  )
+}
+
+app.setAboutPanelOptions({
+  applicationName: 'Lypora',
+  applicationVersion: app.getVersion(),
+  copyright: 'MIT · 独立实现，与任何第三方商业产品无关联',
+  credits: 'Lypora — 独立实现的即时渲染 Markdown 编辑器',
+})
+
+// 必须在 whenReady 之前注册：双击 .md 冷启动时，open-file 可能早于 ready 触发
+app.on('open-file', (e, filePath) => {
+  e.preventDefault()
+  queueOpenPath(filePath)
+})
+
+// Windows / Linux：首个实例的文件参数入队（macOS 走 open-file，argv 里只有 -psn_ 之类）
+for (const a of process.argv.slice(1)) {
+  if (MD_RE.test(a)) queueOpenPath(a)
+}
+
 app.whenReady().then(() => {
-  Menu.setApplicationMenu(null) // 菜单由渲染进程自绘
+  installApplicationMenu()
   createWindow()
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
@@ -399,22 +473,11 @@ const gotLock = app.requestSingleInstanceLock()
 if (!gotLock) {
   app.quit()
 } else {
-  app.on('second-instance', async (_e, argv) => {
+  app.on('second-instance', (_e, argv) => {
     if (!win) return
     if (win.isMinimized()) win.restore()
     win.focus()
-    const fileArg = argv.find((a) => /\.(md|markdown|mdown|mkd|txt)$/i.test(a))
-    if (fileArg) {
-      try {
-        const content = await fs.readFile(fileArg, 'utf8')
-        win.webContents.send('app:open-path', {
-          name: path.basename(fileArg),
-          path: fileArg,
-          content,
-        })
-      } catch {
-        /* 忽略读取失败 */
-      }
-    }
+    const fileArg = argv.find((a) => MD_RE.test(a))
+    if (fileArg) queueOpenPath(fileArg)
   })
 }

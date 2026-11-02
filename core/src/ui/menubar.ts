@@ -8,6 +8,8 @@
  * 3. 菜单开着时鼠标划过其它顶级菜单直接切换（Windows 原生菜单的肌肉记忆）。
  */
 
+import { formatShortcut } from './keys'
+
 export interface MenuEntry {
   /**
    * 稳定的动作标识（与显示语言无关）。给两处用：
@@ -83,7 +85,8 @@ export function createMenubar(host: HTMLElement, getMenus: () => MenuDef[]): Men
       lab.textContent = it.label ?? ''
       const sc = document.createElement('span')
       sc.className = 'mi-shortcut'
-      sc.textContent = it.shortcut ?? ''
+      // 平台化显示：macOS 上 Ctrl+S 要显示成 ⌘S（见 ui/keys.ts 的说明）
+      sc.textContent = formatShortcut(it.shortcut ?? '')
       btn.append(check, lab, sc)
 
       if (it.items) {
