@@ -147,18 +147,23 @@ curl -LO https://github.com/electron/electron/releases/download/v33.4.11/electro
 python tools/linux-stage.py --zip electron-v33.4.11-linux-x64.zip --stage build/stage --deb
 
 # 4) 封包（以下三行必须 Linux）
+#    deb：--root-owner-group 让归档里记 root:root，不需要事先 chown
 dpkg-deb --build --root-owner-group build/stage release/lypora_0.7.0_amd64.deb
 
-sudo chown -R root:root build/stage
-sudo chmod 4755 build/stage/opt/lypora/chrome-sandbox     # ← chown 会清掉 setuid，必须重设
+#    rpm：%install 里 cp -a 会抹掉 setuid（见 §9），spec 末尾自己 chmod，这里不用预先处理
 mkdir -p build/rpm/{BUILD,BUILDROOT,RPMS,SOURCES,SPECS,SRPMS}
 rpmbuild -bb --define "_version 0.7.0" --define "_stage_root $PWD/build/stage" \
          --define "_topdir $PWD/build/rpm" packaging/lypora.spec
 
+#    AppImage：AppDir 里的 appimagetool 需要 ELF 环境
 python tools/linux-stage.py --stage build/stage --appdir build/AppDir
 ARCH=x86_64 ./appimagetool --appimage-extract-and-run --no-appstream build/AppDir \
      release/Lypora-0.7.0-linux-x64.AppImage
 ```
+
+> 若你坚持用 `sudo chown -R root:root build/stage` 让树"看起来像安装了"，**必须在 chown 之后重新
+> `sudo chmod 4755 build/stage/opt/lypora/chrome-sandbox`**——`chown` 按 POSIX 规定会清掉 setuid。
+> 但本项目不需要这一步：deb 走 `--root-owner-group`，rpm 走 spec 自己的 chmod。
 
 ### 5.2 CI（正常路径）
 
@@ -180,8 +185,13 @@ git tag -a v0.7.0 -m "…" && git push origin v0.7.0
 8. `appimagetool` 出 AppImage
 9. 结构检查（`dpkg-deb -I/-c`、`rpm -qip/-qplv`、`file`）
 10. `debian:12` 与 `fedora:40` 容器里**真装一遍**
-11. xvfb 下跑一次 `--selftest`（尽力而为，失败不阻断）
-12. 生成/合并 `SHA256SUMS.txt` 并 `gh release upload --clobber`
+11. 生成/合并 `SHA256SUMS.txt` 并 `gh release upload --clobber`
+12. xvfb 下跑一次 `--selftest`（**放在最后**，尽力而为，失败不阻断）
+
+第 11 步排在第 12 步之前是有意的：冒烟只在容器里验"能不能起"，它失败或卡住不应该挡住"把包发出去"这个
+必须成功的目标。该步骤同时有三层兜底（job 级 `timeout-minutes: 5`、容器内 `timeout 90`、
+`continue-on-error: true`）——第一版把冒烟放在上传之前，结果 Electron 起得来却不退出，把整个 job 拖到
+超时，包一个都没传。
 
 手动补跑：`Actions → Linux installers → Run workflow`，输入一个**已存在**的 tag。
 （注意：fine-grained PAT 需要 `Actions: write` 才能用 API 触发，只有 `Contents: write` 会返回 403。）
@@ -295,9 +305,19 @@ tar xzf Lypora-0.7.0-linux-x64.tar.gz && cd Lypora && ./lypora.sh
 ## 9. 排查手册
 
 **`test -u` 失败 / chrome-sandbox 权限是 755**
-`chown` 会按 POSIX 规定清掉 setuid 位。凡是先 `chown -R root:root` 再打 rpm 的流程，
-都必须紧接着 `chmod 4755 chrome-sandbox`。第一版 CI 就死在这里：deb 在 chown 之前封好所以没事，
-rpm 在 chown 之后打，装出来是 0755。
+先看**暂存树**里那个位还在不在：`stat -c '%U:%G %A' build/stage/opt/lypora/chrome-sandbox`。
+
+- 树里就是 755 → 上游（`ln`/`cp`/`chown`）已经把它弄丢了。`chown` 确实会按 POSIX 规定清掉 setuid，
+  但本项目的真凶不是它：`rpmbuild` 的 `%install` 里那句 `cp -a` 才是。GNU `cp` 以**非 root 身份**
+  复制"root 属主 + setuid"的文件时保不住属主，就不肯造 setuid 文件，会主动去掉 s 位。
+- 树里是 4755、**包内**是 0755 → 问题在封装环节。用 `dpkg-deb -c` / `rpm -qplv ./x.rpm` 分别看归档里
+  记录的权限（注意 `rpm -qplv lypora` 是错的，`-p` 要求参数是包文件）。
+
+对症下药只有一条：`lypora.spec` 的 `%install` 末尾显式 `chmod 4755 %{buildroot}/opt/lypora/chrome-sandbox`。
+不要试图用 `%attr(4755,root,root)` 单列这个文件——它已经包含在 `%files` 的 `/opt/lypora` 目录里，
+再列一次会得到 `File listed twice`。
+
+排查记录见 `docs/04` V48（`cp -a` 抹 s 位）与 V49（`rpm -qplv` 的 `-p` 语义）。
 
 **`dpkg-deb: error: control directory has bad permissions`**
 `DEBIAN/` 必须是 755，且里面的 `control` 是 644。`linux-stage.py` 已经设好，手动改过就会踩。
