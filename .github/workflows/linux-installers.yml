@@ -175,13 +175,11 @@ jobs:
             dnf install -y -q /pkg/lypora-*.rpm
             echo "--- 已安装 ---"
             rpm -q lypora
-            echo "--- 包内权限位（qplv）---"
-            rpm -qplv lypora | grep -E "chrome-sandbox|/usr/bin/lypora"
-            echo "--- 落盘实际情况 ---"
+            echo "--- 落盘权限 ---"
             stat -c "%U:%G %A %n" /opt/lypora/chrome-sandbox /usr/bin/lypora
             echo "--- 断言 ---"
-            if [ ! -x /usr/bin/lypora ]; then echo "!! /usr/bin/lypora 不可执行"; exit 1; fi
-            if [ ! -u /opt/lypora/chrome-sandbox ]; then echo "!! chrome-sandbox 丢了 setuid 位"; exit 1; fi
+            [ -x /usr/bin/lypora ] || { echo "!! /usr/bin/lypora 不可执行"; exit 1; }
+            [ -u /opt/lypora/chrome-sandbox ] || { echo "!! chrome-sandbox 丢了 setuid 位"; exit 1; }
             echo "ok: 命令行入口可执行、沙箱助手带 setuid"
             echo "--- 文件数 ---"
             rpm -ql lypora | wc -l
