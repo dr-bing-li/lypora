@@ -1,0 +1,11 @@
+#!/bin/sh
+# dpkg prerm：卸载/升级前把桌面项从菜单缓存里摘掉。
+set -e
+
+if [ "$1" = "remove" ] || [ "$1" = "upgrade" ]; then
+  if command -v update-desktop-database >/dev/null 2>&1; then
+    update-desktop-database -q /usr/share/applications || true
+  fi
+fi
+
+exit 0

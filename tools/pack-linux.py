@@ -317,7 +317,7 @@ def main() -> int:
             f"platform: linux-x64\n"
             f"electron: 33.4.11\n"
             f"built-from: {os.path.basename(args.zip)}\n"
-            f"built-on: {__import__('platform').platform()} (cross-build, 未在 Linux 上运行过)\n"
+            f"built-on: {__import__('platform').platform()}\n"
         ).encode("utf-8"),
         0o644,
     )

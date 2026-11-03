@@ -1,0 +1,227 @@
+name: Linux installers
+
+# 触发：推 v* tag，或手动指定一个已存在的 tag。
+# 为什么不挂 release: published：tag push 已经覆盖"打 tag 就发"，两条都挂会让同一次发布
+# 跑两遍（第二遍还得靠 --clobber 收尾，纯属自找麻烦）。
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: '要构建的 tag（必须已存在，例：v0.6.0）'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: linux-installers-${{ github.event.inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+env:
+  ELECTRON_VER: '33.4.11'
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    name: 构建并验证 deb / rpm / AppImage
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: 检出源码
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+          fetch-depth: 1
+
+      - name: 读版本号
+        run: |
+          set -euo pipefail
+          VER=$(python3 -c "import json;print(json.load(open('desktop/package.json'))['version'])")
+          TAG="${{ github.event.inputs.tag || github.ref_name }}"
+          echo "VER=$VER" >> "$GITHUB_ENV"
+          echo "TAG=$TAG" >> "$GITHUB_ENV"
+          echo "版本 $VER / tag $TAG"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: core/package-lock.json
+
+      - name: 装打包工具
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          # rpm 提供 rpmbuild；python3-pil 给图标缩放用（24.04 起 pip 装系统包会被 PEP 668 拦）
+          sudo apt-get install -y -qq rpm python3-pil xz-utils file
+
+      - name: 构建前端
+        run: |
+          set -euo pipefail
+          cd core
+          npm ci --no-audit --no-fund
+          npm run build
+
+      - name: 下载 Electron 预编译包
+        run: |
+          set -euo pipefail
+          mkdir -p build
+          URL="https://github.com/electron/electron/releases/download/v${ELECTRON_VER}/electron-v${ELECTRON_VER}-linux-x64.zip"
+          curl -fsSL --retry 3 -o build/electron.zip "$URL"
+          ls -l build/electron.zip
+          echo "sha256 $(sha256sum build/electron.zip | cut -d' ' -f1)"
+
+      - name: 生成 FHS 暂存树
+        run: |
+          set -euo pipefail
+          python3 tools/linux-stage.py --zip build/electron.zip --stage build/stage --deb
+          mkdir -p release
+
+      - name: 生成 tar.gz（免安装版）
+        run: |
+          set -euo pipefail
+          python3 tools/pack-linux.py --zip build/electron.zip
+          ls -l release/*.tar.gz
+
+      - name: 生成 deb
+        run: |
+          set -euo pipefail
+          # --root-owner-group：归档里强制 uid/gid = 0。
+          # 不加的话文件属主会是 runner 的 uid 1001，装上就是 1001 的文件。
+          dpkg-deb --build --root-owner-group build/stage "release/lypora_${VER}_amd64.deb"
+          ls -l release/*.deb
+
+      - name: 生成 rpm
+        run: |
+          set -euo pipefail
+          # rpm 记录的是构建目录里文件的属主，所以先 chown 成 root
+          sudo chown -R root:root build/stage
+          mkdir -p build/rpm/{BUILD,BUILDROOT,RPMS,SOURCES,SPECS,SRPMS}
+          rpmbuild -bb \
+            --define "_version ${VER}" \
+            --define "_stage_root $PWD/build/stage" \
+            --define "_topdir $PWD/build/rpm" \
+            packaging/lypora.spec
+          cp build/rpm/RPMS/x86_64/*.rpm release/
+          ls -l release/*.rpm
+
+      - name: 生成 AppImage
+        run: |
+          set -euo pipefail
+          python3 tools/linux-stage.py --stage build/stage --appdir build/AppDir
+          curl -fsSL --retry 3 -o build/appimagetool \
+            "https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage"
+          chmod +x build/appimagetool
+          # --appimage-extract-and-run：runner 上没有 FUSE，不能直接挂载运行
+          ARCH=x86_64 ./build/appimagetool --appimage-extract-and-run --no-appstream \
+            build/AppDir "release/Lypora-${VER}-linux-x64.AppImage"
+          ls -l release/*.AppImage
+
+      - name: 结构检查（原生工具）
+        run: |
+          set -euo pipefail
+          echo "== dpkg-deb -I =="
+          dpkg-deb -I release/lypora_*.deb
+          echo
+          echo "== dpkg-deb -c（前 25 条）=="
+          dpkg-deb -c release/lypora_*.deb | sed -n '1,25p'
+          echo
+          echo "== 关键文件权限 =="
+          dpkg-deb -c release/lypora_*.deb | grep -E 'chrome-sandbox|/usr/bin/lypora|lypora\.desktop'
+          echo
+          echo "== rpm -qip =="
+          rpm -qip release/lypora-*.rpm
+          echo
+          echo "== rpm -qlp | grep 关键路径 =="
+          rpm -qlp release/lypora-*.rpm | grep -E 'chrome-sandbox|/usr/bin/lypora|lypora\.desktop'
+          echo
+          echo "== AppImage 头 =="
+          file release/*.AppImage
+
+      - name: 安装测试（Debian 12 容器）
+        run: |
+          set -euo pipefail
+          docker run --rm -v "$PWD/release:/pkg:ro" debian:12 bash -ec '
+            apt-get update -qq
+            apt-get install -y -qq /pkg/lypora_*.deb
+            echo "--- 已安装 ---"
+            dpkg -s lypora | head -6
+            echo "--- 关键文件 ---"
+            test -x /usr/bin/lypora
+            test -u /opt/lypora/chrome-sandbox
+            stat -c "%U:%G %A %n" /opt/lypora/chrome-sandbox /usr/bin/lypora
+            echo "--- 文件数 ---"
+            dpkg -L lypora | wc -l
+          '
+
+      - name: 安装测试（Fedora 40 容器）
+        run: |
+          set -euo pipefail
+          docker run --rm -v "$PWD/release:/pkg:ro" fedora:40 bash -ec '
+            dnf install -y -q /pkg/lypora-*.rpm
+            echo "--- 已安装 ---"
+            rpm -q lypora
+            echo "--- 关键文件 ---"
+            test -x /usr/bin/lypora
+            test -u /opt/lypora/chrome-sandbox
+            stat -c "%U:%G %A %n" /opt/lypora/chrome-sandbox /usr/bin/lypora
+            echo "--- 文件数 ---"
+            rpm -ql lypora | wc -l
+          '
+
+      # 尽力而为：这是唯一能在 Linux 上真正启动一次的机会，但容器里没有 GPU/DBus，
+      # 失败不代表包坏了。成功的话日志里会有 selftest 的 JSON。
+      - name: 运行时冒烟（xvfb，尽力而为）
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          docker run --rm -v "$PWD/release:/pkg:ro" debian:12 bash -ec '
+            apt-get update -qq
+            apt-get install -y -qq /pkg/lypora_*.deb xvfb libnss3 libasound2 libgbm1
+            xvfb-run -a /opt/lypora/lypora --no-sandbox --selftest
+          '
+
+      - name: 生成校验并上传到 Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          cd release
+          sha256sum lypora_*.deb lypora-*.rpm *.AppImage Lypora-*-linux-x64.tar.gz > /tmp/new-sums.txt
+          cat /tmp/new-sums.txt
+
+          # Release 已经存在（本地 publish-release.mjs 先建过）就沿用，否则新建
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" --title "Lypora $TAG" --generate-notes
+          fi
+
+          # 合并校验清单：保留 release 上已有的其他平台条目，被本次产物覆盖的旧行丢弃
+          mkdir -p ../build/old
+          gh release download "$TAG" --pattern SHA256SUMS.txt --dir ../build/old || true
+          : > /tmp/merged.txt
+          if [ -f ../build/old/SHA256SUMS.txt ]; then
+            grep -vE '(lypora_.*\.deb|lypora-[0-9.]+-[0-9]+.*\.rpm|\.AppImage|Lypora-.*-linux-x64\.tar\.gz)$' \
+              ../build/old/SHA256SUMS.txt >> /tmp/merged.txt || true
+          fi
+          cat /tmp/new-sums.txt >> /tmp/merged.txt
+          sort -k2 /tmp/merged.txt -o SHA256SUMS.txt
+          echo "--- 合并后的 SHA256SUMS.txt ---"
+          cat SHA256SUMS.txt
+
+          gh release upload "$TAG" --clobber \
+            lypora_*.deb lypora-*.rpm *.AppImage Lypora-*-linux-x64.tar.gz SHA256SUMS.txt
+
+      - name: 汇总
+        run: |
+          echo "## Linux 安装包" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          ls -lh release/ | sed -n '1,20p' >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          cat release/SHA256SUMS.txt >> "$GITHUB_STEP_SUMMARY"

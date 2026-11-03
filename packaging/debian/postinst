@@ -1,0 +1,16 @@
+#!/bin/sh
+# dpkg postinst：刷新桌面数据库与图标缓存。
+# chrome-sandbox 的 root:root 4755 由 dpkg 按归档里的权限位直接装好，这里不重复 chmod——
+# 若在这里再动一次权限，等于给"包被改过"留了后门，也让 dpkg verify 失去意义。
+set -e
+
+if [ "$1" = "configure" ]; then
+  if command -v update-desktop-database >/dev/null 2>&1; then
+    update-desktop-database -q /usr/share/applications || true
+  fi
+  if command -v gtk-update-icon-cache >/dev/null 2>&1 && [ -f /usr/share/icons/hicolor/index.theme ]; then
+    gtk-update-icon-cache -q -t -f /usr/share/icons/hicolor || true
+  fi
+fi
+
+exit 0
