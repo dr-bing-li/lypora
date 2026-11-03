@@ -181,18 +181,6 @@ jobs:
             rpm -ql lypora | wc -l
           '
 
-      # 尽力而为：这是唯一能在 Linux 上真正启动一次的机会，但容器里没有 GPU/DBus，
-      # 失败不代表包坏了。成功的话日志里会有 selftest 的 JSON。
-      - name: 运行时冒烟（xvfb，尽力而为）
-        continue-on-error: true
-        run: |
-          set -euo pipefail
-          docker run --rm -v "$PWD/release:/pkg:ro" debian:12 bash -ec '
-            apt-get update -qq
-            apt-get install -y -qq /pkg/lypora_*.deb xvfb libnss3 libasound2 libgbm1
-            xvfb-run -a /opt/lypora/lypora --no-sandbox --selftest
-          '
-
       - name: 生成校验并上传到 Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -230,3 +218,21 @@ jobs:
           ls -lh release/ | sed -n '1,20p' >> "$GITHUB_STEP_SUMMARY"
           echo '```' >> "$GITHUB_STEP_SUMMARY"
           cat release/SHA256SUMS.txt >> "$GITHUB_STEP_SUMMARY"
+
+      # 放在最后：它是唯一能在 Linux 上真正启动一次的机会，但容器里没有 GPU / D-Bus /
+      # 真实桌面会话，Electron 可能起得来也可能卡住。所以
+      #   ① 必须在产物已经上传之后跑，卡住也不耽误发布；
+      #   ② 必须硬超时（timeout 90 + timeout-minutes），否则会把整个 job 拖到 45 分钟上限。
+      - name: 运行时冒烟（xvfb，尽力而为）
+        continue-on-error: true
+        timeout-minutes: 5
+        run: |
+          set -uo pipefail
+          docker run --rm -v "$PWD/release:/pkg:ro" debian:12 bash -ec '
+            apt-get update -qq
+            apt-get install -y -qq /pkg/lypora_*.deb xvfb libnss3 libgbm1
+            set +e
+            timeout 90 xvfb-run -a /opt/lypora/lypora --no-sandbox --selftest
+            echo "selftest exit=$?"
+            exit 0
+          '
