@@ -101,14 +101,10 @@ jobs:
       - name: 生成 rpm
         run: |
           set -euo pipefail
-          # rpm 记录的是构建目录里文件的属主，所以先 chown 成 root。
-          # 注意：chown 按 POSIX 规定会清掉 setuid/setgid 位（所有者变了），
-          # 所以 chrome-sandbox 的 4755 必须在 chown **之后**重新设一遍。
-          # 第一版没有这一步，rpm 里装出来的 chrome-sandbox 是 0755，
-          # Fedora 容器里 test -u 直接挂掉；deb 反而没事——因为 deb 在 chown 之前就封好了。
-          sudo chown -R root:root build/stage
-          sudo chmod 4755 build/stage/opt/lypora/chrome-sandbox
-          sudo stat -c '%U:%G %a %n' build/stage/opt/lypora/chrome-sandbox
+          # 属主不用管：rpm 对 %files 里的文件默认按 root:root 记录（%defattr 缺省值）。
+          # setuid 位才是坑——它是在 spec 的 %install 里被 cp 抹掉的，所以由 spec 自己 chmod 补。
+          # 这里只把结果打出来，方便日志里对齐"包内 mode"与"落盘 mode"。
+          stat -c '%U:%G %a %n' build/stage/opt/lypora/chrome-sandbox
           mkdir -p build/rpm/{BUILD,BUILDROOT,RPMS,SOURCES,SPECS,SRPMS}
           rpmbuild -bb \
             --define "_version ${VER}" \

@@ -65,6 +65,14 @@ cp -a %{_stage_root}/. %{buildroot}/
 # DEBIAN/ 是给 dpkg-deb 用的控制目录，不属于运行时文件
 rm -rf %{buildroot}/DEBIAN
 
+# GNU cp 以非 root 身份复制"root 属主 + setuid"的文件时会抹掉 s 位
+# （它保不住属主，就不肯给你一个 setuid 文件）。rpmbuild 不是 root 跑的，
+# 所以这里必须显式补回来——否则装出来的 chrome-sandbox 是 0755，
+# Electron 报 "The SUID sandbox helper binary was found, but is not configured correctly"。
+# 注意 %files 里**不要**再单独列这个文件，否则会和 /opt/lypora 的目录递归撞成 "File listed twice"；
+# 靠这条 chmod 让 buildroot 里的 mode 变成 4755，rpm 就会照实记录。
+chmod 4755 %{buildroot}/opt/lypora/chrome-sandbox
+
 %files
 /opt/lypora
 /usr/bin/lypora
