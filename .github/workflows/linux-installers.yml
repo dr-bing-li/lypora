@@ -101,8 +101,14 @@ jobs:
       - name: 生成 rpm
         run: |
           set -euo pipefail
-          # rpm 记录的是构建目录里文件的属主，所以先 chown 成 root
+          # rpm 记录的是构建目录里文件的属主，所以先 chown 成 root。
+          # 注意：chown 按 POSIX 规定会清掉 setuid/setgid 位（所有者变了），
+          # 所以 chrome-sandbox 的 4755 必须在 chown **之后**重新设一遍。
+          # 第一版没有这一步，rpm 里装出来的 chrome-sandbox 是 0755，
+          # Fedora 容器里 test -u 直接挂掉；deb 反而没事——因为 deb 在 chown 之前就封好了。
           sudo chown -R root:root build/stage
+          sudo chmod 4755 build/stage/opt/lypora/chrome-sandbox
+          sudo stat -c '%U:%G %a %n' build/stage/opt/lypora/chrome-sandbox
           mkdir -p build/rpm/{BUILD,BUILDROOT,RPMS,SOURCES,SPECS,SRPMS}
           rpmbuild -bb \
             --define "_version ${VER}" \
@@ -139,8 +145,8 @@ jobs:
           echo "== rpm -qip =="
           rpm -qip release/lypora-*.rpm
           echo
-          echo "== rpm -qlp | grep 关键路径 =="
-          rpm -qlp release/lypora-*.rpm | grep -E 'chrome-sandbox|/usr/bin/lypora|lypora\.desktop'
+          echo "== rpm -qplv | 关键路径（含权限位）=="
+          rpm -qplv release/lypora-*.rpm | grep -E 'chrome-sandbox|/usr/bin/lypora|lypora\.desktop'
           echo
           echo "== AppImage 头 =="
           file release/*.AppImage
@@ -154,9 +160,10 @@ jobs:
             echo "--- 已安装 ---"
             dpkg -s lypora | head -6
             echo "--- 关键文件 ---"
+            stat -c "%U:%G %A %n" /opt/lypora/chrome-sandbox /usr/bin/lypora
             test -x /usr/bin/lypora
             test -u /opt/lypora/chrome-sandbox
-            stat -c "%U:%G %A %n" /opt/lypora/chrome-sandbox /usr/bin/lypora
+            echo "ok: 命令行入口可执行、沙箱助手带 setuid"
             echo "--- 文件数 ---"
             dpkg -L lypora | wc -l
           '
@@ -168,10 +175,14 @@ jobs:
             dnf install -y -q /pkg/lypora-*.rpm
             echo "--- 已安装 ---"
             rpm -q lypora
-            echo "--- 关键文件 ---"
-            test -x /usr/bin/lypora
-            test -u /opt/lypora/chrome-sandbox
+            echo "--- 包内权限位（qplv）---"
+            rpm -qplv lypora | grep -E "chrome-sandbox|/usr/bin/lypora"
+            echo "--- 落盘实际情况 ---"
             stat -c "%U:%G %A %n" /opt/lypora/chrome-sandbox /usr/bin/lypora
+            echo "--- 断言 ---"
+            if [ ! -x /usr/bin/lypora ]; then echo "!! /usr/bin/lypora 不可执行"; exit 1; fi
+            if [ ! -u /opt/lypora/chrome-sandbox ]; then echo "!! chrome-sandbox 丢了 setuid 位"; exit 1; fi
+            echo "ok: 命令行入口可执行、沙箱助手带 setuid"
             echo "--- 文件数 ---"
             rpm -ql lypora | wc -l
           '
