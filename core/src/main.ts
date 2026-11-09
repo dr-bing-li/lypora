@@ -32,7 +32,7 @@ import {
   type LocalePref,
   type MessageKey,
 } from './i18n'
-import { openFile, saveFile, openWorkspace, desktop, type WorkspaceEntry } from './io/files'
+import { openFile, saveFile, openWorkspace, desktop, type ClipboardImage, type WorkspaceEntry } from './io/files'
 import { bindIncomingIntent, consumeIncomingIntent, isNative, nativePlatform, imeInfo, showIme, primeAppDirUri, type IncomingIntent } from './io/native'
 import {
   getImagePathMode,
@@ -44,7 +44,7 @@ import {
   type ImagePathMode,
   type ImageRefMode,
 } from './io/image-path'
-import { insertImages, isImageFile } from './io/image-insert'
+import { insertImages, isImageFile, type ImageInput } from './io/image-insert'
 import { exportHtml, exportMarkdown, exportPdf } from './io/export'
 import { putDoc, listDocs, getDoc, readSetting, writeSetting, migrateLegacySettings } from './io/store'
 import { SAMPLE_MD, SAMPLE_NAME } from './sample'
@@ -830,11 +830,14 @@ function pickImages(): void {
   input.click()
 }
 
-async function runImageInsert(files: File[]): Promise<void> {
+async function runImageInsert(files: File[], srcPath?: string): Promise<void> {
   const view = app.view
   if (!view) return
   const content = view.state.doc.toString()
-  await insertImages(view, files, app.path, content, (m) => toast(m), {
+  // srcPath 只对单文件有意义（剪贴板位图落盘后的临时文件）；
+  // 多选/多拖放时每个文件的真实路径由 bridge.pathForFile 各自反查。
+  const inputs: ImageInput[] = files.map((f) => (srcPath && files.length === 1 ? { file: f, srcPath } : f))
+  await insertImages(view, inputs, app.path, content, (m) => toast(m), {
     inserted: () => t('toast.imageInserted'),
     copied: (n, dir) => t('toast.imageCopied', { value: String(n), dir }),
     linked: (n, mode) => t('toast.imageLinked', { value: String(n), mode: imagePathLabel(mode as ImagePathMode) }),
@@ -842,6 +845,48 @@ async function runImageInsert(files: File[]): Promise<void> {
     noPath: t('toast.imageNoPath'),
     failed: t('toast.imageFailed'),
   })
+}
+
+/* ------------------------------------------------------------------ *
+ * 粘贴剪贴板图片（截图 / 网页右键复制）
+ * ------------------------------------------------------------------ *
+ * 三段判断，顺序不能换：
+ *   ① 事件里真有图片 file → **同步** preventDefault 抢下来自己处理。
+ *      这一步必须同步：等异步逻辑跑完再拦，CM6 早就把内容当文本插进去了。
+ *   ② 有 file 但查不到磁盘路径（截图位图不对应任何文件）→ 请主进程落成
+ *      临时 PNG 换一个真实路径，这样才能走「复制到附件目录」而不是内嵌 base64。
+ *   ③ 没有图片 → 直接放行，文本粘贴仍然交给 CM6 原生处理。
+ * ------------------------------------------------------------------ */
+function pastedImageFiles(dt: DataTransfer | null): File[] {
+  if (!dt) return []
+  const items = Array.from(dt.items || [])
+  const fromItems = items
+    .filter((it) => it.kind === 'file' && it.type.startsWith('image/'))
+    .map((it) => it.getAsFile())
+    .filter((f): f is File => !!f)
+  if (fromItems.length) return fromItems
+  // 少数环境 items 不含图片但 files 有（老版本 Safari / 某些拖放模拟）
+  return Array.from(dt.files || []).filter(isImageFile)
+}
+
+async function insertPastedImages(files: File[]): Promise<void> {
+  const bridge = desktop()
+  if (bridge && files.length === 1 && !bridge.pathForFile(files[0])) {
+    const clip = await bridge.readClipboardImage()
+    if (clip) {
+      await runImageInsert(files, clip.path)
+      return
+    }
+  }
+  await runImageInsert(files)
+}
+
+function onPasteCapture(e: ClipboardEvent): void {
+  const files = pastedImageFiles(e.clipboardData)
+  if (!files.length) return
+  e.preventDefault()
+  e.stopPropagation()
+  void insertPastedImages(files)
 }
 
 /* ------------------------------------------------------------------ *
@@ -861,9 +906,33 @@ async function copySelection(cut: boolean): Promise<void> {
   view.focus()
 }
 
+/** 剪贴板位图 → 可喂给插入管线的 File（内容只在 embed 模式才需要） */
+function clipboardFile(clip: ClipboardImage): File {
+  const name = clip.name || 'image.png'
+  const comma = clip.dataUrl ? clip.dataUrl.indexOf(',') : -1
+  if (comma < 0) return new File([], name, { type: 'image/png' })
+  const bin = atob(clip.dataUrl!.slice(comma + 1))
+  const bytes = new Uint8Array(bin.length)
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
+  return new File([bytes], name, { type: 'image/png' })
+}
+
 async function pasteClipboard(): Promise<void> {
   const view = app.view
   if (!view) return
+
+  // 剪贴板里是图片就先插图片——这条覆盖「截图后点菜单粘贴」，
+  // 与 Ctrl+V 走的是同一条管线，路径模式同样生效。
+  const bridge = desktop()
+  if (bridge) {
+    const clip = await bridge.readClipboardImage({ withData: getImageRefMode() === 'embed' })
+    if (clip) {
+      await runImageInsert([clipboardFile(clip)], clip.path)
+      view.focus()
+      return
+    }
+  }
+
   try {
     const text = await navigator.clipboard.readText()
     const { from, to } = view.state.selection.main
@@ -1519,6 +1588,8 @@ function bindUI(): void {
 
   // 拖入 .md 文件直接打开；拖入图片走与「格式 → 插入图片」完全相同的管线
   window.addEventListener('dragover', (e) => e.preventDefault())
+  // capture 阶段：必须在 CM6 把剪贴板内容当文本处理之前拦下
+  window.addEventListener('paste', onPasteCapture, true)
   window.addEventListener('drop', async (e) => {
     e.preventDefault()
     const files = Array.from(e.dataTransfer?.files ?? [])

@@ -34,6 +34,11 @@ contextBridge.exposeInMainWorld('lyporaDesktop', {
   },
   /** 把图片复制到文档同级的附件目录 → { rel, abs, copied, renamed } | { error } */
   placeImage: (payload) => ipcRenderer.invoke('image:place', payload),
+  /**
+   * 剪贴板里的位图 → 已落盘的临时 PNG（{ path, name, width, height } | null）。
+   * 位图型剪贴板没有磁盘路径，渲染层靠这个换取真实路径，才能走路径模式而不是内嵌 base64。
+   */
+  readClipboardImage: (opts) => ipcRenderer.invoke('clipboard:read-image', opts),
 
   /** 主进程转发"用本应用打开文件"（双击 md 文件 / 命令行参数） */
   onOpenPath: (cb) => {

@@ -220,6 +220,113 @@ const afterEmbed = await insertAndSave(outsideD)
 push('内嵌模式写入 data: URI', afterEmbed.includes('data:image/png;base64,'), JSON.stringify(afterEmbed.slice(-160)))
 push('内嵌模式不落盘附件', !exists(path.join(work, 'assets', 'pic-d.png')), 'assets/pic-d.png')
 
+/* ---------------- ⑥ 粘贴剪贴板图片 ---------------- */
+// 回到默认设置：引用文件 + 拷贝到附件目录
+await chooseMenu('settings', 'settings-image-ref', 'settings-image-ref-file')
+push('粘贴前回到拷贝模式', await setPathMode('copy'), await readMode())
+
+// 把一张真 PNG 塞进系统剪贴板（clipboard 在渲染层不可用，得在主进程做）
+await app.evaluate(({ clipboard, nativeImage }, pngPath) => {
+  clipboard.writeImage(nativeImage.createFromPath(pngPath))
+}, outsideC)
+
+/**
+ * 在页面里造一个带图片的 paste 事件。
+ * 用 DataTransfer 才能塞 File，而 ClipboardEvent 的 clipboardData 只读，
+ * 只能在构造时传进去 —— 这正好能验证 capture 监听器拿到的是真实结构。
+ */
+const pastePng = (b64, name) =>
+  page.evaluate(
+    ({ b64, name }) => {
+      const bin = atob(b64)
+      const bytes = new Uint8Array(bin.length)
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
+      const dt = new DataTransfer()
+      dt.items.add(new File([bytes], name, { type: 'image/png' }))
+      const ev = new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true })
+      const target = document.querySelector('.cm-content') || document.body
+      target.dispatchEvent(ev)
+      return ev.defaultPrevented
+    },
+    { b64, name },
+  )
+
+/** 纯文本 paste 必须放行给 CM6，否则文本粘贴会被我们的监听器吃掉 */
+const pasteText = (marker) =>
+  page.evaluate((marker) => {
+    const dt = new DataTransfer()
+    dt.setData('text/plain', marker)
+    const ev = new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true })
+    const target = document.querySelector('.cm-content') || document.body
+    target.dispatchEvent(ev)
+    return ev.defaultPrevented
+  }, marker)
+
+async function saveUntilChanged(before) {
+  for (let i = 0; i < 6; i++) {
+    await page.waitForTimeout(600)
+    await page.keyboard.press('Control+s')
+    await page.waitForTimeout(450)
+    if (readDoc() !== before) break
+  }
+  return readDoc()
+}
+
+// ⑥-1 图片 paste 被抢下来，且真的按"复制到附件目录"落盘
+const beforePaste = readDoc()
+await page.click('.cm-content')
+await page.keyboard.press('Control+End')
+const prevented = await pastePng(PNG.toString('base64'), 'image.png')
+push('图片 paste 在 capture 阶段被拦截', prevented === true, String(prevented))
+const afterPaste = await saveUntilChanged(beforePaste)
+// 只比对这次新增的那一段：整篇文末可能还压着前面几步插入的内容
+const appended = afterPaste.startsWith(beforePaste) ? afterPaste.slice(beforePaste.length) : afterPaste
+const pastedLine = appended.trim().split('\n').filter(Boolean).pop() || ''
+push('粘贴走了拷贝管线（正文出现附件目录相对路径）', /!\[image\.png\]\(\.\/[\w./-]+\/image\.png\)/.test(appended), pastedLine)
+const pastedRel = (appended.match(/!\[image\.png\]\(\.\/([^)]+)\)/) || [])[1] || ''
+push('粘贴的图真的落盘', !!pastedRel && exists(path.join(work, pastedRel)), pastedRel)
+// 只看这一行：文档前面的 ⑤-6 已经内嵌过一张图，全文件搜 data: 会永远命中
+push('粘贴没退化成内嵌 base64', !appended.includes('data:image/png;base64,'), appended.slice(0, 80))
+push('粘贴的图片自成一个段落', /(^|\n)\n?!\[/.test(appended) && appended.includes('\n'), JSON.stringify(appended))
+
+// ⑥-2 纯文本 paste 交给 CM6 自己处理（它自己会 preventDefault，所以不能拿这个当判据，
+//      要看文本是不是真的落进了文档）
+const textBefore = readDoc()
+await page.click('.cm-content')
+await page.keyboard.press('Control+End')
+await pasteText('PASTE_TEXT_MARKER')
+await page.waitForTimeout(300)
+const textAfterPaste = await saveUntilChanged(textBefore)
+push('纯文本 paste 仍然照常插入', textAfterPaste.includes('PASTE_TEXT_MARKER'), textAfterPaste.split('\n').pop())
+
+// ⑥-3 「编辑 → 粘贴」菜单也认图片
+const beforeMenuPaste = readDoc()
+await page.keyboard.press('Escape')
+await page.waitForTimeout(150)
+await page.click('[data-menu="edit"]')
+await page.waitForTimeout(200)
+const pasteItem = await page.waitForSelector('[data-mi="edit-paste"]', { timeout: 5000 }).catch(() => null)
+if (!pasteItem) {
+  push('「编辑 → 粘贴」菜单项存在', false, '找不到 edit-paste')
+} else {
+  await pasteItem.click()
+  const afterMenuPaste = await saveUntilChanged(beforeMenuPaste)
+  push('菜单粘贴也走管线（写入图片引用）', /!\[[^\]]*\]\(\.?\/?[\w./-]+\.png\)/.test(afterMenuPaste.split('\n').pop() || ''), afterMenuPaste.split('\n').pop())
+}
+
+/* ---------------- ⑦ 真实 Ctrl+V（走 Chromium 原生粘贴，不是合成事件） ---------------- */
+const beforeKey = readDoc()
+await page.click('.cm-content')
+await page.keyboard.press('Control+End')
+await page.keyboard.press('Control+v')
+const afterKey = await saveUntilChanged(beforeKey)
+const keyAppended = afterKey.startsWith(beforeKey) ? afterKey.slice(beforeKey.length) : afterKey
+push(
+  '真实 Ctrl+V 也被接管（不是 base64 直插）',
+  /!\[[^\]]+\]\(\.\/[\w./-]+\)/.test(keyAppended) && !keyAppended.includes('data:image/png;base64,'),
+  JSON.stringify(keyAppended.slice(0, 120)),
+)
+
 /* ---------------- 收尾 ---------------- */
 await app.close()
 

@@ -2,7 +2,7 @@
 // 职责：窗口管理 / 文件对话框 / 文件读写 / 系统集成
 // 对应 docs/02 §5.1 的「进程间通信」层：移动端由 Capacitor 或浏览器 API 承担同一接口。
 
-const { app, BrowserWindow, ipcMain, dialog, shell, Menu } = require('electron')
+const { app, BrowserWindow, ipcMain, dialog, shell, Menu, clipboard } = require('electron')
 const path = require('node:path')
 const fs = require('node:fs/promises')
 
@@ -426,6 +426,20 @@ function stampPrefix() {
   )
 }
 
+/**
+ * 落盘时想用的文件名。
+ * 渲染层偶尔需要指定名字——典型是剪贴板位图：主进程存的是
+ * `clipboard-20261109-153000-1234.png` 这种运维味很重的临时名，
+ * 而用户真正想看到的是 `image.png`。
+ * 只取最后一段并挡掉路径穿越与非法字符，剩下的交给调用方。
+ */
+function preferredBase(name) {
+  if (typeof name !== 'string') return ''
+  const base = path.basename(name.trim().replace(/\\/g, '/')).replace(/[\u0000-\u001f<>:"|?*]/g, '')
+  if (!base || base === '.' || base === '..') return ''
+  return base
+}
+
 ipcMain.handle('image:place', async (_e, payload) => {
   try {
     const { srcPath, docPath, candidates } = payload || {}
@@ -464,7 +478,7 @@ ipcMain.handle('image:place', async (_e, payload) => {
     const targetDir = path.join(docDir, dirName)
     await fs.mkdir(targetDir, { recursive: true })
 
-    const original = path.basename(srcPath)
+    const original = preferredBase(payload && payload.preferredName) || path.basename(srcPath)
     let base = original
     let target = path.join(targetDir, base)
     let renamed = true
@@ -494,6 +508,40 @@ ipcMain.handle('image:place', async (_e, payload) => {
     return { rel: `${dirName}/${base}`, abs: target, copied: true, renamed }
   } catch (e) {
     return { error: String((e && e.message) || e) }
+  }
+})
+
+/**
+ * 剪贴板位图 → 临时 PNG + 真实路径。
+ *
+ * 为什么非要落盘：截图 / 从网页复制的图在渲染层只是个 File，**没有磁盘路径**
+ * （Electron 32 起 `File.path` 已移除，且位图本来就不对应任何文件），
+ * 走 webUtils.getPathForFile 只会拿到空串，结果就是"粘贴进去一张 base64"——
+ * 明明用户设的是复制到附件目录。
+ *
+ * 落成临时文件后，这条路径就能和拖放/选文件完全共用 image:place 的目录探测与
+ * 重名逻辑，三种路径模式全部生效。临时文件刻意不删：relative / absolute 模式下
+ * 正文引用的就是它，删了图就断。
+ */
+ipcMain.handle('clipboard:read-image', async (_e, opts) => {
+  try {
+    const img = clipboard.readImage()
+    if (!img || img.isEmpty()) return null
+    const dir = path.join(app.getPath('temp'), 'lypora-clipboard')
+    await fs.mkdir(dir, { recursive: true })
+    const name = `clipboard-${stampPrefix()}-${process.pid}.png`
+    const target = path.join(dir, name)
+    const png = img.toPNG()
+    await fs.writeFile(target, png)
+    const { width, height } = img.getSize()
+    const out = { path: target, name, width, height }
+    // 渲染层只有走「内嵌 base64」时才需要像素内容；默认的「复制到附件目录」
+    // 只认路径，所以这 4/3 倍的体积默认不传。
+    if (opts && opts.withData) out.dataUrl = `data:image/png;base64,${png.toString('base64')}`
+    return out
+  } catch {
+    // 读不到就当没有；渲染层会退回读文本
+    return null
   }
 })
 

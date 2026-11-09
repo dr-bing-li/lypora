@@ -60,7 +60,20 @@ interface DesktopBridge {
     srcPath: string
     docPath: string
     candidates: string[]
+    /** 落盘时想用的文件名（不含目录）；省略则用源文件名 */
+    preferredName?: string
   }): Promise<PlaceImageResult>
+  /** 剪贴板位图 → 已落盘的临时 PNG；无位图返回 null。位图本身没有磁盘路径 */
+  readClipboardImage(opts?: { withData?: boolean }): Promise<ClipboardImage | null>
+}
+
+export interface ClipboardImage {
+  path: string
+  name: string
+  width: number
+  height: number
+  /** 仅当请求 withData 时返回；内嵌 base64 模式才需要 */
+  dataUrl?: string
 }
 
 export type PlaceImageResult =

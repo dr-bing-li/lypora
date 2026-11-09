@@ -9,9 +9,13 @@
  *        relative → 不复制，按源文件相对文档目录的路径写
  *        absolute → 不复制，写绝对路径
  *
- * 拿不到源文件路径时（浏览器拖放、剪贴板、Android 的 content:// 选择器）：
+ * 拿不到源文件路径时（浏览器拖放、Android 的 content:// 选择器）：
  *   不猜、不假装成功 —— 一律降级为内嵌 base64 并明确告知，因为"写一个指向不存在
  *   位置的相对路径"正是这个 bug 最初的样子。
+ *
+ * 剪贴板位图原本也在这条降级路上（截图不对应任何文件）。v0.8.1 起改由主进程
+ * clipboard.readImage() 落成临时 PNG，再把路径经 ImageInput.srcPath 带进来，
+ * 于是"复制到附件目录"这个默认模式对粘贴同样生效。
  * ==========================================================================
  */
 
@@ -50,6 +54,20 @@ export interface InsertReport {
 
 const IMG_RE = /\.(png|jpe?g|gif|webp|svg|bmp|avif|ico)$/i
 
+/**
+ * 一次插入的输入项。
+ *
+ * 绝大多数入口给的就是 `File`（选文件 / 拖放），源路径由 webUtils 反查。
+ * 剪贴板是唯一的例外：位图 `File` 不对应任何磁盘文件，渲染层拿不到路径，
+ * 只能请主进程把它落成临时 PNG，再把那个路径显式带进来 —— 否则默认的
+ * 「复制到附件目录」模式会一路降级成内嵌 base64。
+ */
+export type ImageInput = File | { file: File; srcPath?: string }
+
+function fileOf(x: ImageInput): File {
+  return x instanceof File ? x : x.file
+}
+
 export function isImageFile(f: File): boolean {
   return (f.type && f.type.startsWith('image/')) || IMG_RE.test(f.name)
 }
@@ -78,7 +96,7 @@ function altEscaped(f: File): string {
  */
 export async function insertImages(
   view: EditorView,
-  files: File[],
+  files: ImageInput[],
   docPath: string | undefined,
   content: string,
   notify: (msg: string) => void,
@@ -100,7 +118,7 @@ export async function insertImages(
     skipped: 0,
   }
 
-  const images = files.filter(isImageFile)
+  const images = files.filter((x) => isImageFile(fileOf(x)))
   if (!images.length) return report
 
   const refMode = getImageRefMode()
@@ -119,7 +137,8 @@ export async function insertImages(
   const parts: string[] = []
   let modeLabel: string = pathMode
 
-  for (const f of images) {
+  for (const input of images) {
+    const f = fileOf(input)
     try {
       /* ---------------- ① 内嵌模式 ---------------- */
       if (refMode === 'embed') {
@@ -129,7 +148,9 @@ export async function insertImages(
         continue
       }
 
-      const srcPath = bridge ? bridge.pathForFile(f) || '' : ''
+      // 外部显式给的路径优先：剪贴板位图只能靠主进程落盘后带进来
+      const explicit = input instanceof File ? '' : (input.srcPath ?? '')
+      const srcPath = explicit || (bridge ? bridge.pathForFile(f) || '' : '')
 
       /* ---------------- ② 没有源路径：不猜，降级内嵌 ---------------- */
       if (!srcPath) {
@@ -162,7 +183,13 @@ export async function insertImages(
           report.degraded = true
           continue
         }
-        const res = await bridge.placeImage({ srcPath, docPath, candidates })
+        const res = await bridge.placeImage({
+          srcPath,
+          docPath,
+          candidates,
+          // 剪贴板位图落盘时主进程用的是临时名，这里把用户看到的名字带过去
+          preferredName: f.name,
+        })
         if ('error' in res) {
           report.skipped++
           continue
@@ -206,8 +233,13 @@ export async function insertImages(
     return report
   }
 
-  const insert = parts.join('\n\n')
   const r = view.state.selection.main
+  // 图片必须自成段落。光标落在行中间/行尾时直接插入会和既有文字粘成同一段
+  // （渲染后两张图并排、或图和文字挤在一起），所以两侧按需补空行。
+  const text = view.state.doc.toString()
+  const lead = r.from > 0 && text[r.from - 1] !== '\n' ? '\n\n' : ''
+  const tail = r.to < text.length && text[r.to] !== '\n' ? '\n\n' : ''
+  const insert = lead + parts.join('\n\n') + tail
   view.dispatch({
     changes: { from: r.from, to: r.to, insert },
     selection: { anchor: r.from + insert.length },
