@@ -206,7 +206,16 @@ CI 与本地 `publish-release.mjs` 都会往同一个 Release 传东西，谁先
 
 唯一要注意的是**最后一步上传的 `SHA256SUMS.txt` 要覆盖全部产物**。本轮的做法是：
 CI 先出 Linux 四件，本地再出 Windows / macOS×2 / APK，最后由 `publish-release.mjs`
-用完整的 9 条校验记录收尾。
+用完整的 8 条校验记录收尾（deb / rpm / AppImage / linux tar.gz / win zip / macos ×2 / apk）。
+
+发布说明（`docs/releases/v0.7.0/notes.md`）里 Linux 四件的体积与哈希是**回填**的，不是手抄的：
+先写 `{{DEB_SIZE}}` / `{{DEB_SHA}}` 这类占位符，等 CI 把包传上去之后跑
+
+```bash
+python tools/backfill-v070.py      # 读 Release API，回填 notes.md + README 双语表，并落一份 SHA256SUMS.txt
+```
+
+手抄 64 位十六进制是必错的（V47），而且 CI 每次重打都会变。
 
 ---
 

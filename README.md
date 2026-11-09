@@ -34,15 +34,15 @@ Latest: **[v0.7.0](https://github.com/dr-bing-li/lypora/releases/tag/v0.7.0)** �
 
 | File | Platform | Format | Size | SHA256 |
 |---|---|---|---|---|
-| [`lypora_0.7.0_amd64.deb`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.0/lypora_0.7.0_amd64.deb) | Debian 11+ / Ubuntu 20.04+ | System package — `sudo apt install ./…deb` | __DEB_SIZE__ | `__DEB_SHORT__` |
-| [`lypora-0.7.0-1.x86_64.rpm`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.0/lypora-0.7.0-1.x86_64.rpm) | Fedora 32+ / RHEL 9+ / openSUSE | System package — `sudo dnf install ./…rpm` | __RPM_SIZE__ | `__RPM_SHORT__` |
-| [`Lypora-0.7.0-linux-x64.AppImage`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.0/Lypora-0.7.0-linux-x64.AppImage) | any x86_64 distro | Single file — `chmod +x` and run | __AI_SIZE__ | `__AI_SHORT__` |
-| [`Lypora-0.7.0-linux-x64.tar.gz`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.0/Lypora-0.7.0-linux-x64.tar.gz) | any x86_64 distro, glibc ≥2.31 | Self-contained dir — `./lypora.sh` or `./install.sh` | __TG_SIZE__ | `__TG_SHORT__` |
+| [`lypora_0.7.0_amd64.deb`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.0/lypora_0.7.0_amd64.deb) | Debian 11+ / Ubuntu 20.04+ | System package — `sudo apt install ./…deb` | 79.4 MiB | `ca8b5723…d798f` |
+| [`lypora-0.7.0-1.x86_64.rpm`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.0/lypora-0.7.0-1.x86_64.rpm) | Fedora 32+ / RHEL 9+ / openSUSE | System package — `sudo dnf install ./…rpm` | 79.4 MiB | `939c024f…937db` |
+| [`Lypora-0.7.0-linux-x64.AppImage`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.0/Lypora-0.7.0-linux-x64.AppImage) | any x86_64 distro | Single file — `chmod +x` and run | 95.6 MiB | `99474442…5db03` |
+| [`Lypora-0.7.0-linux-x64.tar.gz`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.0/Lypora-0.7.0-linux-x64.tar.gz) | any x86_64 distro, glibc ≥2.31 | Self-contained dir — `./lypora.sh` or `./install.sh` | 102.4 MiB | `f9b9ac46…910a3` |
 | [`Lypora-0.7.0-win-x64.zip`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.0/Lypora-0.7.0-win-x64.zip) | Windows 10/11 x64 | Portable ZIP — unzip and run | 111.0 MiB | `8e2cf01b…c1396` |
 | [`Lypora-0.7.0-macos-arm64.tar.gz`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.0/Lypora-0.7.0-macos-arm64.tar.gz) | macOS 11+ Apple Silicon | `.app` in tar.gz — run `mac-finalize.command` once | 95.8 MiB | `28123473…57abe` |
 | [`Lypora-0.7.0-macos-x64.tar.gz`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.0/Lypora-0.7.0-macos-x64.tar.gz) | macOS 11+ Intel | `.app` in tar.gz — run `mac-finalize.command` once | 100.2 MiB | `b1264d58…ccd4b` |
 | [`Lypora-0.7.0-android.apk`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.0/Lypora-0.7.0-android.apk) | Android 10+ (API 29+) | APK, debug-signed — sideload | 10.6 MiB | `d29c5df8…b7194` |
-| [`SHA256SUMS.txt`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.0/SHA256SUMS.txt) | any | Checksums for every artefact (9 entries) | see file | — |
+| [`SHA256SUMS.txt`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.0/SHA256SUMS.txt) | any | Checksums for every artefact (8 entries) | see file | — |
 
 `deb` / `rpm` install into `/opt/lypora` with a `/usr/bin/lypora` shim, a menu entry and 8 icon sizes; removing
 them with `apt remove` / `dnf remove` leaves nothing behind. The AppImage and the tarball need no root at all.
@@ -358,15 +358,15 @@ Lypora 是一个即时渲染的 Markdown 编辑器。你在编辑区里写 Markd
 
 | 文件 | 平台 | 格式 | 大小 | SHA256 |
 |---|---|---|---|---|
-| [`lypora_0.7.0_amd64.deb`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.0/lypora_0.7.0_amd64.deb) | Debian 11+ / Ubuntu 20.04+ / 深度 / 麒麟 | 系统包，`sudo apt install ./…deb` | __DEB_SIZE__ | `__DEB_SHORT__` |
-| [`lypora-0.7.0-1.x86_64.rpm`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.0/lypora-0.7.0-1.x86_64.rpm) | Fedora 32+ / RHEL 9+ / openSUSE | 系统包，`sudo dnf install ./…rpm` | __RPM_SIZE__ | `__RPM_SHORT__` |
-| [`Lypora-0.7.0-linux-x64.AppImage`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.0/Lypora-0.7.0-linux-x64.AppImage) | 任意 x86-64 发行版 | 单文件，`chmod +x` 后直接跑 | __AI_SIZE__ | `__AI_SHORT__` |
-| [`Lypora-0.7.0-linux-x64.tar.gz`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.0/Lypora-0.7.0-linux-x64.tar.gz) | 任意 x86-64 发行版（glibc ≥ 2.31） | tar.gz + `install.sh`（per-user，不要 root） | __TG_SIZE__ | `__TG_SHORT__` |
+| [`lypora_0.7.0_amd64.deb`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.0/lypora_0.7.0_amd64.deb) | Debian 11+ / Ubuntu 20.04+ / 深度 / 麒麟 | 系统包，`sudo apt install ./…deb` | 79.4 MiB | `ca8b5723…d798f` |
+| [`lypora-0.7.0-1.x86_64.rpm`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.0/lypora-0.7.0-1.x86_64.rpm) | Fedora 32+ / RHEL 9+ / openSUSE | 系统包，`sudo dnf install ./…rpm` | 79.4 MiB | `939c024f…937db` |
+| [`Lypora-0.7.0-linux-x64.AppImage`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.0/Lypora-0.7.0-linux-x64.AppImage) | 任意 x86-64 发行版 | 单文件，`chmod +x` 后直接跑 | 95.6 MiB | `99474442…5db03` |
+| [`Lypora-0.7.0-linux-x64.tar.gz`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.0/Lypora-0.7.0-linux-x64.tar.gz) | 任意 x86-64 发行版（glibc ≥ 2.31） | tar.gz + `install.sh`（per-user，不要 root） | 102.4 MiB | `f9b9ac46…910a3` |
 | [`Lypora-0.7.0-win-x64.zip`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.0/Lypora-0.7.0-win-x64.zip) | Windows 10/11 x64 | 便携版 ZIP，解压即用 | 111.0 MiB | `8e2cf01b…c1396` |
 | [`Lypora-0.7.0-macos-arm64.tar.gz`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.0/Lypora-0.7.0-macos-arm64.tar.gz) | macOS 11+（Apple Silicon） | `.app` bundle，ad-hoc 签名 | 95.8 MiB | `28123473…57abe` |
 | [`Lypora-0.7.0-macos-x64.tar.gz`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.0/Lypora-0.7.0-macos-x64.tar.gz) | macOS 11+（Intel） | `.app` bundle，ad-hoc 签名 | 100.2 MiB | `b1264d58…ccd4b` |
 | [`Lypora-0.7.0-android.apk`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.0/Lypora-0.7.0-android.apk) | Android 10+（API 29+） | APK，debug 签名，直接侧载 | 10.6 MiB | `d29c5df8…b7194` |
-| [`SHA256SUMS.txt`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.0/SHA256SUMS.txt) | 任意 | 全部产物的校验清单（9 条） | 见文件 | — |
+| [`SHA256SUMS.txt`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.0/SHA256SUMS.txt) | 任意 | 全部产物的校验清单（8 条） | 见文件 | — |
 
 deb / rpm 会装进 `/opt/lypora`，附带 `/usr/bin/lypora` 命令、应用菜单项和 8 档图标，`apt remove` /
 `dnf remove` 删得干净。AppImage 和 tar.gz 完全不需要 root。

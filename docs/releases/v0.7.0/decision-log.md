@@ -93,7 +93,7 @@
 | rpm 权限 | `rpm -qplv lypora-0.7.0-1.x86_64.rpm \| grep chrome-sandbox` | `-rwsr-xr-x root root` |
 | AppImage 合法 | `file Lypora-0.7.0-linux-x64.AppImage` | `ELF 64-bit LSB executable, x86-64` |
 | 五平台前端同源 | `sha256sum core/dist/index.html` | 前 12 位 `c9beee20cc04`，五平台一致 |
-| 发布完整性 | `SHA256SUMS.txt` | 9 条，覆盖 5 个包 + deb/rpm/AppImage/tar.gz |
+| 发布完整性 | `SHA256SUMS.txt` | 8 条，覆盖全部 8 个产物（win zip / macos ×2 / apk / deb / rpm / AppImage / linux tar.gz） |
 
 ---
 
