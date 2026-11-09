@@ -148,17 +148,17 @@ python tools/linux-stage.py --zip electron-v33.4.11-linux-x64.zip --stage build/
 
 # 4) 封包（以下三行必须 Linux）
 #    deb：--root-owner-group 让归档里记 root:root，不需要事先 chown
-dpkg-deb --build --root-owner-group build/stage release/lypora_0.7.0_amd64.deb
+dpkg-deb --build --root-owner-group build/stage release/lypora_0.7.1_amd64.deb
 
 #    rpm：%install 里 cp -a 会抹掉 setuid（见 §9），spec 末尾自己 chmod，这里不用预先处理
 mkdir -p build/rpm/{BUILD,BUILDROOT,RPMS,SOURCES,SPECS,SRPMS}
-rpmbuild -bb --define "_version 0.7.0" --define "_stage_root $PWD/build/stage" \
+rpmbuild -bb --define "_version 0.7.1" --define "_stage_root $PWD/build/stage" \
          --define "_topdir $PWD/build/rpm" packaging/lypora.spec
 
 #    AppImage：AppDir 里的 appimagetool 需要 ELF 环境
 python tools/linux-stage.py --stage build/stage --appdir build/AppDir
 ARCH=x86_64 ./appimagetool --appimage-extract-and-run --no-appstream build/AppDir \
-     release/Lypora-0.7.0-linux-x64.AppImage
+     release/Lypora-0.7.1-linux-x64.AppImage
 ```
 
 > 若你坚持用 `sudo chown -R root:root build/stage` 让树"看起来像安装了"，**必须在 chown 之后重新
@@ -170,7 +170,7 @@ ARCH=x86_64 ./appimagetool --appimage-extract-and-run --no-appstream build/AppDi
 打 tag 就够：
 
 ```bash
-git tag -a v0.7.0 -m "…" && git push origin v0.7.0
+git tag -a v0.7.1 -m "…" && git push origin v0.7.1
 ```
 
 `linux-installers.yml` 会在 `ubuntu-latest` 上依次做：
@@ -208,11 +208,11 @@ CI 与本地 `publish-release.mjs` 都会往同一个 Release 传东西，谁先
 CI 先出 Linux 四件，本地再出 Windows / macOS×2 / APK，最后由 `publish-release.mjs`
 用完整的 8 条校验记录收尾（deb / rpm / AppImage / linux tar.gz / win zip / macos ×2 / apk）。
 
-发布说明（`docs/releases/v0.7.0/notes.md`）里 Linux 四件的体积与哈希是**回填**的，不是手抄的：
+发布说明（`docs/releases/v0.7.1/notes.md`）里 Linux 四件的体积与哈希是**回填**的，不是手抄的：
 先写 `{{DEB_SIZE}}` / `{{DEB_SHA}}` 这类占位符，等 CI 把包传上去之后跑
 
 ```bash
-python tools/backfill-v070.py      # 读 Release API，回填 notes.md + README 双语表，并落一份 SHA256SUMS.txt
+python tools/backfill-v071.py      # 读 Release API，回填 notes.md + README 双语表，并落一份 SHA256SUMS.txt
 ```
 
 手抄 64 位十六进制是必错的（V47），而且 CI 每次重打都会变。
@@ -224,8 +224,8 @@ python tools/backfill-v070.py      # 读 Release API，回填 notes.md + README 
 ### 6.1 deb
 
 ```bash
-sudo apt install ./lypora_0.7.0_amd64.deb      # 推荐：apt 会顺带把依赖装上
-# 或 sudo dpkg -i ./lypora_0.7.0_amd64.deb && sudo apt -f install
+sudo apt install ./lypora_0.7.1_amd64.deb      # 推荐：apt 会顺带把依赖装上
+# 或 sudo dpkg -i ./lypora_0.7.1_amd64.deb && sudo apt -f install
 ```
 
 验证：
@@ -242,14 +242,14 @@ which lypora && lypora --help                  # /usr/bin/lypora
 ### 6.2 rpm
 
 ```bash
-sudo dnf install ./lypora-0.7.0-1.x86_64.rpm   # Fedora / RHEL 9+
-sudo zypper install ./lypora-0.7.0-1.x86_64.rpm # openSUSE
+sudo dnf install ./lypora-0.7.1-1.x86_64.rpm   # Fedora / RHEL 9+
+sudo zypper install ./lypora-0.7.1-1.x86_64.rpm # openSUSE
 ```
 
 验证：
 
 ```bash
-rpm -q lypora                                  # lypora-0.7.0-1.x86_64
+rpm -q lypora                                  # lypora-0.7.1-1.x86_64
 rpm -qplv lypora | grep -E 'chrome-sandbox|/usr/bin/lypora'
 #   -rwsr-xr-x  root root  /opt/lypora/chrome-sandbox
 #   -rwxr-xr-x  root root  /usr/bin/lypora
@@ -261,8 +261,8 @@ rpm -V lypora                                  # 无输出 = 文件完好
 ### 6.3 AppImage
 
 ```bash
-chmod +x Lypora-0.7.0-linux-x64.AppImage
-./Lypora-0.7.0-linux-x64.AppImage
+chmod +x Lypora-0.7.1-linux-x64.AppImage
+./Lypora-0.7.1-linux-x64.AppImage
 ```
 
 验证：`./Lypora-*.AppImage --appimage-extract > /dev/null && ls squashfs-root/usr/lib/lypora | head`
@@ -272,7 +272,7 @@ chmod +x Lypora-0.7.0-linux-x64.AppImage
 ### 6.4 tar.gz
 
 ```bash
-tar xzf Lypora-0.7.0-linux-x64.tar.gz && cd Lypora && ./lypora.sh
+tar xzf Lypora-0.7.1-linux-x64.tar.gz && cd Lypora && ./lypora.sh
 ./install.sh        # 可选：装进 ~/.local，不需要 root
 ```
 

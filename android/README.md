@@ -4,7 +4,7 @@
 
 | 路线 | 产物 | 谁适合 |
 |---|---|---|
-| **A. APK（Capacitor）** | `release/Lypora-0.7.0-android.apk`（10.6 MiB） | 想在手机上像正常应用一样打开 `.md`、离线写作 |
+| **A. APK（Capacitor）** | `release/Lypora-0.7.1-android.apk`（10.6 MiB） | 想在手机上像正常应用一样打开 `.md`、离线写作 |
 | **B. PWA** | `core/dist` 静态托管 | 不想装包、手机浏览器直接用 |
 
 工程位置：**Capacitor 工程在 `core/android/`**，配置是 `core/capacitor.config.json`，触屏界面在
@@ -24,7 +24,7 @@ node tools/build-android.mjs
 # [android] 已清空 assets/public（旧 hash 文件不清会残留上一版样式）
 # [android] 资源比对通过（63 个文件，逐字节一致）
 # [android] gradle assembleDebug …
-# [android] 产物 release/Lypora-0.7.0-android.apk  10.6 MiB
+# [android] 产物 release/Lypora-0.7.1-android.apk  10.6 MiB
 # [android] sha256 ab567f6a…
 ```
 
@@ -51,7 +51,7 @@ node tools/build-android.mjs
 | 项 | 值 |
 |---|---|
 | 包名 | `app.lypora.editor` |
-| 版本 | `versionName 0.7.0` / `versionCode 8` |
+| 版本 | `versionName 0.7.1` / `versionCode 9` |
 | minSdk / targetSdk | **29（Android 10）/ 35** |
 | 权限 | 仅 `INTERNET`（应用专属目录不需要存储权限） |
 | 签名 | Android Debug（`CN=Android Debug`），可直接安装，**不能上架 Google Play** |
@@ -82,7 +82,7 @@ python tools/gen-android-assets.py     # 需要 Pillow
 ### 安装到手机
 
 ```bash
-adb install -r release/Lypora-0.7.0-android.apk
+adb install -r release/Lypora-0.7.1-android.apk
 ```
 
 或者把 APK 传到手机（微信/网盘/数据线），点开安装，首次需要允许「安装未知来源应用」。
@@ -134,8 +134,12 @@ keytool -genkeypair -v -keystore lypora.jks -alias lypora -keyalg RSA -keysize 2
 - `AndroidManifest.xml` 写明 `windowSoftInputMode="adjustResize|stateUnspecified"`，
   与前端用 `visualViewport` 算 `--app-h` 的做法保持一致。
 
+**实测结论**（v0.7.1，2026-11-09）：Android 平板 + 蓝牙键盘场景已在真机验证通过——不接软键盘即可
+直接调起中文输入法，拼音连续输入、中途选词、汉字上屏均正常。此前这条只有代码层与包内证据。
+
 回归重点（改这块之前先读 docs/04 V50）：手机软键盘要**不重复上屏**、不丢字 ——
-`captureInput` 关掉后走的是原生 InputConnection，和之前的路径不一样。
+`captureInput` 关掉后走的是原生 InputConnection，和之前的路径不一样。手机端这一项在 v0.7.1
+**没有单独复验**，对应 docs/04 的 H26。
 
 ---
 

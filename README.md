@@ -6,12 +6,15 @@
 
 ![Lypora 界面 / Lypora screenshot](docs/images/lypora.png)
 
-> **v0.7.0** — Linux now ships as **`.deb` / `.rpm` / AppImage** (plus the tarball), and a GitHub Actions workflow
-> builds, container-installs and publishes every package when you push a tag · Linux: [`deb`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.0/lypora_0.7.0_amd64.deb) /
-> [`rpm`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.0/lypora-0.7.0-1.x86_64.rpm) / [`AppImage`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.0/Lypora-0.7.0-linux-x64.AppImage) /
-> [`tar.gz`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.0/Lypora-0.7.0-linux-x64.tar.gz) · Windows x64: [`zip`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.0/Lypora-0.7.0-win-x64.zip) ·
-> macOS: [`arm64`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.0/Lypora-0.7.0-macos-arm64.tar.gz) / [`x64`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.0/Lypora-0.7.0-macos-x64.tar.gz) ·
-> Android 10+: [`apk`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.0/Lypora-0.7.0-android.apk) · [all releases](https://github.com/dr-bing-li/lypora/releases)
+> **v0.7.1** — Chinese input now works on an Android tablet with a **Bluetooth keyboard** attached, without
+> ever touching the on-screen keyboard. The cause was a single `captureInput` flag that made the WebView report
+> itself as "not editable" to the IME; the fix is that flag plus an `ImePlugin` escape hatch. Verified on a real
+> device (docs/04 V50 + H25) · Android 10+: [`apk`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.1/Lypora-0.7.1-android.apk) ·
+> Windows x64: [`zip`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.1/Lypora-0.7.1-win-x64.zip) ·
+> macOS: [`arm64`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.1/Lypora-0.7.1-macos-arm64.tar.gz) / [`x64`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.1/Lypora-0.7.1-macos-x64.tar.gz) ·
+> Linux: [`deb`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.1/lypora_0.7.1_amd64.deb) / [`rpm`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.1/lypora-0.7.1-1.x86_64.rpm) /
+> [`AppImage`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.1/Lypora-0.7.1-linux-x64.AppImage) / [`tar.gz`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.1/Lypora-0.7.1-linux-x64.tar.gz) ·
+> [all releases](https://github.com/dr-bing-li/lypora/releases)
 
 ---
 
@@ -29,20 +32,20 @@ three shells: an Electron desktop app, a browser/PWA build, and a Capacitor proj
 
 ### Download
 
-Latest: **[v0.7.0](https://github.com/dr-bing-li/lypora/releases/tag/v0.7.0)** · all builds on the
+Latest: **[v0.7.1](https://github.com/dr-bing-li/lypora/releases/tag/v0.7.1)** · all builds on the
 [Releases page](https://github.com/dr-bing-li/lypora/releases).
 
 | File | Platform | Format | Size | SHA256 |
 |---|---|---|---|---|
-| [`lypora_0.7.0_amd64.deb`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.0/lypora_0.7.0_amd64.deb) | Debian 11+ / Ubuntu 20.04+ | System package — `sudo apt install ./…deb` | 79.4 MiB | `ca8b5723…d798f` |
-| [`lypora-0.7.0-1.x86_64.rpm`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.0/lypora-0.7.0-1.x86_64.rpm) | Fedora 32+ / RHEL 9+ / openSUSE | System package — `sudo dnf install ./…rpm` | 79.4 MiB | `939c024f…937db` |
-| [`Lypora-0.7.0-linux-x64.AppImage`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.0/Lypora-0.7.0-linux-x64.AppImage) | any x86_64 distro | Single file — `chmod +x` and run | 95.6 MiB | `99474442…5db03` |
-| [`Lypora-0.7.0-linux-x64.tar.gz`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.0/Lypora-0.7.0-linux-x64.tar.gz) | any x86_64 distro, glibc ≥2.31 | Self-contained dir — `./lypora.sh` or `./install.sh` | 102.4 MiB | `f9b9ac46…910a3` |
-| [`Lypora-0.7.0-win-x64.zip`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.0/Lypora-0.7.0-win-x64.zip) | Windows 10/11 x64 | Portable ZIP — unzip and run | 111.0 MiB | `8e2cf01b…c1396` |
-| [`Lypora-0.7.0-macos-arm64.tar.gz`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.0/Lypora-0.7.0-macos-arm64.tar.gz) | macOS 11+ Apple Silicon | `.app` in tar.gz — run `mac-finalize.command` once | 95.8 MiB | `28123473…57abe` |
-| [`Lypora-0.7.0-macos-x64.tar.gz`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.0/Lypora-0.7.0-macos-x64.tar.gz) | macOS 11+ Intel | `.app` in tar.gz — run `mac-finalize.command` once | 100.2 MiB | `b1264d58…ccd4b` |
-| [`Lypora-0.7.0-android.apk`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.0/Lypora-0.7.0-android.apk) | Android 10+ (API 29+) | APK, debug-signed — sideload | 10.6 MiB | `d29c5df8…b7194` |
-| [`SHA256SUMS.txt`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.0/SHA256SUMS.txt) | any | Checksums for every artefact (8 entries) | see file | — |
+| [`lypora_0.7.1_amd64.deb`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.1/lypora_0.7.1_amd64.deb) | Debian 11+ / Ubuntu 20.04+ | System package — `sudo apt install ./…deb` | {{DEB_SIZE}} | `{{DEB_SHORT}}` |
+| [`lypora-0.7.1-1.x86_64.rpm`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.1/lypora-0.7.1-1.x86_64.rpm) | Fedora 32+ / RHEL 9+ / openSUSE | System package — `sudo dnf install ./…rpm` | {{RPM_SIZE}} | `{{RPM_SHORT}}` |
+| [`Lypora-0.7.1-linux-x64.AppImage`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.1/Lypora-0.7.1-linux-x64.AppImage) | any x86_64 distro | Single file — `chmod +x` and run | {{AI_SIZE}} | `{{AI_SHORT}}` |
+| [`Lypora-0.7.1-linux-x64.tar.gz`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.1/Lypora-0.7.1-linux-x64.tar.gz) | any x86_64 distro, glibc ≥2.31 | Self-contained dir — `./lypora.sh` or `./install.sh` | {{TG_SIZE}} | `{{TG_SHORT}}` |
+| [`Lypora-0.7.1-win-x64.zip`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.1/Lypora-0.7.1-win-x64.zip) | Windows 10/11 x64 | Portable ZIP — unzip and run | {{WIN_SIZE}} | `{{WIN_SHORT}}` |
+| [`Lypora-0.7.1-macos-arm64.tar.gz`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.1/Lypora-0.7.1-macos-arm64.tar.gz) | macOS 11+ Apple Silicon | `.app` in tar.gz — run `mac-finalize.command` once | {{ARM_SIZE}} | `{{ARM_SHORT}}` |
+| [`Lypora-0.7.1-macos-x64.tar.gz`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.1/Lypora-0.7.1-macos-x64.tar.gz) | macOS 11+ Intel | `.app` in tar.gz — run `mac-finalize.command` once | {{X64_SIZE}} | `{{X64_SHORT}}` |
+| [`Lypora-0.7.1-android.apk`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.1/Lypora-0.7.1-android.apk) | Android 10+ (API 29+) | APK, debug-signed — sideload | {{APK_SIZE}} | `{{APK_SHORT}}` |
+| [`SHA256SUMS.txt`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.1/SHA256SUMS.txt) | any | Checksums for every artefact (8 entries) | see file | — |
 
 `deb` / `rpm` install into `/opt/lypora` with a `/usr/bin/lypora` shim, a menu entry and 8 icon sizes; removing
 them with `apt remove` / `dnf remove` leaves nothing behind. The AppImage and the tarball need no root at all.
@@ -59,10 +62,10 @@ killed outright. Then open `Lypora.app`. Right-click → Open is still needed on
 **Linux:** four ways in, pick whichever matches how you manage software.
 
 ```bash
-sudo apt install ./lypora_0.7.0_amd64.deb          # Debian / Ubuntu / deepin / Kylin
-sudo dnf install ./lypora-0.7.0-1.x86_64.rpm       # Fedora / RHEL 9+  (openSUSE: zypper install ./…rpm)
-chmod +x Lypora-0.7.0-linux-x64.AppImage && ./Lypora-0.7.0-linux-x64.AppImage   # no install, no root
-tar xzf Lypora-0.7.0-linux-x64.tar.gz && cd Lypora && ./install.sh              # per-user install, no root
+sudo apt install ./lypora_0.7.1_amd64.deb          # Debian / Ubuntu / deepin / Kylin
+sudo dnf install ./lypora-0.7.1-1.x86_64.rpm       # Fedora / RHEL 9+  (openSUSE: zypper install ./…rpm)
+chmod +x Lypora-0.7.1-linux-x64.AppImage && ./Lypora-0.7.1-linux-x64.AppImage   # no install, no root
+tar xzf Lypora-0.7.1-linux-x64.tar.gz && cd Lypora && ./install.sh              # per-user install, no root
 ```
 
 `apt`/`dnf` put everything under `/opt/lypora` plus a `/usr/bin/lypora` command, a `.desktop` entry and hicolor
@@ -72,7 +75,7 @@ tarball's `install.sh` sets it with sudo, and `lypora.sh` falls back to `--no-sa
 cannot. **An AppImage has no root at all**, so its bundled `AppRun` always passes `--no-sandbox` — same features,
 minus OS-level renderer isolation. There are no arm64 packages yet.
 
-**Android:** copy the APK to the phone and tap it, or `adb install -r Lypora-0.7.0-android.apk`. Android will ask
+**Android:** copy the APK to the phone and tap it, or `adb install -r Lypora-0.7.1-android.apk`. Android will ask
 you to allow installing from an unknown source — that is the normal sideload prompt. The touch build uses a separate
 shell (bottom action dock, menus in a bottom sheet, sidebar as a drawer); PDF export, "open folder" and third-party
 theme import are greyed out there. Documents are stored in the app-specific directory
@@ -105,7 +108,7 @@ Verify before running:
 sha256sum -c SHA256SUMS.txt                 # macOS / Linux
 ```
 ```bat
-certutil -hashfile Lypora-0.7.0-win-x64.zip SHA256
+certutil -hashfile Lypora-0.7.1-win-x64.zip SHA256
 ```
 
 ### Why it exists (and what it is not)
@@ -136,7 +139,7 @@ the code as a working draft, not as a reference implementation.
 | Files | Open / save / save-as, recent files, workspace tree, export to Markdown / single-file HTML / PDF (KaTeX CSS and fonts are inlined, so exports render correctly offline) |
 | Desktop | Native dialogs, single-instance lock, close-with-unsaved-changes guard, file association |
 | Platforms | Windows portable `.exe` + zip, macOS `.app` bundle (Apple Silicon and Intel), Linux x64 as `.deb` / `.rpm` / AppImage / tarball (all with `.desktop` integration), Android APK, and a plain browser / PWA build — one TypeScript core, five shells |
-| Shipping | `git push origin v0.7.0` is enough: GitHub Actions builds the front end, stages one FHS tree, wraps it as deb / rpm / AppImage / tar.gz, installs the deb and rpm inside clean containers, and uploads everything plus a merged `SHA256SUMS.txt` to the Release |
+| Shipping | `git push origin v0.7.1` is enough: GitHub Actions builds the front end, stages one FHS tree, wraps it as deb / rpm / AppImage / tar.gz, installs the deb and rpm inside clean containers, and uploads everything plus a merged `SHA256SUMS.txt` to the Release |
 
 ### Quick start
 
@@ -171,7 +174,7 @@ backend required. Serving it over HTTPS gives you installable PWA behaviour and 
 ```bash
 node tools/pack-win.mjs --zip
 # -> release/Lypora/Lypora.exe           double-click to run
-# -> release/Lypora-0.7.0-win-x64.zip    ready to hand out
+# -> release/Lypora-0.7.1-win-x64.zip    ready to hand out
 ```
 
 Requires `desktop/node_modules/electron/dist` (`npm install` inside `desktop/` downloads it). The packer also
@@ -184,8 +187,8 @@ stamps the icon and version metadata into the executable.
 curl -LO https://github.com/electron/electron/releases/download/v33.4.11/electron-v33.4.11-darwin-arm64.zip
 python tools/pack-mac.py --zip electron-v33.4.11-darwin-arm64.zip --arch arm64
 python tools/pack-mac.py --zip electron-v33.4.11-darwin-x64.zip   --arch x64
-# -> release/Lypora-0.7.0-macos-arm64.tar.gz
-# -> release/Lypora-0.7.0-macos-x64.tar.gz
+# -> release/Lypora-0.7.1-macos-arm64.tar.gz
+# -> release/Lypora-0.7.1-macos-x64.tar.gz
 ```
 
 The packer rebuilds Electron's prebuilt zip into a real `Lypora.app` bundle — rewritten `Info.plist`
@@ -199,7 +202,7 @@ The result is **ad-hoc signed, not notarised** — there is no Developer ID cert
 launch will be stopped by Gatekeeper; either **right-click → Open → Open** once, or use the bundled helper:
 
 ```bash
-tar xzf Lypora-0.7.0-macos-arm64.tar.gz && cd Lypora-0.7.0-macos-arm64
+tar xzf Lypora-0.7.1-macos-arm64.tar.gz && cd Lypora-0.7.1-macos-arm64
 sh mac-finalize.command     # strip quarantine, ad-hoc re-sign, verify
 ```
 
@@ -211,11 +214,11 @@ and under Rosetta.
 ```bash
 curl -LO https://github.com/electron/electron/releases/download/v33.4.11/electron-v33.4.11-linux-x64.zip
 python tools/pack-linux.py --zip electron-v33.4.11-linux-x64.zip
-# -> release/Lypora-0.7.0-linux-x64.tar.gz
+# -> release/Lypora-0.7.1-linux-x64.tar.gz
 ```
 
 ```bash
-tar xzf Lypora-0.7.0-linux-x64.tar.gz && cd Lypora
+tar xzf Lypora-0.7.1-linux-x64.tar.gz && cd Lypora
 ./install.sh          # per-user: ~/.local/share/lypora, .desktop entry, hicolor icons
 ./lypora.sh           # ...or just run it in place
 ```
@@ -233,12 +236,12 @@ everything it added. Target **x86-64, glibc ≥ 2.31** (Ubuntu 20.04+, Debian 11
 python tools/linux-stage.py --zip electron-v33.4.11-linux-x64.zip --stage build/stage --deb
 
 # 2) the three wrappers need Linux binaries (dpkg-deb / rpmbuild / appimagetool)
-dpkg-deb --build --root-owner-group build/stage release/lypora_0.7.0_amd64.deb
-rpmbuild -bb --define "_version 0.7.0" --define "_stage_root $PWD/build/stage" \
+dpkg-deb --build --root-owner-group build/stage release/lypora_0.7.1_amd64.deb
+rpmbuild -bb --define "_version 0.7.1" --define "_stage_root $PWD/build/stage" \
          --define "_topdir $PWD/build/rpm" packaging/lypora.spec
 python tools/linux-stage.py --stage build/stage --appdir build/AppDir
 ARCH=x86_64 ./appimagetool --appimage-extract-and-run --no-appstream build/AppDir \
-         release/Lypora-0.7.0-linux-x64.AppImage
+         release/Lypora-0.7.1-linux-x64.AppImage
 ```
 
 You do not normally run that by hand: **pushing a `v*` tag** triggers
@@ -251,7 +254,7 @@ and a troubleshooting list are in
 
 ```bash
 node tools/build-android.mjs
-# -> release/Lypora-0.7.0-android.apk    install with: adb install -r <file>
+# -> release/Lypora-0.7.1-android.apk    install with: adb install -r <file>
 ```
 
 Needs **JDK 21** and an **Android SDK** with platform 35 + build-tools 35 — the script locates `ANDROID_HOME`
@@ -292,7 +295,11 @@ python ../tools/check-package.py
 Be clear about what the last command proves: it parses the Mach-O and ELF headers, `Info.plist`,
 `.desktop`, icon sizes, symlink targets and file modes inside the archives, but it does **not** boot the app
 on macOS or Linux — this project is developed on Windows, and there is no macOS or Linux machine in the loop.
-Windows and Android are the two platforms with real runtime evidence. Details, measured numbers and the list
+Windows and Android are the two platforms with real runtime evidence. Android gained exactly one genuinely
+device-level data point in v0.7.1: the build was installed on an Android tablet with a Bluetooth keyboard
+attached, and the Chinese IME was confirmed to open, compose and commit text without the on-screen keyboard
+being involved at all (`docs/04` V50 / H25). That is one row of the manual checklist, not a full pass — the
+on-screen-keyboard path on a phone was not re-tested separately (H26). Details, measured numbers and the list
 of traps we hit are in [`docs/04-验证方案.md`](docs/04-验证方案.md).
 
 ### A tribute, and a disclaimer
@@ -353,20 +360,20 @@ Lypora 是一个即时渲染的 Markdown 编辑器。你在编辑区里写 Markd
 
 ### 下载
 
-最新版本：**[v0.7.0](https://github.com/dr-bing-li/lypora/releases/tag/v0.7.0)** · 全部构建见
+最新版本：**[v0.7.1](https://github.com/dr-bing-li/lypora/releases/tag/v0.7.1)** · 全部构建见
 [Releases 页面](https://github.com/dr-bing-li/lypora/releases)。
 
 | 文件 | 平台 | 格式 | 大小 | SHA256 |
 |---|---|---|---|---|
-| [`lypora_0.7.0_amd64.deb`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.0/lypora_0.7.0_amd64.deb) | Debian 11+ / Ubuntu 20.04+ / 深度 / 麒麟 | 系统包，`sudo apt install ./…deb` | 79.4 MiB | `ca8b5723…d798f` |
-| [`lypora-0.7.0-1.x86_64.rpm`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.0/lypora-0.7.0-1.x86_64.rpm) | Fedora 32+ / RHEL 9+ / openSUSE | 系统包，`sudo dnf install ./…rpm` | 79.4 MiB | `939c024f…937db` |
-| [`Lypora-0.7.0-linux-x64.AppImage`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.0/Lypora-0.7.0-linux-x64.AppImage) | 任意 x86-64 发行版 | 单文件，`chmod +x` 后直接跑 | 95.6 MiB | `99474442…5db03` |
-| [`Lypora-0.7.0-linux-x64.tar.gz`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.0/Lypora-0.7.0-linux-x64.tar.gz) | 任意 x86-64 发行版（glibc ≥ 2.31） | tar.gz + `install.sh`（per-user，不要 root） | 102.4 MiB | `f9b9ac46…910a3` |
-| [`Lypora-0.7.0-win-x64.zip`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.0/Lypora-0.7.0-win-x64.zip) | Windows 10/11 x64 | 便携版 ZIP，解压即用 | 111.0 MiB | `8e2cf01b…c1396` |
-| [`Lypora-0.7.0-macos-arm64.tar.gz`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.0/Lypora-0.7.0-macos-arm64.tar.gz) | macOS 11+（Apple Silicon） | `.app` bundle，ad-hoc 签名 | 95.8 MiB | `28123473…57abe` |
-| [`Lypora-0.7.0-macos-x64.tar.gz`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.0/Lypora-0.7.0-macos-x64.tar.gz) | macOS 11+（Intel） | `.app` bundle，ad-hoc 签名 | 100.2 MiB | `b1264d58…ccd4b` |
-| [`Lypora-0.7.0-android.apk`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.0/Lypora-0.7.0-android.apk) | Android 10+（API 29+） | APK，debug 签名，直接侧载 | 10.6 MiB | `d29c5df8…b7194` |
-| [`SHA256SUMS.txt`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.0/SHA256SUMS.txt) | 任意 | 全部产物的校验清单（8 条） | 见文件 | — |
+| [`lypora_0.7.1_amd64.deb`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.1/lypora_0.7.1_amd64.deb) | Debian 11+ / Ubuntu 20.04+ / 深度 / 麒麟 | 系统包，`sudo apt install ./…deb` | {{DEB_SIZE}} | `{{DEB_SHORT}}` |
+| [`lypora-0.7.1-1.x86_64.rpm`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.1/lypora-0.7.1-1.x86_64.rpm) | Fedora 32+ / RHEL 9+ / openSUSE | 系统包，`sudo dnf install ./…rpm` | {{RPM_SIZE}} | `{{RPM_SHORT}}` |
+| [`Lypora-0.7.1-linux-x64.AppImage`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.1/Lypora-0.7.1-linux-x64.AppImage) | 任意 x86-64 发行版 | 单文件，`chmod +x` 后直接跑 | {{AI_SIZE}} | `{{AI_SHORT}}` |
+| [`Lypora-0.7.1-linux-x64.tar.gz`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.1/Lypora-0.7.1-linux-x64.tar.gz) | 任意 x86-64 发行版（glibc ≥ 2.31） | tar.gz + `install.sh`（per-user，不要 root） | {{TG_SIZE}} | `{{TG_SHORT}}` |
+| [`Lypora-0.7.1-win-x64.zip`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.1/Lypora-0.7.1-win-x64.zip) | Windows 10/11 x64 | 便携版 ZIP，解压即用 | {{WIN_SIZE}} | `{{WIN_SHORT}}` |
+| [`Lypora-0.7.1-macos-arm64.tar.gz`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.1/Lypora-0.7.1-macos-arm64.tar.gz) | macOS 11+（Apple Silicon） | `.app` bundle，ad-hoc 签名 | {{ARM_SIZE}} | `{{ARM_SHORT}}` |
+| [`Lypora-0.7.1-macos-x64.tar.gz`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.1/Lypora-0.7.1-macos-x64.tar.gz) | macOS 11+（Intel） | `.app` bundle，ad-hoc 签名 | {{X64_SIZE}} | `{{X64_SHORT}}` |
+| [`Lypora-0.7.1-android.apk`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.1/Lypora-0.7.1-android.apk) | Android 10+（API 29+） | APK，debug 签名，直接侧载 | {{APK_SIZE}} | `{{APK_SHORT}}` |
+| [`SHA256SUMS.txt`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.1/SHA256SUMS.txt) | 任意 | 全部产物的校验清单（8 条） | 见文件 | — |
 
 deb / rpm 会装进 `/opt/lypora`，附带 `/usr/bin/lypora` 命令、应用菜单项和 8 档图标，`apt remove` /
 `dnf remove` 删得干净。AppImage 和 tar.gz 完全不需要 root。
@@ -375,12 +382,12 @@ deb / rpm 会装进 `/opt/lypora`，附带 `/usr/bin/lypora` 命令、应用菜�
 员权限、没有自动更新——升级就是下载新版 ZIP 覆盖上去。**exe 未做代码签名**，所以 SmartScreen 会拦一次：
 「更多信息」→「仍要运行」。
 
-**macOS：** 解压得到 `Lypora-0.7.0-macos-<arch>/`，里面是 `Lypora.app`。**这是 ad-hoc 签名，没有 Apple
+**macOS：** 解压得到 `Lypora-0.7.1-macos-<arch>/`，里面是 `Lypora.app`。**这是 ad-hoc 签名，没有 Apple
 Developer ID，也没有公证**，所以首次打开会被 Gatekeeper 拦下。两个办法任选：右键 `Lypora.app` →「打开」→
 再点「打开」；或者先用包里的脚本处理一遍：
 
 ```bash
-tar xzf Lypora-0.7.0-macos-arm64.tar.gz && cd Lypora-0.7.0-macos-arm64
+tar xzf Lypora-0.7.1-macos-arm64.tar.gz && cd Lypora-0.7.1-macos-arm64
 sh mac-finalize.command        # 去 quarantine + ad-hoc 重签 + 校验
 open Lypora.app
 ```
@@ -392,10 +399,10 @@ Apple Silicon 请下载 arm64 包，Intel 下载 x64（x64 也能在 Apple Silic
 **Linux：** 四条路，按你平时怎么管软件选一条。
 
 ```bash
-sudo apt install ./lypora_0.7.0_amd64.deb          # Debian / Ubuntu / 深度 / 麒麟
-sudo dnf install ./lypora-0.7.0-1.x86_64.rpm       # Fedora / RHEL 9+（openSUSE 用 zypper install ./…rpm）
-chmod +x Lypora-0.7.0-linux-x64.AppImage && ./Lypora-0.7.0-linux-x64.AppImage   # 不安装、不要 root
-tar xzf Lypora-0.7.0-linux-x64.tar.gz && cd Lypora && ./install.sh              # 装进 ~/.local，不要 root
+sudo apt install ./lypora_0.7.1_amd64.deb          # Debian / Ubuntu / 深度 / 麒麟
+sudo dnf install ./lypora-0.7.1-1.x86_64.rpm       # Fedora / RHEL 9+（openSUSE 用 zypper install ./…rpm）
+chmod +x Lypora-0.7.1-linux-x64.AppImage && ./Lypora-0.7.1-linux-x64.AppImage   # 不安装、不要 root
+tar xzf Lypora-0.7.1-linux-x64.tar.gz && cd Lypora && ./install.sh              # 装进 ~/.local，不要 root
 ```
 
 deb / rpm 由包管理器负责装卸：文件进 `/opt/lypora` 和 `/usr/share`，同时得到 `/usr/bin/lypora` 命令、
@@ -406,7 +413,7 @@ deb / rpm 由包管理器负责装卸：文件进 `/opt/lypora` 和 `/usr/share`
 **AppImage 里没有 root**，SUID 沙箱必然不可用，所以它的 `AppRun` 一律带 `--no-sandbox`。这是 Electron 打
 AppImage 的固有代价，不是配置错误。目前只有 x86-64 包，没有 arm64。
 
-**Android：** 把 APK 传到手机点开安装（或 `adb install -r Lypora-0.7.0-android.apk`）。系统会提示「允许安装
+**Android：** 把 APK 传到手机点开安装（或 `adb install -r Lypora-0.7.1-android.apk`）。系统会提示「允许安装
 未知来源应用」，这是侧载的正常提示。触屏版是另一套外壳（底部操作栏、菜单收进底部面板、侧栏变抽屉），
 导出 PDF、打开文件夹、导入第三方主题在手机上是置灰的。文档存在应用专属目录
 `Android/data/app.lypora.editor/files/Documents/Lypora/`，要交出去请用**导出 → 系统分享面板**。
@@ -432,8 +439,8 @@ v0.4.1 起，Lypora 也注册进了系统的**「打开方式」**列表（在�
 运行前先校验：
 
 ```bat
-certutil -hashfile Lypora-0.7.0-win-x64.zip SHA256
-certutil -hashfile Lypora-0.7.0-android.apk SHA256
+certutil -hashfile Lypora-0.7.1-win-x64.zip SHA256
+certutil -hashfile Lypora-0.7.1-android.apk SHA256
 ```
 ```bash
 shasum -a 256 -c SHA256SUMS.txt      # macOS / Linux 通用
@@ -464,7 +471,7 @@ Lypora 是一个**小小的、刻意不做大的替代品**，用来临时顶一
 | 文件 | 打开 / 保存 / 另存、最近文件、工作区文件树、导出 Markdown / 单文件 HTML / PDF（KaTeX 的 CSS 与字体内联，离线打开公式也是对的） |
 | 桌面 | 原生对话框、单实例、关窗前未保存拦截、文件关联 |
 | 平台 | Windows 便携版 `.exe` + ZIP、macOS `.app`（Apple Silicon 与 Intel）、Linux x64 的 `.deb` / `.rpm` / AppImage / tar.gz（都带 `.desktop` 集成）、Android APK、以及浏览器 / PWA 版——一个 TypeScript 核心，五套外壳 |
-| 发布 | `git push origin v0.7.0` 就够了：GitHub Actions 构建前端、摊一棵 FHS 树、封成 deb / rpm / AppImage / tar.gz、在干净容器里把 deb 和 rpm 真装一遍，然后把全部产物和合并后的 `SHA256SUMS.txt` 传上 Release |
+| 发布 | `git push origin v0.7.1` 就够了：GitHub Actions 构建前端、摊一棵 FHS 树、封成 deb / rpm / AppImage / tar.gz、在干净容器里把 deb 和 rpm 真装一遍，然后把全部产物和合并后的 `SHA256SUMS.txt` 传上 Release |
 
 ### 快速开始
 
@@ -499,7 +506,7 @@ cd core && npm run build
 ```bash
 node tools/pack-win.mjs --zip
 # -> release/Lypora/Lypora.exe           双击即用
-# -> release/Lypora-0.7.0-win-x64.zip    可直接分发
+# -> release/Lypora-0.7.1-win-x64.zip    可直接分发
 ```
 
 依赖 `desktop/node_modules/electron/dist`（在 `desktop/` 里 `npm install` 会下载）。打包脚本会把图标和
@@ -512,8 +519,8 @@ node tools/pack-win.mjs --zip
 curl -LO https://github.com/electron/electron/releases/download/v33.4.11/electron-v33.4.11-darwin-arm64.zip
 python tools/pack-mac.py --zip electron-v33.4.11-darwin-arm64.zip --arch arm64
 python tools/pack-mac.py --zip electron-v33.4.11-darwin-x64.zip   --arch x64
-# -> release/Lypora-0.7.0-macos-arm64.tar.gz
-# -> release/Lypora-0.7.0-macos-x64.tar.gz
+# -> release/Lypora-0.7.1-macos-arm64.tar.gz
+# -> release/Lypora-0.7.1-macos-x64.tar.gz
 ```
 
 打包脚本把 Electron 的预编译 zip 重建成一个真正的 `Lypora.app`——重写 `Info.plist`（bundle id、
@@ -533,7 +540,7 @@ Windows 版同一份 `Resources/app` 前端——最后输出 tar.gz。
 ```bash
 curl -LO https://github.com/electron/electron/releases/download/v33.4.11/electron-v33.4.11-linux-x64.zip
 python tools/pack-linux.py --zip electron-v33.4.11-linux-x64.zip
-# -> release/Lypora-0.7.0-linux-x64.tar.gz
+# -> release/Lypora-0.7.1-linux-x64.tar.gz
 ```
 
 包内结构是 `Lypora/` 目录 + `lypora.sh`（启动器）+ `install.sh` / `uninstall.sh`（安装、卸载）+
@@ -548,12 +555,12 @@ python tools/pack-linux.py --zip electron-v33.4.11-linux-x64.zip
 python tools/linux-stage.py --zip electron-v33.4.11-linux-x64.zip --stage build/stage --deb
 
 # 2) 三种封装需要 Linux 工具链（dpkg-deb / rpmbuild / appimagetool）
-dpkg-deb --build --root-owner-group build/stage release/lypora_0.7.0_amd64.deb
-rpmbuild -bb --define "_version 0.7.0" --define "_stage_root $PWD/build/stage" \
+dpkg-deb --build --root-owner-group build/stage release/lypora_0.7.1_amd64.deb
+rpmbuild -bb --define "_version 0.7.1" --define "_stage_root $PWD/build/stage" \
          --define "_topdir $PWD/build/rpm" packaging/lypora.spec
 python tools/linux-stage.py --stage build/stage --appdir build/AppDir
 ARCH=x86_64 ./appimagetool --appimage-extract-and-run --no-appstream build/AppDir \
-         release/Lypora-0.7.0-linux-x64.AppImage
+         release/Lypora-0.7.1-linux-x64.AppImage
 ```
 
 正常不需要手敲：**推一个 `v*` 标签**就会触发
@@ -565,7 +572,7 @@ ARCH=x86_64 ./appimagetool --appimage-extract-and-run --no-appstream build/AppDi
 
 ```bash
 node tools/build-android.mjs
-# -> release/Lypora-0.7.0-android.apk    安装：adb install -r <文件>
+# -> release/Lypora-0.7.1-android.apk    安装：adb install -r <文件>
 ```
 
 需要 **JDK 21** 与 **Android SDK**（platform 35 + build-tools 35）。脚本会自己找 `ANDROID_HOME` 和 JDK，缺什么
@@ -604,6 +611,10 @@ python ../tools/check-package.py        # macOS / Linux 包结构：20 项断言
 最后一条能证明什么、不能证明什么，得说清楚：它会解析包里的 Mach-O / ELF 头、`Info.plist`、`.desktop`、
 图标尺寸、符号链接指向和文件权限位，但**它不会在 macOS 或 Linux 上把应用跑起来**——这台构建机是 Windows，
 手上没有 Mac，也没有 Linux 桌面。有真机运行证据的只有 Windows 和 Android 两个平台。
+
+Android 这边 v0.7.1 多了一条真正的设备级证据：包装到平板上、接着蓝牙键盘，中文输入法能直接调起并正常
+组词上屏，全程没碰屏幕软键盘（`docs/04` V50 / H25）。但这只是手工清单里的一行，不是整表通过——手机
+（纯屏幕软键盘）那条路径这次**没有单独复验**（H26）。
 
 deb / rpm 比"结构校验"多走一步（见上面那条 CI 工作流）：在 `debian:12` / `fedora:40` 容器里真的
 `apt install` / `dnf install`，再断言装上了、能执行、setuid 位还在。容器 ≠ 桌面，所以这一条也不能读成
