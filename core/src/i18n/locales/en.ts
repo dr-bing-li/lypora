@@ -93,6 +93,7 @@ export default {
     zoomOut: 'Zoom Out',
     zoomReset: 'Actual Size',
     fullscreen: 'Full Screen',
+    virtualKeyboard: 'Virtual Keyboard',
   },
 
   theme: {
@@ -168,6 +169,8 @@ export default {
   },
 
   toast: {
+    imeBlocked: 'The system blocks the on-screen keyboard while a hardware keyboard is connected. Enable "Show virtual keyboard" in Settings > System > Languages & input > Physical keyboard.',
+    imeUnavailable: 'This environment cannot show the input method.',
     opened: 'Opened {name}',
     created: 'New document created',
     saved: 'Saved {name}',

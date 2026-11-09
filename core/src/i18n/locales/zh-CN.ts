@@ -104,6 +104,7 @@ export default {
     zoomOut: '缩小',
     zoomReset: '实际大小',
     fullscreen: '全屏',
+    virtualKeyboard: '虚拟键盘',
   },
 
   theme: {
@@ -179,6 +180,8 @@ export default {
   },
 
   toast: {
+    imeBlocked: '系统禁止在外接键盘时弹出屏幕键盘。可到「设置 → 系统 → 语言和输入法 → 实体键盘」打开「显示虚拟键盘」。',
+    imeUnavailable: '当前环境无法唤起输入法。',
     opened: '已打开 {name}',
     created: '已新建文档',
     saved: '已保存 {name}',

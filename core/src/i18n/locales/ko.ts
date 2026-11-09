@@ -93,6 +93,7 @@ export default {
     zoomOut: '축소',
     zoomReset: '실제 크기',
     fullscreen: '전체 화면',
+    virtualKeyboard: '가상 키보드',
   },
 
   theme: {
@@ -168,6 +169,8 @@ export default {
   },
 
   toast: {
+    imeBlocked: '하드웨어 키보드가 연결되어 있으면 시스템이 소프트 키보드를 표시하지 않습니다. 설정 → 시스템 → 언어 및 입력 → 실제 키보드에서 "가상 키보드 표시"를 켜세요.',
+    imeUnavailable: '이 환경에서는 입력기를 표시할 수 없습니다.',
     opened: '{name} 파일을 열었습니다',
     created: '새 문서를 만들었습니다',
     saved: '{name} 파일을 저장했습니다',

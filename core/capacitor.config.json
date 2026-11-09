@@ -7,7 +7,7 @@
     "targetSdkVersion": 35,
     "compileSdkVersion": 35,
     "allowMixedContent": false,
-    "captureInput": true,
+    "captureInput": false,
     "webContentsDebuggingEnabled": false
   },
   "server": {

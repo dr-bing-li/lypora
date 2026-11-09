@@ -111,6 +111,32 @@ keytool -genkeypair -v -keystore lypora.jks -alias lypora -keyalg RSA -keysize 2
 **3. 第一次 `gradlew` 用 `--no-daemon` 构建完会留下 `build/` 与 Gradle 缓存，占 2–3 GB。**
 想清掉：`core/android/gradlew clean`，或直接删 `core/android/build`、`core/android/app/build`。
 
+### 输入法（IME）与物理键盘
+
+平板接了蓝牙键盘之后，中文输入法必须走 WebView 的「真实 InputConnection」才能组词。
+本项目曾在 `capacitor.config.json` 里显式打开 `android.captureInput: true`，那是 Capacitor 的
+兼容旁路：它让 `CapacitorWebView.onCreateInputConnection()` 返回一个**没有填 `EditorInfo`**
+的 `BaseInputConnection`，`inputType` 因此是 `TYPE_NULL` —— 输入法认为这个控件「不接受文本编辑」，
+组词引擎根本不启动。
+
+结果就是：手机弹屏幕软键盘时，候选词靠 `commitText` 还能上屏，看起来正常；平板接物理键盘时
+系统不再弹软键盘，输入法退化成按键直通，只能打英文。表现是「蓝牙键盘只能输入英文」，
+根因却在 `captureInput`。
+
+现在的做法：
+
+- `captureInput: false`。走 `super.onCreateInputConnection()`，由 Chromium 填
+  `TYPE_CLASS_TEXT | TYPE_TEXT_FLAG_MULTI_LINE`，组词与预编辑恢复正常。
+- 仍有一部分 ROM 在物理键盘在位时拒绝弹软键盘，所以补了 `ImePlugin`
+  （`restartInput()` + `showSoftInput()`，`SHOW_IMPLICIT` 不行再退 `SHOW_FORCED`）和菜单
+  **显示 → 虚拟键盘**（只在 Android 上出现）。叫不出来时 toast 会指路：系统设置 → 系统 →
+  语言和输入法 → 实体键盘 → 显示虚拟键盘。
+- `AndroidManifest.xml` 写明 `windowSoftInputMode="adjustResize|stateUnspecified"`，
+  与前端用 `visualViewport` 算 `--app-h` 的做法保持一致。
+
+回归重点（改这块之前先读 docs/04 V50）：手机软键盘要**不重复上屏**、不丢字 ——
+`captureInput` 关掉后走的是原生 InputConnection，和之前的路径不一样。
+
 ---
 
 ## B. PWA（不装包）

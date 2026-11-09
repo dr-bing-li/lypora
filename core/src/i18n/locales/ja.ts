@@ -93,6 +93,7 @@ export default {
     zoomOut: '縮小',
     zoomReset: '実際のサイズ',
     fullscreen: '全画面表示',
+    virtualKeyboard: '仮想キーボード',
   },
 
   theme: {
@@ -168,6 +169,8 @@ export default {
   },
 
   toast: {
+    imeBlocked: 'ハードウェアキーボード接続中は、システムがソフトキーボードを表示しません。「設定 → システム → 言語と入力 → 物理キーボード」で「仮想キーボードを表示」を有効にしてください。',
+    imeUnavailable: 'この環境では入力メソッドを表示できません。',
     opened: '{name} を開きました',
     created: '新しい文書を作成しました',
     saved: '{name} を保存しました',

@@ -93,6 +93,7 @@ export default {
     zoomOut: 'Réduire',
     zoomReset: 'Taille réelle',
     fullscreen: 'Plein écran',
+    virtualKeyboard: 'Clavier virtuel',
   },
 
   theme: {
@@ -168,6 +169,8 @@ export default {
   },
 
   toast: {
+    imeBlocked: 'Le système bloque le clavier à l\'écran lorsqu\'un clavier physique est connecté. Activez « Afficher le clavier virtuel » dans Paramètres > Système > Langues et saisie > Clavier physique.',
+    imeUnavailable: 'Cet environnement ne peut pas afficher la méthode de saisie.',
     opened: '{name} ouvert',
     created: 'Nouveau document créé',
     saved: '{name} enregistré',

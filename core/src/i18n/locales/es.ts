@@ -93,6 +93,7 @@ export default {
     zoomOut: 'Reducir',
     zoomReset: 'Tamaño real',
     fullscreen: 'Pantalla completa',
+    virtualKeyboard: 'Teclado virtual',
   },
 
   theme: {
@@ -168,6 +169,8 @@ export default {
   },
 
   toast: {
+    imeBlocked: 'El sistema bloquea el teclado en pantalla cuando hay un teclado físico conectado. Activa "Mostrar teclado virtual" en Ajustes > Sistema > Idiomas y entrada > Teclado físico.',
+    imeUnavailable: 'Este entorno no puede mostrar el método de entrada.',
     opened: 'Se abrió {name}',
     created: 'Documento nuevo creado',
     saved: 'Se guardó {name}',

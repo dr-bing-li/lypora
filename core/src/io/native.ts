@@ -225,3 +225,55 @@ export function bindIncomingIntent(handler: (d: IncomingIntent) => void): void {
     if (d) handler(d)
   })
 }
+
+/* ---------------------------------------------------------------------------
+ * 输入法唤起（Android Ime 插件）
+ *
+ * 为什么需要：Android 一旦探测到物理键盘（平板接了蓝牙键盘就是这样），默认不再弹
+ * 软键盘，输入法切到「物理键盘直通」模式 —— 按 a 就送 KEYCODE_A，中文组词引擎不启动，
+ * 于是只能打英文。系统里那个「显示虚拟键盘」开关藏在开发者/语言设置深处，应用内必须
+ * 自己给一个入口，否则用户无路可走。
+ *
+ * 只在 Android 上有效；其他平台一律返回 false，调用方不必分平台判断。
+ * ------------------------------------------------------------------------- */
+
+interface ImePluginShape {
+  show(): Promise<{ requested: boolean; visible: boolean; hardwareKeyboard: boolean }>
+  info(): Promise<{ visible: boolean; hardwareKeyboard: boolean }>
+}
+
+const Ime = registerPlugin<ImePluginShape>('Ime')
+
+export interface ImeState {
+  /** 软键盘（或输入法候选窗）当前是否接受文本 */
+  visible: boolean
+  /** 是否接着物理键盘 */
+  hardwareKeyboard: boolean
+}
+
+const IME_IDLE: ImeState = { visible: false, hardwareKeyboard: false }
+
+/**
+ * 请出输入法。返回 true 表示输入法确实进入了可输入状态。
+ * 失败通常是系统策略拦截（部分平板的「物理键盘时禁用屏幕键盘」），由调用方提示用户。
+ */
+export async function showIme(): Promise<boolean> {
+  if (nativePlatform() !== 'android') return false
+  try {
+    const r = await Ime.show()
+    return Boolean(r?.visible)
+  } catch {
+    return false
+  }
+}
+
+/** 读一次输入环境快照，用于决定要不要提示「你接了键盘」 */
+export async function imeInfo(): Promise<ImeState> {
+  if (nativePlatform() !== 'android') return IME_IDLE
+  try {
+    const r = await Ime.info()
+    return { visible: Boolean(r?.visible), hardwareKeyboard: Boolean(r?.hardwareKeyboard) }
+  } catch {
+    return IME_IDLE
+  }
+}

@@ -32,6 +32,7 @@ public class MainActivity extends BridgeActivity {
     public void onCreate(Bundle savedInstanceState) {
         // 必须在 super.onCreate 之前注册，Capacitor 才会把插件挂上 bridge
         registerPlugin(IntentPipePlugin.class);
+        registerPlugin(ImePlugin.class);
         super.onCreate(savedInstanceState);
         handleIntent(getIntent(), true);
     }

@@ -93,6 +93,7 @@ export default {
     zoomOut: 'Verkleinern',
     zoomReset: 'Originalgröße',
     fullscreen: 'Vollbild',
+    virtualKeyboard: 'Bildschirmtastatur',
   },
 
   theme: {
@@ -168,6 +169,8 @@ export default {
   },
 
   toast: {
+    imeBlocked: 'Bei angeschlossener Hardware-Tastatur blockiert das System die Bildschirmtastatur. Aktiviere "Bildschirmtastatur anzeigen" unter Einstellungen > System > Sprachen & Eingabe > Physische Tastatur.',
+    imeUnavailable: 'Die Eingabemethode kann in dieser Umgebung nicht angezeigt werden.',
     opened: '{name} geöffnet',
     created: 'Neues Dokument erstellt',
     saved: '{name} gespeichert',

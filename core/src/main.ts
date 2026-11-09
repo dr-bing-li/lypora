@@ -33,7 +33,7 @@ import {
   type MessageKey,
 } from './i18n'
 import { openFile, saveFile, openWorkspace, desktop, type WorkspaceEntry } from './io/files'
-import { bindIncomingIntent, consumeIncomingIntent, isNative, nativePlatform, type IncomingIntent } from './io/native'
+import { bindIncomingIntent, consumeIncomingIntent, isNative, nativePlatform, imeInfo, showIme, type IncomingIntent } from './io/native'
 import { exportHtml, exportMarkdown, exportPdf } from './io/export'
 import { putDoc, listDocs, getDoc, readSetting, writeSetting, migrateLegacySettings } from './io/store'
 import { SAMPLE_MD, SAMPLE_NAME } from './sample'
@@ -784,6 +784,21 @@ function clearFormat(): void {
   view.focus()
 }
 
+/**
+ * 请出 Android 输入法。
+ *
+ * 平板接了蓝牙键盘时，系统默认不再弹软键盘，输入法退化成「物理键盘直通」——
+ * 这时用户唯一的路就是应用内给的这个入口。先把编辑区焦点要回来（输入法要绑在
+ * contenteditable 上才有用），再走原生 restartInput + showSoftInput。
+ * 叫不回来就把原因说清楚：系统策略拦的和插件缺失不是一回事。
+ */
+async function revealIme(): Promise<void> {
+  app.view?.focus()
+  if (await showIme()) return
+  const st = await imeInfo()
+  toast(st.hardwareKeyboard ? t('toast.imeBlocked') : t('toast.imeUnavailable'), 6000)
+}
+
 function buildMenus(): MenuDef[] {
   const withView = (fn: (v: EditorView) => unknown) => () => {
     const view = app.view
@@ -1017,6 +1032,14 @@ function buildMenus(): MenuDef[] {
           action: () => applyFontSize(16),
         },
         { id: 'view-fullscreen', label: t('view.fullscreen'), shortcut: 'F11', action: () => void toggleFullscreen() },
+        // 平板接了蓝牙键盘时，Android 默认不给弹软键盘，输入法只剩「英文直通」。
+        // 这一项是用户唯一的自救入口，只在 Android 上出现。
+        ...(nativePlatform() === 'android'
+          ? ([
+              { sep: true },
+              { id: 'view-ime', label: t('view.virtualKeyboard'), action: () => void revealIme() },
+            ] as MenuDef['items'])
+          : []),
       ],
     },
     {
