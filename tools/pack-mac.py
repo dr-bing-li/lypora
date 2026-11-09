@@ -50,7 +50,7 @@ from _packlib import (  # noqa: E402
 
 BUNDLE_ID = "app.lypora.editor"
 APP_NAME = "Lypora"
-SRC_ICON = os.path.join(ROOT, "core", "public", "icons", "icon-512.png")
+SRC_ICON = os.path.join(ROOT, "desktop", "icon-mac.png")
 
 
 def info_plist(version: str) -> bytes:

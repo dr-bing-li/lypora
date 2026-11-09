@@ -1,7 +1,7 @@
 /* Lypora Service Worker —— 离线可用 + 主屏安装
    策略：导航请求 network-first（拿最新 HTML），静态资源 cache-first（离线秒开） */
 
-const CACHE = 'lypora-v1'
+const CACHE = 'lypora-v2'
 const PRECACHE = ['./', './index.html', './manifest.webmanifest']
 
 self.addEventListener('install', (event) => {

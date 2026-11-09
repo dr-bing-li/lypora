@@ -1,3 +1,5 @@
+<p align="center"><img src="docs/images/logo.png" width="128" alt="Lypora"></p>
+
 # Lypora
 
 **An instant-render Markdown editor for Windows, macOS, Linux, the browser and Android — one TypeScript core, five builds.**
@@ -6,19 +8,24 @@
 
 ![Lypora 界面 / Lypora screenshot](docs/images/lypora.png)
 
-> **v0.8.1** — Screenshot, Ctrl+V, nothing happened. Copying an image in a file manager and pasting: same.
-> The paste path only ever read the text clipboard, so the three path modes added in v0.8.0 had no effect on
-> pasted images at all. Pasting now goes through the same pipeline: the paste event is intercepted in the
-> capture phase, and since a screenshot bitmap has no path on disk, the main process persists it to a temp PNG
-> first so "copy into the asset folder" holds for pastes too.
-> Verified by 33 end-to-end assertions on a real Electron launch (9 of them paste-specific, including a real
-> keypress) plus 38 pure-function cases and the packaged `--selftest` (docs/04 V51-V53 + H27-H29) ·
-> Android 10+: [`apk`](https://github.com/dr-bing-li/lypora/releases/download/v0.8.1/Lypora-0.8.1-android.apk) ·
-> Windows x64: [`zip`](https://github.com/dr-bing-li/lypora/releases/download/v0.8.1/Lypora-0.8.1-win-x64.zip) ·
-> macOS: [`arm64`](https://github.com/dr-bing-li/lypora/releases/download/v0.8.1/Lypora-0.8.1-macos-arm64.tar.gz) / [`x64`](https://github.com/dr-bing-li/lypora/releases/download/v0.8.1/Lypora-0.8.1-macos-x64.tar.gz) ·
-> Linux: [`deb`](https://github.com/dr-bing-li/lypora/releases/download/v0.8.1/lypora_0.8.1_amd64.deb) / [`rpm`](https://github.com/dr-bing-li/lypora/releases/download/v0.8.1/lypora-0.8.1-1.x86_64.rpm) /
-> [`AppImage`](https://github.com/dr-bing-li/lypora/releases/download/v0.8.1/Lypora-0.8.1-linux-x64.AppImage) / [`tar.gz`](https://github.com/dr-bing-li/lypora/releases/download/v0.8.1/Lypora-0.8.1-linux-x64.tar.gz) ·
+> **v0.8.2** — The mark changed. Every icon in every build — the Windows `.exe`, the macOS `.icns`, the eight
+> Linux hicolor sizes, the Android mipmaps and splash screens, the browser favicon and the PWA icons — is now
+> derived from a single source drawing: a terracotta warrior in a space suit. `tools/gen-icons.py` turns that one
+> JPEG into 40-odd files, so the next change is one command instead of five manual edits. Why that image, and what
+> it has to do with a text editor: [The mark](#the-mark-a-terracotta-warrior-in-orbit).
+> Verified by pulling the icons back out of each packaged artefact: all seven sizes found inside `Lypora.exe`,
+> eleven frames inside the macOS `Lypora.icns`, the APK's own mipmaps and splash re-extracted and inspected, and
+> the Linux 16–512 hicolor set checked against the source.
+> Android 10+: [`apk`](https://github.com/dr-bing-li/lypora/releases/download/v0.8.2/Lypora-0.8.2-android.apk) ·
+> Windows x64: [`zip`](https://github.com/dr-bing-li/lypora/releases/download/v0.8.2/Lypora-0.8.2-win-x64.zip) ·
+> macOS: [`arm64`](https://github.com/dr-bing-li/lypora/releases/download/v0.8.2/Lypora-0.8.2-macos-arm64.tar.gz) / [`x64`](https://github.com/dr-bing-li/lypora/releases/download/v0.8.2/Lypora-0.8.2-macos-x64.tar.gz) ·
+> Linux: [`deb`](https://github.com/dr-bing-li/lypora/releases/download/v0.8.2/lypora_0.8.2_amd64.deb) / [`rpm`](https://github.com/dr-bing-li/lypora/releases/download/v0.8.2/lypora-0.8.2-1.x86_64.rpm) /
+> [`AppImage`](https://github.com/dr-bing-li/lypora/releases/download/v0.8.2/Lypora-0.8.2-linux-x64.AppImage) / [`tar.gz`](https://github.com/dr-bing-li/lypora/releases/download/v0.8.2/Lypora-0.8.2-linux-x64.tar.gz) ·
 > [all releases](https://github.com/dr-bing-li/lypora/releases)
+
+```bash
+# 1. build the core
+cd core && npm install && npm run build
 
 # 2. run it locally
 npm run preview        # http://127.0.0.1:4173
@@ -42,7 +49,7 @@ backend required. Serving it over HTTPS gives you installable PWA behaviour and 
 ```bash
 node tools/pack-win.mjs --zip
 # -> release/Lypora/Lypora.exe           double-click to run
-# -> release/Lypora-0.8.1-win-x64.zip    ready to hand out
+# -> release/Lypora-0.8.2-win-x64.zip    ready to hand out
 ```
 
 Requires `desktop/node_modules/electron/dist` (`npm install` inside `desktop/` downloads it). The packer also
@@ -55,8 +62,8 @@ stamps the icon and version metadata into the executable.
 curl -LO https://github.com/electron/electron/releases/download/v33.4.11/electron-v33.4.11-darwin-arm64.zip
 python tools/pack-mac.py --zip electron-v33.4.11-darwin-arm64.zip --arch arm64
 python tools/pack-mac.py --zip electron-v33.4.11-darwin-x64.zip   --arch x64
-# -> release/Lypora-0.8.1-macos-arm64.tar.gz
-# -> release/Lypora-0.8.1-macos-x64.tar.gz
+# -> release/Lypora-0.8.2-macos-arm64.tar.gz
+# -> release/Lypora-0.8.2-macos-x64.tar.gz
 ```
 
 The packer rebuilds Electron's prebuilt zip into a real `Lypora.app` bundle — rewritten `Info.plist`
@@ -70,7 +77,7 @@ The result is **ad-hoc signed, not notarised** — there is no Developer ID cert
 launch will be stopped by Gatekeeper; either **right-click → Open → Open** once, or use the bundled helper:
 
 ```bash
-tar xzf Lypora-0.8.1-macos-arm64.tar.gz && cd Lypora-0.8.1-macos-arm64
+tar xzf Lypora-0.8.2-macos-arm64.tar.gz && cd Lypora-0.8.2-macos-arm64
 sh mac-finalize.command     # strip quarantine, ad-hoc re-sign, verify
 ```
 
@@ -82,11 +89,11 @@ and under Rosetta.
 ```bash
 curl -LO https://github.com/electron/electron/releases/download/v33.4.11/electron-v33.4.11-linux-x64.zip
 python tools/pack-linux.py --zip electron-v33.4.11-linux-x64.zip
-# -> release/Lypora-0.8.1-linux-x64.tar.gz
+# -> release/Lypora-0.8.2-linux-x64.tar.gz
 ```
 
 ```bash
-tar xzf Lypora-0.8.1-linux-x64.tar.gz && cd Lypora
+tar xzf Lypora-0.8.2-linux-x64.tar.gz && cd Lypora
 ./install.sh          # per-user: ~/.local/share/lypora, .desktop entry, hicolor icons
 ./lypora.sh           # ...or just run it in place
 ```
@@ -104,12 +111,12 @@ everything it added. Target **x86-64, glibc ≥ 2.31** (Ubuntu 20.04+, Debian 11
 python tools/linux-stage.py --zip electron-v33.4.11-linux-x64.zip --stage build/stage --deb
 
 # 2) the three wrappers need Linux binaries (dpkg-deb / rpmbuild / appimagetool)
-dpkg-deb --build --root-owner-group build/stage release/lypora_0.8.1_amd64.deb
-rpmbuild -bb --define "_version 0.8.1" --define "_stage_root $PWD/build/stage" \
+dpkg-deb --build --root-owner-group build/stage release/lypora_0.8.2_amd64.deb
+rpmbuild -bb --define "_version 0.8.2" --define "_stage_root $PWD/build/stage" \
          --define "_topdir $PWD/build/rpm" packaging/lypora.spec
 python tools/linux-stage.py --stage build/stage --appdir build/AppDir
 ARCH=x86_64 ./appimagetool --appimage-extract-and-run --no-appstream build/AppDir \
-         release/Lypora-0.8.1-linux-x64.AppImage
+         release/Lypora-0.8.2-linux-x64.AppImage
 ```
 
 You do not normally run that by hand: **pushing a `v*` tag** triggers
@@ -122,7 +129,7 @@ and a troubleshooting list are in
 
 ```bash
 node tools/build-android.mjs
-# -> release/Lypora-0.8.1-android.apk    install with: adb install -r <file>
+# -> release/Lypora-0.8.2-android.apk    install with: adb install -r <file>
 ```
 
 Needs **JDK 21** and an **Android SDK** with platform 35 + build-tools 35 — the script locates `ANDROID_HOME`
@@ -155,6 +162,9 @@ env -u ELECTRON_RUN_AS_NODE ./release/Lypora/Lypora.exe --selftest --shot=shot.p
 # package structure: 20 assertions across the macOS / Linux tarballs
 python ../tools/check-package.py
 
+# icons: dig the real frames back out of exe / icns / apk and compare them
+python ../tools/icon-probe.py
+
 # what CI does on every v* tag: build deb/rpm/AppImage, install them in
 # debian:12 and fedora:40 containers, upload to the Release
 # -> .github/workflows/linux-installers.yml
@@ -163,8 +173,10 @@ python ../tools/check-package.py
 Be clear about what the last command proves: it parses the Mach-O and ELF headers, `Info.plist`,
 `.desktop`, icon sizes, symlink targets and file modes inside the archives, but it does **not** boot the app
 on macOS or Linux — this project is developed on Windows, and there is no macOS or Linux machine in the loop.
-Windows and Android are the two platforms with real runtime evidence. For v0.8.1's image pipeline there are two
-more layers: 38 pure-function cases (`core/image-check.mjs`) and 24 end-to-end assertions (`tools/imgtest.mjs`)
+Windows and Android are the two platforms with real runtime evidence. v0.8.2's icon set is verified a third way: the
+frames are dug back out of the shipped artefacts — all seven ICO sizes found byte-for-byte inside `Lypora.exe`,
+eleven frames inside the macOS icns, the APK's own mipmaps re-extracted. For v0.8.1's image pipeline there are two
+more layers: 38 pure-function cases (`core/image-check.mjs`) and 33 end-to-end assertions (`tools/imgtest.mjs`)
 that launch Electron for real, write a document with a real PNG, assert `naturalWidth > 0`, and then walk all six
 insertion paths; the packaged build's `--selftest` reports 9 menu roots (Settings included) and zero console
 errors. Android gained exactly one genuinely device-level data point in v0.7.1: the build was installed on an Android tablet with a Bluetooth keyboard
@@ -172,6 +184,42 @@ attached, and the Chinese IME was confirmed to open, compose and commit text wit
 being involved at all (`docs/04` V50 / H25). That is one row of the manual checklist, not a full pass — the
 on-screen-keyboard path on a phone was not re-tested separately (H26). Details, measured numbers and the list
 of traps we hit are in [`docs/04-验证方案.md`](docs/04-验证方案.md).
+
+### The mark: a terracotta warrior, in orbit
+
+The face is a soldier of the Terracotta Army — the funerary guard of Qin Shi Huang, the first emperor of a
+unified China. About eight thousand of them stand in three pits outside Xi'an, and no two faces are alike:
+each was modelled separately, finished in mineral paint, and then left in the dark for 2,200 years. (Most of
+the colour survives only as a stain; it flakes off within minutes of contact with air, which is why the pits
+are excavated the way they are.)
+
+The dynasty that buried them outlived its founder by four years. What it standardised outlived the dynasty by
+two millennia. In 221 BCE, having ended the Warring States period, Qin imposed one set of instruments across
+the empire, and four phrases from that programme are still ordinary speech in Chinese:
+
+- **书同文 — one script.** Regional variants of the written character were abolished in favour of a standard
+  seal script, so an order issued at the capital could be read at the frontier. Writing stopped being a local
+  craft and became infrastructure.
+- **车同轨 — one gauge.** Axle widths were fixed, so the same cart could use the same rutted road anywhere in
+  the empire. A physical standard adopted for exactly the reason we still argue about them today:
+  interoperability beats local optimisation.
+- **统一度量衡 — one system of weights and measures.** Bronze measures survive with the imperial edict cast
+  into them, specifying the exact capacity and the penalty for short-changing a customer.
+- **天下大同 — "all under heaven, held in common."** Not Qin propaganda but an older line from the *Book of
+  Rites*: a world in which nobody is left outside the arrangement. It is the horizon the standardisation
+  pointed at, and the reason the other three are remembered as an ideal rather than as bureaucracy.
+
+The astronaut is the same face, 2,200 years later. The armour became a pressure suit, the helmet became life
+support, the pit became low orbit. Nothing about the face changed; only the environment did. That is the whole
+argument of the mark: **inherit the past, aim at the future, and let neither cancel the other.**
+
+There is a narrower, more literal reason for a Markdown editor to wear this face. Plain text is the most
+successful standard in the history of writing — one encoding, one syntax, readable by any editor on any
+machine, from a 1970s timesharing terminal to a phone in orbit. 书同文, still running. Lypora's only real
+promise is that the file you write outlives the tool you wrote it in.
+
+And yes: a 2,200-year-old soldier in a space suit is a faintly ridiculous image. That is part of the point.
+
 
 ### A tribute, and a disclaimer
 
@@ -231,20 +279,20 @@ Lypora 是一个即时渲染的 Markdown 编辑器。你在编辑区里写 Markd
 
 ### 下载
 
-最新版本：**[v0.8.1](https://github.com/dr-bing-li/lypora/releases/tag/v0.8.1)** · 全部构建见
+最新版本：**[v0.8.2](https://github.com/dr-bing-li/lypora/releases/tag/v0.8.2)** · 全部构建见
 [Releases 页面](https://github.com/dr-bing-li/lypora/releases)。
 
 | 文件 | 平台 | 格式 | 大小 | SHA256 |
 |---|---|---|---|---|
-| [`lypora_0.8.1_amd64.deb`](https://github.com/dr-bing-li/lypora/releases/download/v0.8.1/lypora_0.8.1_amd64.deb) | Debian 11+ / Ubuntu 20.04+ / 深度 / 麒麟 | 系统包，`sudo apt install ./…deb` | 79.4 MiB | `5673fd86…4e3b7` |
-| [`lypora-0.8.1-1.x86_64.rpm`](https://github.com/dr-bing-li/lypora/releases/download/v0.8.1/lypora-0.8.1-1.x86_64.rpm) | Fedora 32+ / RHEL 9+ / openSUSE | 系统包，`sudo dnf install ./…rpm` | 79.5 MiB | `d4e5cff9…2e6a2` |
-| [`Lypora-0.8.1-linux-x64.AppImage`](https://github.com/dr-bing-li/lypora/releases/download/v0.8.1/Lypora-0.8.1-linux-x64.AppImage) | 任意 x86-64 发行版 | 单文件，`chmod +x` 后直接跑 | 95.6 MiB | `5631b92f…abf09` |
-| [`Lypora-0.8.1-linux-x64.tar.gz`](https://github.com/dr-bing-li/lypora/releases/download/v0.8.1/Lypora-0.8.1-linux-x64.tar.gz) | 任意 x86-64 发行版（glibc ≥ 2.31） | tar.gz + `install.sh`（per-user，不要 root） | 102.5 MiB | `71bc2aef…073f8` |
-| [`Lypora-0.8.1-win-x64.zip`](https://github.com/dr-bing-li/lypora/releases/download/v0.8.1/Lypora-0.8.1-win-x64.zip) | Windows 10/11 x64 | 便携版 ZIP，解压即用 | 111.1 MiB | `d7ea36ff…e5197` |
-| [`Lypora-0.8.1-macos-arm64.tar.gz`](https://github.com/dr-bing-li/lypora/releases/download/v0.8.1/Lypora-0.8.1-macos-arm64.tar.gz) | macOS 11+（Apple Silicon） | `.app` bundle，ad-hoc 签名 | 95.9 MiB | `f387406c…212bb` |
-| [`Lypora-0.8.1-macos-x64.tar.gz`](https://github.com/dr-bing-li/lypora/releases/download/v0.8.1/Lypora-0.8.1-macos-x64.tar.gz) | macOS 11+（Intel） | `.app` bundle，ad-hoc 签名 | 100.3 MiB | `b54c4c32…7ac15` |
-| [`Lypora-0.8.1-android.apk`](https://github.com/dr-bing-li/lypora/releases/download/v0.8.1/Lypora-0.8.1-android.apk) | Android 10+（API 29+） | APK，debug 签名，直接侧载 | 10.6 MiB | `1ba559fe…7029c` |
-| [`SHA256SUMS.txt`](https://github.com/dr-bing-li/lypora/releases/download/v0.8.1/SHA256SUMS.txt) | 任意 | 全部产物的校验清单（8 条） | 见文件 | — |
+| [`lypora_0.8.2_amd64.deb`](https://github.com/dr-bing-li/lypora/releases/download/v0.8.2/lypora_0.8.2_amd64.deb) | Debian 11+ / Ubuntu 20.04+ / 深度 / 麒麟 | 系统包，`sudo apt install ./…deb` | {{DEB_SIZE}} | {{DEB_SHORT}} |
+| [`lypora-0.8.2-1.x86_64.rpm`](https://github.com/dr-bing-li/lypora/releases/download/v0.8.2/lypora-0.8.2-1.x86_64.rpm) | Fedora 32+ / RHEL 9+ / openSUSE | 系统包，`sudo dnf install ./…rpm` | {{RPM_SIZE}} | {{RPM_SHORT}} |
+| [`Lypora-0.8.2-linux-x64.AppImage`](https://github.com/dr-bing-li/lypora/releases/download/v0.8.2/Lypora-0.8.2-linux-x64.AppImage) | 任意 x86-64 发行版 | 单文件，`chmod +x` 后直接跑 | {{AI_SIZE}} | {{AI_SHORT}} |
+| [`Lypora-0.8.2-linux-x64.tar.gz`](https://github.com/dr-bing-li/lypora/releases/download/v0.8.2/Lypora-0.8.2-linux-x64.tar.gz) | 任意 x86-64 发行版（glibc ≥ 2.31） | tar.gz + `install.sh`（per-user，不要 root） | {{TG_SIZE}} | {{TG_SHORT}} |
+| [`Lypora-0.8.2-win-x64.zip`](https://github.com/dr-bing-li/lypora/releases/download/v0.8.2/Lypora-0.8.2-win-x64.zip) | Windows 10/11 x64 | 便携版 ZIP，解压即用 | {{WIN_SIZE}} | {{WIN_SHORT}} |
+| [`Lypora-0.8.2-macos-arm64.tar.gz`](https://github.com/dr-bing-li/lypora/releases/download/v0.8.2/Lypora-0.8.2-macos-arm64.tar.gz) | macOS 11+（Apple Silicon） | `.app` bundle，ad-hoc 签名 | {{ARM_SIZE}} | {{ARM_SHORT}} |
+| [`Lypora-0.8.2-macos-x64.tar.gz`](https://github.com/dr-bing-li/lypora/releases/download/v0.8.2/Lypora-0.8.2-macos-x64.tar.gz) | macOS 11+（Intel） | `.app` bundle，ad-hoc 签名 | {{X64_SIZE}} | {{X64_SHORT}} |
+| [`Lypora-0.8.2-android.apk`](https://github.com/dr-bing-li/lypora/releases/download/v0.8.2/Lypora-0.8.2-android.apk) | Android 10+（API 29+） | APK，debug 签名，直接侧载 | {{APK_SIZE}} | {{APK_SHORT}} |
+| [`SHA256SUMS.txt`](https://github.com/dr-bing-li/lypora/releases/download/v0.8.2/SHA256SUMS.txt) | 任意 | 全部产物的校验清单（8 条） | 见文件 | — |
 
 deb / rpm 会装进 `/opt/lypora`，附带 `/usr/bin/lypora` 命令、应用菜单项和 8 档图标，`apt remove` /
 `dnf remove` 删得干净。AppImage 和 tar.gz 完全不需要 root。
@@ -253,12 +301,12 @@ deb / rpm 会装进 `/opt/lypora`，附带 `/usr/bin/lypora` 命令、应用菜�
 员权限、没有自动更新——升级就是下载新版 ZIP 覆盖上去。**exe 未做代码签名**，所以 SmartScreen 会拦一次：
 「更多信息」→「仍要运行」。
 
-**macOS：** 解压得到 `Lypora-0.8.1-macos-<arch>/`，里面是 `Lypora.app`。**这是 ad-hoc 签名，没有 Apple
+**macOS：** 解压得到 `Lypora-0.8.2-macos-<arch>/`，里面是 `Lypora.app`。**这是 ad-hoc 签名，没有 Apple
 Developer ID，也没有公证**，所以首次打开会被 Gatekeeper 拦下。两个办法任选：右键 `Lypora.app` →「打开」→
 再点「打开」；或者先用包里的脚本处理一遍：
 
 ```bash
-tar xzf Lypora-0.8.1-macos-arm64.tar.gz && cd Lypora-0.8.1-macos-arm64
+tar xzf Lypora-0.8.2-macos-arm64.tar.gz && cd Lypora-0.8.2-macos-arm64
 sh mac-finalize.command        # 去 quarantine + ad-hoc 重签 + 校验
 open Lypora.app
 ```
@@ -270,10 +318,10 @@ Apple Silicon 请下载 arm64 包，Intel 下载 x64（x64 也能在 Apple Silic
 **Linux：** 四条路，按你平时怎么管软件选一条。
 
 ```bash
-sudo apt install ./lypora_0.8.1_amd64.deb          # Debian / Ubuntu / 深度 / 麒麟
-sudo dnf install ./lypora-0.8.1-1.x86_64.rpm       # Fedora / RHEL 9+（openSUSE 用 zypper install ./…rpm）
-chmod +x Lypora-0.8.1-linux-x64.AppImage && ./Lypora-0.8.1-linux-x64.AppImage   # 不安装、不要 root
-tar xzf Lypora-0.8.1-linux-x64.tar.gz && cd Lypora && ./install.sh              # 装进 ~/.local，不要 root
+sudo apt install ./lypora_0.8.2_amd64.deb          # Debian / Ubuntu / 深度 / 麒麟
+sudo dnf install ./lypora-0.8.2-1.x86_64.rpm       # Fedora / RHEL 9+（openSUSE 用 zypper install ./…rpm）
+chmod +x Lypora-0.8.2-linux-x64.AppImage && ./Lypora-0.8.2-linux-x64.AppImage   # 不安装、不要 root
+tar xzf Lypora-0.8.2-linux-x64.tar.gz && cd Lypora && ./install.sh              # 装进 ~/.local，不要 root
 ```
 
 deb / rpm 由包管理器负责装卸：文件进 `/opt/lypora` 和 `/usr/share`，同时得到 `/usr/bin/lypora` 命令、
@@ -284,7 +332,7 @@ deb / rpm 由包管理器负责装卸：文件进 `/opt/lypora` 和 `/usr/share`
 **AppImage 里没有 root**，SUID 沙箱必然不可用，所以它的 `AppRun` 一律带 `--no-sandbox`。这是 Electron 打
 AppImage 的固有代价，不是配置错误。目前只有 x86-64 包，没有 arm64。
 
-**Android：** 把 APK 传到手机点开安装（或 `adb install -r Lypora-0.8.1-android.apk`）。系统会提示「允许安装
+**Android：** 把 APK 传到手机点开安装（或 `adb install -r Lypora-0.8.2-android.apk`）。系统会提示「允许安装
 未知来源应用」，这是侧载的正常提示。触屏版是另一套外壳（底部操作栏、菜单收进底部面板、侧栏变抽屉），
 导出 PDF、打开文件夹、导入第三方主题在手机上是置灰的。文档存在应用专属目录
 `Android/data/app.lypora.editor/files/Documents/Lypora/`，要交出去请用**导出 → 系统分享面板**。
@@ -312,8 +360,8 @@ v0.4.1 起，Lypora 也注册进了系统的**「打开方式」**列表（在�
 运行前先校验：
 
 ```bat
-certutil -hashfile Lypora-0.8.1-win-x64.zip SHA256
-certutil -hashfile Lypora-0.8.1-android.apk SHA256
+certutil -hashfile Lypora-0.8.2-win-x64.zip SHA256
+certutil -hashfile Lypora-0.8.2-android.apk SHA256
 ```
 ```bash
 shasum -a 256 -c SHA256SUMS.txt      # macOS / Linux 通用
@@ -344,7 +392,7 @@ Lypora 是一个**小小的、刻意不做大的替代品**，用来临时顶一
 | 文件 | 打开 / 保存 / 另存、最近文件、工作区文件树、导出 Markdown / 单文件 HTML / PDF（KaTeX 的 CSS 与字体内联，离线打开公式也是对的） |
 | 桌面 | 原生对话框、单实例、关窗前未保存拦截、文件关联 |
 | 平台 | Windows 便携版 `.exe` + ZIP、macOS `.app`（Apple Silicon 与 Intel）、Linux x64 的 `.deb` / `.rpm` / AppImage / tar.gz（都带 `.desktop` 集成）、Android APK、以及浏览器 / PWA 版——一个 TypeScript 核心，五套外壳 |
-| 发布 | `git push origin v0.8.1` 就够了：GitHub Actions 构建前端、摊一棵 FHS 树、封成 deb / rpm / AppImage / tar.gz、在干净容器里把 deb 和 rpm 真装一遍，然后把全部产物和合并后的 `SHA256SUMS.txt` 传上 Release |
+| 发布 | `git push origin v0.8.2` 就够了：GitHub Actions 构建前端、摊一棵 FHS 树、封成 deb / rpm / AppImage / tar.gz、在干净容器里把 deb 和 rpm 真装一遍，然后把全部产物和合并后的 `SHA256SUMS.txt` 传上 Release |
 
 ### 快速开始
 
@@ -379,7 +427,7 @@ cd core && npm run build
 ```bash
 node tools/pack-win.mjs --zip
 # -> release/Lypora/Lypora.exe           双击即用
-# -> release/Lypora-0.8.1-win-x64.zip    可直接分发
+# -> release/Lypora-0.8.2-win-x64.zip    可直接分发
 ```
 
 依赖 `desktop/node_modules/electron/dist`（在 `desktop/` 里 `npm install` 会下载）。打包脚本会把图标和
@@ -392,8 +440,8 @@ node tools/pack-win.mjs --zip
 curl -LO https://github.com/electron/electron/releases/download/v33.4.11/electron-v33.4.11-darwin-arm64.zip
 python tools/pack-mac.py --zip electron-v33.4.11-darwin-arm64.zip --arch arm64
 python tools/pack-mac.py --zip electron-v33.4.11-darwin-x64.zip   --arch x64
-# -> release/Lypora-0.8.1-macos-arm64.tar.gz
-# -> release/Lypora-0.8.1-macos-x64.tar.gz
+# -> release/Lypora-0.8.2-macos-arm64.tar.gz
+# -> release/Lypora-0.8.2-macos-x64.tar.gz
 ```
 
 打包脚本把 Electron 的预编译 zip 重建成一个真正的 `Lypora.app`——重写 `Info.plist`（bundle id、
@@ -413,7 +461,7 @@ Windows 版同一份 `Resources/app` 前端——最后输出 tar.gz。
 ```bash
 curl -LO https://github.com/electron/electron/releases/download/v33.4.11/electron-v33.4.11-linux-x64.zip
 python tools/pack-linux.py --zip electron-v33.4.11-linux-x64.zip
-# -> release/Lypora-0.8.1-linux-x64.tar.gz
+# -> release/Lypora-0.8.2-linux-x64.tar.gz
 ```
 
 包内结构是 `Lypora/` 目录 + `lypora.sh`（启动器）+ `install.sh` / `uninstall.sh`（安装、卸载）+
@@ -428,12 +476,12 @@ python tools/pack-linux.py --zip electron-v33.4.11-linux-x64.zip
 python tools/linux-stage.py --zip electron-v33.4.11-linux-x64.zip --stage build/stage --deb
 
 # 2) 三种封装需要 Linux 工具链（dpkg-deb / rpmbuild / appimagetool）
-dpkg-deb --build --root-owner-group build/stage release/lypora_0.8.1_amd64.deb
-rpmbuild -bb --define "_version 0.8.1" --define "_stage_root $PWD/build/stage" \
+dpkg-deb --build --root-owner-group build/stage release/lypora_0.8.2_amd64.deb
+rpmbuild -bb --define "_version 0.8.2" --define "_stage_root $PWD/build/stage" \
          --define "_topdir $PWD/build/rpm" packaging/lypora.spec
 python tools/linux-stage.py --stage build/stage --appdir build/AppDir
 ARCH=x86_64 ./appimagetool --appimage-extract-and-run --no-appstream build/AppDir \
-         release/Lypora-0.8.1-linux-x64.AppImage
+         release/Lypora-0.8.2-linux-x64.AppImage
 ```
 
 正常不需要手敲：**推一个 `v*` 标签**就会触发
@@ -445,7 +493,7 @@ ARCH=x86_64 ./appimagetool --appimage-extract-and-run --no-appstream build/AppDi
 
 ```bash
 node tools/build-android.mjs
-# -> release/Lypora-0.8.1-android.apk    安装：adb install -r <文件>
+# -> release/Lypora-0.8.2-android.apk    安装：adb install -r <文件>
 ```
 
 需要 **JDK 21** 与 **Android SDK**（platform 35 + build-tools 35）。脚本会自己找 `ANDROID_HOME` 和 JDK，缺什么
@@ -476,6 +524,9 @@ env -u ELECTRON_RUN_AS_NODE ./release/Lypora/Lypora.exe --selftest --shot=shot.p
 
 python ../tools/check-package.py        # macOS / Linux 包结构：20 项断言
 
+# 图标：从 exe / icns / apk 里把帧挖出来逐张核对
+python ../tools/icon-probe.py
+
 # CI 在每次 v* 标签时做的事：封 deb/rpm/AppImage，在 debian:12 与
 # fedora:40 容器里真装一遍，上传 Release
 # -> .github/workflows/linux-installers.yml
@@ -494,6 +545,30 @@ deb / rpm 比"结构校验"多走一步（见上面那条 CI 工作流）：在 
 "它在你的机器上一定能开"。
 
 细节、实测数字和踩过的坑都在 [`docs/04-验证方案.md`](docs/04-验证方案.md)。
+
+### 关于这个标志
+
+标志上的脸来自兵马俑——秦始皇的陪葬卫队。三座俑坑里站了大约八千个，没有两张脸是一样的：各自单独塑形、
+上过矿物彩绘，然后在黑暗里躺了 2200 年。（彩绘大多只剩下痕迹，出土接触空气几分钟就卷翘剥落，所以那几座
+坑至今是边挖边护。）
+
+埋下它们的那一朝，比它的始皇帝多活了四年；它定下的规矩，比那一朝多活了两千年。公元前 221 年秦灭六国，
+随即把一整套"器"推到天下，其中四句话至今还是日常词汇：
+
+- **书同文**——废六国异体，以小篆为正。政令从咸阳发出去，边地读得到；书写从地方手艺变成了基础设施。
+- **车同轨**——统一车轴距，同一辆车能走遍天下的驰道。为互操作牺牲局部最优，和今天定协议是同一种算计。
+- **统一度量衡**——铜权、铜量上直接刻诏书，写明容量和短斤少两的罚则。
+- **天下大同**——语出《礼记》，不是秦的标语，而是这套标准指向的地平线：没有人被留在安排之外。也正因为
+  这句话，前三件才被记成理想，而不是记成衙门。
+
+宇航员是同一张脸，只是晚了 2200 年：甲胄成了压力服，头盔成了生命维持系统，俑坑成了近地轨道。脸没有变，
+变的是环境。这就是这个标志想说的全部：**继承过去，面向未来，两边都不丢。**
+
+还有一层更实在的理由。纯文本是书写史上最成功的标准——一种编码、一套语法，从 1970 年代的分时终端到轨道上
+的手机都读得懂。书同文，还在跑。Lypora 真正承诺的只有一件事：你写下的文件，活得比写它的工具久。
+
+当然，一个 2200 年前的兵马俑穿着宇航服，本身就挺荒诞。这也是重点之一。
+
 
 ### 致敬与免责
 

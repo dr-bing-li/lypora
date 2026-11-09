@@ -4,7 +4,7 @@
 
 | 路线 | 产物 | 谁适合 |
 |---|---|---|
-| **A. APK（Capacitor）** | `release/Lypora-0.8.1-android.apk`（10.6 MiB） | 想在手机上像正常应用一样打开 `.md`、离线写作 |
+| **A. APK（Capacitor）** | `release/Lypora-0.8.2-android.apk`（10.6 MiB） | 想在手机上像正常应用一样打开 `.md`、离线写作 |
 | **B. PWA** | `core/dist` 静态托管 | 不想装包、手机浏览器直接用 |
 
 工程位置：**Capacitor 工程在 `core/android/`**，配置是 `core/capacitor.config.json`，触屏界面在
@@ -24,7 +24,7 @@ node tools/build-android.mjs
 # [android] 已清空 assets/public（旧 hash 文件不清会残留上一版样式）
 # [android] 资源比对通过（63 个文件，逐字节一致）
 # [android] gradle assembleDebug …
-# [android] 产物 release/Lypora-0.8.1-android.apk  10.6 MiB
+# [android] 产物 release/Lypora-0.8.2-android.apk  10.6 MiB
 # [android] sha256 ab567f6a…
 ```
 
@@ -51,38 +51,38 @@ node tools/build-android.mjs
 | 项 | 值 |
 |---|---|
 | 包名 | `app.lypora.editor` |
-| 版本 | `versionName 0.8.1` / `versionCode 11` |
+| 版本 | `versionName 0.8.2` / `versionCode 12` |
 | minSdk / targetSdk | **29（Android 10）/ 35** |
 | 权限 | 仅 `INTERNET`（应用专属目录不需要存储权限） |
 | 签名 | Android Debug（`CN=Android Debug`），可直接安装，**不能上架 Google Play** |
 | 组成 | WebView 壳 + `assets/public` 里的完整前端（CM6 / KaTeX / 主题全在本机，离线可用） |
-| 图标 | 自有素材，从 `core/public/icons/icon-512.png` 生成；Capacitor 默认图标已删除 |
+| 图标 | 自有素材（兵马俑宇航员），从 `docs/images/logo-source.jpg` 生成；Capacitor 默认图标已删除 |
 
 ### 图标与启动图
 
-`npx cap add android` 生成的是 Capacitor 自带的默认图标，跟本项目无关，也不适合分发。现在整套图标是
-脚本从 `core/public/icons/icon-512.png`（渐变圆角方块 + 三条白色圆角横条）重新生成的：
+`npx cap add android` 生成的是 Capacitor 自带的默认图标，跟本项目无关，也不适合分发。现在整套图标由
+一个脚本从唯一源图 `docs/images/logo-source.jpg`（兵马俑宇航员）派生——源图换了，重跑一次即可，不用手工
+改五个地方：
 
 ```bash
-python tools/gen-android-assets.py     # 需要 Pillow
+python tools/gen-icons.py     # 需要 Pillow；同时刷新 Web / Windows / macOS 图标
 ```
 
 | 产物 | 说明 |
 |---|---|
-| `mipmap-{m,h,xh,xxh,xxxh}dpi/ic_launcher.png` | 传统方形图标，48/72/96/144/192px，保留源图圆角 |
-| `mipmap-*/ic_launcher_round.png` | 圆形图标，渐变满铺后圆形裁切 |
-| `mipmap-*/ic_launcher_foreground.png` | 自适应图标前景（108dp 网格，白条块宽 40dp，落在 72dp 安全区内，圆形遮罩下不切边） |
-| `drawable/ic_launcher_background.xml` | 自适应图标背景：线性渐变 `#2F6FEB → #1748A8`，矢量绘制，任意密度精确 |
-| `drawable{,-port-,-land-}*/splash.png` | 启动图：白底 + 居中图标（短边 26%） |
+| `mipmap-{m,h,xh,xxh,xxxh}dpi/ic_launcher.png` | 传统方形图标，48/72/96/144/192px，圆角 21.5%，≤96px 额外锐化 |
+| `mipmap-*/ic_launcher_round.png` | 圆形图标，圆形裁切 |
+| `mipmap-*/ic_launcher_foreground.png` | 自适应图标前景，108dp 网格满铺（照片型图标必须满铺，留边会在圆形遮罩下露出底色） |
+| `drawable/ic_launcher_background.xml` | 自适应图标背景：纯色 `#293542`，取源图外圈亮度 20% 分位色 |
+| `drawable*/splash.png` | 启动图：深蓝底 + 居中圆角图标（短边 32%） |
 
-脚本不是硬编码坐标，而是从源图实测白条位置与渐变首尾色再重排，所以换图标只需重跑脚本。
-实测数字：源图三条白条 `x133..379 y155..194 / x133..308 y237..276 / x133..379 y318..357`，
-外框圆角半径 ≈ 0.199 × 边长。
+裁切框取的是头肩特写而不是整幅：整幅缩到 32px 只剩一团色块，脸和头盔全糊；特写在 24px 下还能认出护目镜
+和胡须，同时保留右上角星野。
 
 ### 安装到手机
 
 ```bash
-adb install -r release/Lypora-0.8.1-android.apk
+adb install -r release/Lypora-0.8.2-android.apk
 ```
 
 或者把 APK 传到手机（微信/网盘/数据线），点开安装，首次需要允许「安装未知来源应用」。
