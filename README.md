@@ -175,7 +175,8 @@ Be clear about what the last command proves: it parses the Mach-O and ELF header
 on macOS or Linux — this project is developed on Windows, and there is no macOS or Linux machine in the loop.
 Windows and Android are the two platforms with real runtime evidence. v0.8.2's icon set is verified a third way: the
 frames are dug back out of the shipped artefacts — all seven ICO sizes found byte-for-byte inside `Lypora.exe`,
-eleven frames inside the macOS icns, the APK's own mipmaps re-extracted. For v0.8.1's image pipeline there are two
+eleven frames inside the macOS icns, the APK's own mipmaps re-extracted — and then looked at on a real phone
+running Android 14–15, where the launcher icon, round icon and splash screen all render correctly. For v0.8.1's image pipeline there are two
 more layers: 38 pure-function cases (`core/image-check.mjs`) and 33 end-to-end assertions (`tools/imgtest.mjs`)
 that launch Electron for real, write a document with a real PNG, assert `naturalWidth > 0`, and then walk all six
 insertion paths; the packaged build's `--selftest` reports 9 menu roots (Settings included) and zero console
@@ -343,8 +344,7 @@ v0.4.1 起，Lypora 也注册进了系统的**「打开方式」**列表（在�
 
 - **运行时证据只有 Windows 和 Android。** Windows 打包版跑过 `--selftest`（原生菜单 9 项、桥接 API 11 项、
   Electron 33.4.11，退出码 0）、真实鼠标事件、关窗拦截四场景；APK 是构建后用 `aapt2` / `apksigner` 逐项核
-  元数据，触屏布局在 Chromium 五档视口下逐条断言。这台机器没接安卓真机，所以冷启动、原生文件读写、系统
-  分享面板**没有**在真实硬件上验证过。v0.8.1 的图片管线另有两层：38 条纯函数用例（`core/image-check.mjs`）
+  元数据，触屏布局在 Chromium 五档视口下逐条断言。这台机器没接安卓真机，所以原生文件读写与系统分享面板**没有**在真实硬件上验证过。v0.8.1 的图片管线另有两层：38 条纯函数用例（`core/image-check.mjs`）
   加 24 条端到端断言（`tools/imgtest.mjs`，真启动 Electron、写真 PNG、断言 `naturalWidth > 0`，再走完六条
   插入路径），打包版 `--selftest` 报 9 个菜单根（含「设置」）与零 console 报错。
 - **macOS 和 Linux 只有结构证据 + 容器安装证据。** 没有 Mac、没有 Linux 桌面，WSL 与 Docker 在本机不可用，
@@ -537,7 +537,8 @@ python ../tools/icon-probe.py
 手上没有 Mac，也没有 Linux 桌面。有真机运行证据的只有 Windows 和 Android 两个平台。
 
 Android 这边 v0.7.1 多了一条真正的设备级证据：包装到平板上、接着蓝牙键盘，中文输入法能直接调起并正常
-组词上屏，全程没碰屏幕软键盘（`docs/04` V50 / H25）。但这只是手工清单里的一行，不是整表通过——手机
+组词上屏，全程没碰屏幕软键盘（`docs/04` V50 / H25）。v0.8.2 又补了一条：装到 Android 14–15 手机上，
+桌面图标、圆形图标与冷启动图都显示正常（H30）。但这只是手工清单里的一行，不是整表通过——手机
 （纯屏幕软键盘）那条路径这次**没有单独复验**（H26）。
 
 deb / rpm 比"结构校验"多走一步（见上面那条 CI 工作流）：在 `debian:12` / `fedora:40` 容器里真的

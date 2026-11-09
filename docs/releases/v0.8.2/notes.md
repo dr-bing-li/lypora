@@ -137,6 +137,7 @@ README 英文段的快速开始少了开头围栏——`### Deployment` 连同�
 | mac icns | 11 档帧齐全，`ic10` 解出 1024×1024，画面留边与圆角正确 |
 | Linux 图标 | 从 `Lypora-0.8.2-linux-x64.tar.gz` 里解出 `hicolor/512x512/apps/lypora.png` 核对为新标志；暂存树 16–512 八档齐全 |
 | APK | 从 APK 里解出 `mipmap-xxxhdpi-v4/ic_launcher{,_round}.png` 与 `drawable-port-xhdpi-v4/splash.png` 目视核对；`aapt2 dump badging` 确认 `versionName 0.8.2` / `versionCode 12` |
+| Android 真机 | **装到 Android 14–15 手机上实测**：桌面图标、圆形图标（启动器圆形遮罩）、冷启动图均显示正常，无黑边、无拉伸、无旧蓝条残留 |
 
 ## 安装方式
 
@@ -169,7 +170,8 @@ adb install -r Lypora-0.8.2-android.apk
   这一版没做。
 - **自适应图标满铺**：三星 One UI 这类给图标加 25% 内边距的启动器会把脸挤小；这是满铺策略的代价，
   换成留边又会在圆形遮罩下露底，两害取轻。
-- **Android 图标未在真机桌面上看过**：只做了 APK 内资源解包核对，没有装到设备上看实际渲染。
+- **Android 只验了一种遮罩形状**：Android 14–15 手机上桌面图标、圆形图标与冷启动图都正常；泪滴、方形等
+  其它自适应遮罩形状没逐一看过。
 - **Linux / macOS 仍未真机启动**：包结构与图标是静态证据；macOS 的 icns 在 Finder 里长什么样，没看过。
 
 ---
@@ -267,6 +269,7 @@ code block. Restored `# 1. build the core` and the fence.
 | macOS icns | 11 frames present; `ic10` decodes to 1024×1024 with correct margin and radius |
 | Linux icons | `hicolor/512x512/apps/lypora.png` extracted from `Lypora-0.8.2-linux-x64.tar.gz` and checked; eight sizes present in the staged tree |
 | APK | `mipmap-xxxhdpi-v4/ic_launcher{,_round}.png` and `drawable-port-xhdpi-v4/splash.png` extracted and inspected; `aapt2 dump badging` confirms `versionName 0.8.2` / `versionCode 12` |
+| Android device | **Installed on a phone running Android 14–15**: launcher icon, round icon (circular launcher mask) and splash screen all render correctly — no dark border, no stretching, no leftover blue bars |
 
 ## Installation
 
@@ -299,7 +302,8 @@ adb install -r Lypora-0.8.2-android.apk
   size would need a separate simplified mark; this release does not have one.
 - **Full-bleed adaptive icons**: launchers that add a 25% inset (Samsung's One UI, for instance) will shrink the face.
   That is the price of full-bleed; adding a margin reintroduces the background ring under circular masks.
-- **Android icons were never seen on a real launcher**: only APK resource extraction was checked.
+- **Only one adaptive mask shape was checked**: on a phone running Android 14–15 the launcher icon, the round icon
+  and the splash screen all render correctly. Teardrop and squircle masks were not inspected individually.
 - **Linux and macOS still have not been launched on real hardware**: structure and icons are static evidence. Nobody
   has looked at that icns in Finder.
 
