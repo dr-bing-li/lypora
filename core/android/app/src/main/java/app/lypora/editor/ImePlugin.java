@@ -5,6 +5,8 @@ import android.content.res.Configuration;
 import android.view.inputmethod.InputMethodManager;
 import android.webkit.WebView;
 
+import androidx.appcompat.app.AppCompatActivity;
+
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
@@ -43,8 +45,14 @@ public class ImePlugin extends Plugin {
             call.reject("webview not ready");
             return;
         }
+        // Activity 已销毁时 runOnUiThread 会 NPE，先挡一道（比如恰好在切后台时点了菜单）
+        AppCompatActivity act = getActivity();
+        if (act == null) {
+            call.reject("activity not available");
+            return;
+        }
         final Context ctx = getContext();
-        getActivity().runOnUiThread(() -> {
+        act.runOnUiThread(() -> {
             InputMethodManager imm = (InputMethodManager) ctx.getSystemService(Context.INPUT_METHOD_SERVICE);
             if (imm == null) {
                 call.reject("INPUT_METHOD_SERVICE unavailable");
