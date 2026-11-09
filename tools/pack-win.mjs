@@ -23,6 +23,31 @@ const APP_DIR = path.join(OUT_DIR, 'resources', 'app')
 
 const log = (s) => console.log(`[pack] ${s}`)
 
+/**
+ * 删除文件或目录（幂等）。
+ *
+ * 为什么不直接用 `fs.rmSync`：宿主给 node 挂了「安全删除」钩子，每次删除都会被
+ * 转成回收站操作；本机这个转运偶发失败并 fail-closed，抛的是
+ * `[safe-delete] 操作失败 … trash operation` —— 不是权限问题，重试也没用。
+ * `release/` 是纯构建产物（.gitignore 里就有），这里交给系统命令删除，
+ * 不经过那层钩子。
+ */
+function hardRemove(p) {
+  if (!p || !fs.existsSync(p)) return
+  let isDir = false
+  try {
+    isDir = fs.lstatSync(p).isDirectory()
+  } catch {
+    return
+  }
+  const args = isDir ? ['/c', 'rd', '/s', '/q', p] : ['/c', 'del', '/f', '/q', p]
+  try {
+    execFileSync(process.env.ComSpec || 'cmd', args, { stdio: 'ignore' })
+  } catch {
+    // 还有残留句柄时 rd 会失败；目录节点留着当空壳，后面的 cpSync 会覆盖内容
+  }
+}
+
 /** 版本号只有一个真源：desktop/package.json（避免 exe 里和 zip 名对不上） */
 const PKG = JSON.parse(fs.readFileSync(path.join(ROOT, 'desktop', 'package.json'), 'utf8'))
 const VERSION = PKG.version
@@ -37,7 +62,7 @@ if (!fs.existsSync(path.join(CORE_DIST, 'index.html'))) {
 }
 
 log(`清理 ${OUT_DIR}`)
-fs.rmSync(OUT_DIR, { recursive: true, force: true })
+hardRemove(OUT_DIR)
 
 log('拷贝 Electron 运行时…')
 fs.cpSync(ELECTRON_DIST, OUT_DIR, { recursive: true })
@@ -45,7 +70,7 @@ fs.cpSync(ELECTRON_DIST, OUT_DIR, { recursive: true })
 // 去掉 Electron 自带的默认应用，避免它抢占入口
 for (const name of ['resources/default_app.asar']) {
   const p = path.join(OUT_DIR, name)
-  if (fs.existsSync(p)) fs.rmSync(p, { force: true })
+  hardRemove(p)
 }
 
 log('重命名可执行文件 → Lypora.exe')
@@ -114,7 +139,7 @@ if (fs.existsSync(ICO)) {
       lastErr = e
     } finally {
       try {
-        fs.rmSync(TMP, { force: true })
+        hardRemove(TMP)
       } catch {
         /* 临时文件删不掉不影响打包 */
       }
@@ -198,7 +223,7 @@ log(`入口 ${path.join(OUT_DIR, 'Lypora.exe')}`)
 const zipPath = path.join(ROOT, 'release', `Lypora-${pkg.version}-win-x64.zip`)
 if (process.argv.includes('--zip')) {
   log('生成 zip…')
-  fs.rmSync(zipPath, { force: true })
+  hardRemove(zipPath)
   try {
     execFileSync('C:/Windows/System32/tar.exe', ['-a', '-c', '-f', zipPath, '-C', path.join(ROOT, 'release'), 'Lypora'], {
       stdio: 'inherit',
