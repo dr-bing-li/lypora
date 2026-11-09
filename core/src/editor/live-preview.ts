@@ -31,6 +31,7 @@ import {
   WidgetType,
 } from '@codemirror/view'
 import { syntaxTree } from '@codemirror/language'
+import { resolveImageSrc } from '../io/image-path'
 import { highlightCode } from './highlight'
 import { findInlineMath } from './math'
 import {
@@ -494,7 +495,9 @@ function buildInline(view: EditorView): BuildResult {
         } else if (url) {
           const src = doc.sliceString(url.from, url.to)
           const alt = marks.length >= 2 ? doc.sliceString(marks[0].to, marks[1].from) : ''
-          hideWithWidget(nFrom, nTo, { widget: new ImageWidget(src, alt, nFrom) })
+          // 相对路径必须按"文档所在目录"解析：Electron 的页面在 dist/（安装版在 asar 内），
+          // 原样传给 <img> 永远命不中文档旁边的 img/。见 io/image-path.ts 头部说明。
+          hideWithWidget(nFrom, nTo, { widget: new ImageWidget(resolveImageSrc(src), alt, nFrom) })
         }
         return false
       }

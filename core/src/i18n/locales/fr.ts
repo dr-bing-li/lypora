@@ -23,6 +23,7 @@ export default {
     view: 'Affichage',
     theme: 'Thème',
     language: 'Langue',
+    settings: 'Paramètres',
     help: 'Aide',
   },
 
@@ -70,7 +71,28 @@ export default {
     code: 'Code en ligne',
     link: 'Lien hypertexte',
     image: 'Image',
+    insertImage: 'Insérer une image…',
     clear: 'Effacer la mise en forme',
+  },
+
+  settings: {
+    imageRef: 'Référence des images',
+    imageRefFile: 'Référencer les fichiers (recommandé)',
+    imageRefEmbed: 'Intégrer en base64',
+    imagePath: 'Gestion des chemins',
+  },
+
+  /** 状态栏三态开关与设置菜单共用的一套文案；*Short 是状态栏里的短标签 */
+  imagePath: {
+    copy: 'Copier dans le dossier de pièces jointes',
+    relative: 'Conserver le chemin relatif',
+    absolute: 'Conserver le chemin absolu',
+    copyShort: 'Copier',
+    relativeShort: 'Relatif',
+    absoluteShort: 'Absolu',
+    embeddedShort: 'Intégré',
+    title: 'Traitement des chemins lors de l\'insertion (cliquer pour changer)',
+    locked: 'Actuellement « Intégrer en base64 » : la gestion des chemins est inactive. À modifier dans Paramètres → Référence des images.',
   },
 
   view: {
@@ -205,6 +227,14 @@ export default {
     clipboardReadDenied: 'Le navigateur a refusé de lire le presse-papiers — utilisez Ctrl+V',
     selectToClear: 'Sélectionnez le texte dont vous voulez effacer la mise en forme',
     imageInserted: 'Image insérée (intégrée en base64)',
+    imageCopied: '{value} image(s) insérée(s), copiée(s) dans {dir}/',
+    imageLinked: '{value} image(s) insérée(s) ({mode})',
+    imageNeedSave: 'Enregistrez d\'abord le document : les images doivent être à côté pour un chemin relatif.',
+    imageNoPath: 'Chemin source indisponible ici ; intégré en base64 à la place.',
+    imageFailed: 'Échec de l\'insertion de l\'image',
+    imagePathMode: 'Chemin d\'image : {mode}',
+    imageRefFile: 'Référence des images : référencer les fichiers',
+    imageRefEmbed: 'Référence des images : intégrer en base64',
     fullscreenUnsupported: 'Le plein écran n’est pas pris en charge ici',
     popupBlocked: 'Le navigateur a bloqué la fenêtre contextuelle — autorisez-la puis réessayez',
     columnEven: 'Colonnes égalisées',

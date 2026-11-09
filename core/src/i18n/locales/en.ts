@@ -23,6 +23,7 @@ export default {
     view: 'View',
     theme: 'Theme',
     language: 'Language',
+    settings: 'Settings',
     help: 'Help',
   },
 
@@ -70,7 +71,28 @@ export default {
     code: 'Inline Code',
     link: 'Hyperlink',
     image: 'Image',
+    insertImage: 'Insert Image…',
     clear: 'Clear Formatting',
+  },
+
+  settings: {
+    imageRef: 'Image reference',
+    imageRefFile: 'Reference files (recommended)',
+    imageRefEmbed: 'Embed as base64',
+    imagePath: 'Image path handling',
+  },
+
+  /** 状态栏三态开关与设置菜单共用的一套文案；*Short 是状态栏里的短标签 */
+  imagePath: {
+    copy: 'Copy into attachments folder',
+    relative: 'Keep relative path',
+    absolute: 'Keep absolute path',
+    copyShort: 'Copy',
+    relativeShort: 'Relative',
+    absoluteShort: 'Absolute',
+    embeddedShort: 'Embedded',
+    title: 'How image paths are handled on insert (click to cycle)',
+    locked: 'Currently "Embed as base64" — path handling is inactive. Change it in Settings → Image reference.',
   },
 
   view: {
@@ -205,6 +227,14 @@ export default {
     clipboardReadDenied: 'The browser refused to read the clipboard — use Ctrl+V',
     selectToClear: 'Select the text whose formatting you want to clear',
     imageInserted: 'Image inserted (embedded as base64)',
+    imageCopied: 'Inserted {value} image(s), copied into {dir}/',
+    imageLinked: 'Inserted {value} image(s) ({mode})',
+    imageNeedSave: 'Save the document first: images must sit next to it to be referenced by a relative path.',
+    imageNoPath: 'The source file path is unavailable here; embedded as base64 instead.',
+    imageFailed: 'Failed to insert the image',
+    imagePathMode: 'Image path: {mode}',
+    imageRefFile: 'Image reference: reference files',
+    imageRefEmbed: 'Image reference: embed as base64',
     fullscreenUnsupported: 'Full screen is not supported here',
     popupBlocked: 'The browser blocked the popup window — allow it and retry',
     columnEven: 'Columns evened out',

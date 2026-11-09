@@ -23,6 +23,7 @@ export default {
     view: 'Ansicht',
     theme: 'Theme',
     language: 'Sprache',
+    settings: 'Einstellungen',
     help: 'Hilfe',
   },
 
@@ -70,7 +71,28 @@ export default {
     code: 'Inline-Code',
     link: 'Hyperlink',
     image: 'Bild',
+    insertImage: 'Bild einfügen…',
     clear: 'Formatierung löschen',
+  },
+
+  settings: {
+    imageRef: 'Bildreferenz',
+    imageRefFile: 'Dateien referenzieren (empfohlen)',
+    imageRefEmbed: 'Als base64 einbetten',
+    imagePath: 'Bildpfad-Behandlung',
+  },
+
+  /** 状态栏三态开关与设置菜单共用的一套文案；*Short 是状态栏里的短标签 */
+  imagePath: {
+    copy: 'In Anhangsordner kopieren',
+    relative: 'Relativen Pfad beibehalten',
+    absolute: 'Absoluten Pfad beibehalten',
+    copyShort: 'Kopieren',
+    relativeShort: 'Relativ',
+    absoluteShort: 'Absolut',
+    embeddedShort: 'Eingebettet',
+    title: 'Behandlung von Bildpfaden beim Einfügen (klicken zum Wechseln)',
+    locked: 'Derzeit „Als base64 einbetten“ – Pfadbehandlung ist inaktiv. Ändern unter Einstellungen → Bildreferenz.',
   },
 
   view: {
@@ -205,6 +227,14 @@ export default {
     clipboardReadDenied: 'Der Browser hat das Lesen der Zwischenablage verweigert — bitte Ctrl+V verwenden',
     selectToClear: 'Wählen Sie den Text, dessen Formatierung gelöscht werden soll',
     imageInserted: 'Bild eingefügt (als base64 eingebettet)',
+    imageCopied: '{value} Bild(er) eingefügt, nach {dir}/ kopiert',
+    imageLinked: '{value} Bild(er) eingefügt ({mode})',
+    imageNeedSave: 'Bitte zuerst speichern: Bilder müssen daneben liegen, um per relativem Pfad referenziert zu werden.',
+    imageNoPath: 'Der Quellpfad ist hier nicht verfügbar; stattdessen als base64 eingebettet.',
+    imageFailed: 'Bild konnte nicht eingefügt werden',
+    imagePathMode: 'Bildpfad: {mode}',
+    imageRefFile: 'Bildreferenz: Dateien referenzieren',
+    imageRefEmbed: 'Bildreferenz: als base64 einbetten',
     fullscreenUnsupported: 'Vollbild wird hier nicht unterstützt',
     popupBlocked: 'Der Browser hat das Popup blockiert — bitte erlauben und erneut versuchen',
     columnEven: 'Spalten ausgeglichen',

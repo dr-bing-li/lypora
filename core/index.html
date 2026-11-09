@@ -106,6 +106,8 @@
           <span class="sep only-desktop">·</span>
           <span class="only-desktop">Markdown</span>
           <span class="sep">·</span>
+          <!-- 图片路径三态开关：文案由 syncImagePathToggle() 按当前模式渲染，别加 data-i18n 抢管 -->
+          <button class="status-toggle" id="btn-image-path" data-i18n-title="imagePath.title" title="图片路径">拷贝</button>
           <button class="status-toggle" id="btn-source" data-i18n-title="view.source" data-i18n="view.source" title="源代码模式">源码模式</button>
           <button class="status-toggle" id="btn-focus" data-i18n-title="view.focus" data-i18n="view.focus" title="专注模式">专注</button>
           <button class="status-toggle" id="btn-typewriter" data-i18n-title="view.typewriter" data-i18n="view.typewriter" title="打字机模式">打字机</button>
@@ -114,6 +116,8 @@
     </div>
 
     <input type="file" id="theme-file" accept=".css,text/css" hidden />
+    <!-- 插入图片的选文件入口：常驻节点，脚本里只负责清 value + click()（自动化也要能注入） -->
+    <input type="file" id="image-file" accept="image/*" multiple hidden />
     <div class="toast" id="toast" hidden></div>
 
     <script type="module" src="/src/main.ts"></script>

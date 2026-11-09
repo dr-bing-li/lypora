@@ -23,6 +23,7 @@ export default {
     view: '表示',
     theme: 'テーマ',
     language: '言語',
+    settings: '設定',
     help: 'ヘルプ',
   },
 
@@ -70,7 +71,28 @@ export default {
     code: 'インラインコード',
     link: 'ハイパーリンク',
     image: '画像',
+    insertImage: '画像を挿入…',
     clear: '書式をクリア',
+  },
+
+  settings: {
+    imageRef: '画像の参照方法',
+    imageRefFile: 'ファイルを参照（推奨）',
+    imageRefEmbed: 'base64 で埋め込む',
+    imagePath: '画像パスの扱い',
+  },
+
+  /** 状态栏三态开关与设置菜单共用的一套文案；*Short 是状态栏里的短标签 */
+  imagePath: {
+    copy: '添付フォルダーにコピー',
+    relative: '相対パスを保持',
+    absolute: '絶対パスを保持',
+    copyShort: 'コピー',
+    relativeShort: '相対',
+    absoluteShort: '絶対',
+    embeddedShort: '埋め込み',
+    title: '画像挿入時のパスの扱い（クリックで切り替え）',
+    locked: '現在「base64 で埋め込む」のため、パスの扱いは無効です。「設定 → 画像の参照方法」で変更できます。',
   },
 
   view: {
@@ -205,6 +227,14 @@ export default {
     clipboardReadDenied: 'ブラウザーがクリップボードの読み取りを拒否しました。Ctrl+V を使ってください',
     selectToClear: '書式をクリアする文字列を選択してください',
     imageInserted: '画像を挿入しました（base64 で埋め込み）',
+    imageCopied: '{value} 枚の画像を挿入し、{dir}/ にコピーしました',
+    imageLinked: '{value} 枚の画像を挿入しました（{mode}）',
+    imageNeedSave: '先に文書を保存してください。相対パスで参照するには、画像が文書と同じ場所にある必要があります。',
+    imageNoPath: 'この環境では元ファイルのパスを取得できません。base64 で埋め込みました。',
+    imageFailed: '画像を挿入できませんでした',
+    imagePathMode: '画像パス：{mode}',
+    imageRefFile: '画像の参照方法：ファイルを参照',
+    imageRefEmbed: '画像の参照方法：base64 で埋め込む',
     fullscreenUnsupported: 'この環境では全画面表示に対応していません',
     popupBlocked: 'ブラウザーがポップアップをブロックしました。許可して再試行してください',
     columnEven: '列幅を均等にしました',

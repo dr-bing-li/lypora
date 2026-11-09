@@ -407,6 +407,96 @@ ipcMain.handle('shell:reveal', (_e, filePath) => {
   if (filePath) shell.showItemInFolder(filePath)
 })
 
+/* ---------------- 图片落盘 ----------------
+ * 渲染层只负责决定"想放哪"，真正的目录探测 / 重名 / 复制都在主进程做：
+ *   · 目录探测要看磁盘（正文里写过的 img/ 未必真存在，反过来也存在空目录），
+ *     渲染层没有 fs；
+ *   · 重名判定必须和 copyFile 原子地挨在一起，否则多选拖入时会自己撞自己。
+ * 返回的 rel 是写进 markdown 的正斜杠相对路径，abs 只用于日志/提示。
+ */
+
+const pad2 = (n) => String(n).padStart(2, '0')
+
+/** 仅重名时才用的时间戳前缀：20261109-143012 */
+function stampPrefix() {
+  const d = new Date()
+  return (
+    `${d.getFullYear()}${pad2(d.getMonth() + 1)}${pad2(d.getDate())}` +
+    `-${pad2(d.getHours())}${pad2(d.getMinutes())}${pad2(d.getSeconds())}`
+  )
+}
+
+ipcMain.handle('image:place', async (_e, payload) => {
+  try {
+    const { srcPath, docPath, candidates } = payload || {}
+    if (!srcPath || !path.isAbsolute(srcPath)) return { error: 'bad-src' }
+    if (!docPath || !path.isAbsolute(docPath)) return { error: 'bad-doc' }
+
+    const stat = await fs.stat(srcPath)
+    if (!stat.isFile()) return { error: 'not-a-file' }
+
+    const docDir = path.dirname(docPath)
+
+    // 源图本来就在文档目录里（含子目录）→ 不复制，直接用现有相对路径
+    const relFromDoc = path.relative(docDir, srcPath)
+    if (relFromDoc && !relFromDoc.startsWith('..') && !path.isAbsolute(relFromDoc)) {
+      return { rel: relFromDoc.split(path.sep).join('/'), abs: srcPath, copied: false }
+    }
+
+    // 目录探测：正文里出现过的目录优先（渲染层已排好序），取第一个真实存在的
+    const list = Array.isArray(candidates) && candidates.length ? candidates : ['assets', 'images', 'img']
+    let dirName = ''
+    for (const c of list) {
+      if (typeof c !== 'string' || !c || c.includes('..') || /[\\/]/.test(c)) continue
+      const probe = path.join(docDir, c)
+      try {
+        const st = await fs.stat(probe)
+        if (st.isDirectory()) {
+          dirName = c
+          break
+        }
+      } catch {
+        /* 不存在，看下一个候选 */
+      }
+    }
+    if (!dirName) dirName = 'assets'
+
+    const targetDir = path.join(docDir, dirName)
+    await fs.mkdir(targetDir, { recursive: true })
+
+    const original = path.basename(srcPath)
+    let base = original
+    let target = path.join(targetDir, base)
+    let renamed = true
+    try {
+      await fs.stat(target)
+    } catch {
+      renamed = false
+    }
+    if (renamed) {
+      const ts = stampPrefix()
+      base = `${ts}-${original}`
+      target = path.join(targetDir, base)
+      let n = 2
+      for (;;) {
+        try {
+          await fs.stat(target)
+        } catch {
+          break
+        }
+        base = `${ts}-${n}-${original}`
+        target = path.join(targetDir, base)
+        n++
+      }
+    }
+
+    if (path.resolve(target) !== path.resolve(srcPath)) await fs.copyFile(srcPath, target)
+    return { rel: `${dirName}/${base}`, abs: target, copied: true, renamed }
+  } catch (e) {
+    return { error: String((e && e.message) || e) }
+  }
+})
+
 ipcMain.handle('app:info', () => ({
   version: app.getVersion(),
   platform: process.platform,

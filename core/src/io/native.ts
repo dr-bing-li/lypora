@@ -166,6 +166,62 @@ export async function docUri(name: string): Promise<string | null> {
 }
 
 /* ---------------------------------------------------------------------------
+ * 图片相对路径的基准目录
+ *
+ * 渲染侧解析 `![x](img/a.png)` 需要"文档所在目录"的绝对 URI，而装饰层是同步
+ * 计算的，等不了 await。所以启动时预热一次、同步缓存：
+ *   Directory.Documents/Lypora  →  file:///storage/emulated/0/Android/data/…/Documents/Lypora
+ * 再交给 Capacitor.convertFileSrc() 换成 WebView 能访问的 http://localhost/_capacitor_file_/…
+ * ------------------------------------------------------------------------- */
+
+let appDirUri: string | null = null
+
+export function appDirUriSync(): string | null {
+  return appDirUri
+}
+
+export async function primeAppDirUri(): Promise<void> {
+  if (!hasNativeFs()) return
+  try {
+    await ensureDir()
+    const { uri } = await Filesystem.getUri({ path: APP_DIR, directory: Directory.Documents })
+    appDirUri = uri
+  } catch {
+    /* 拿不到就退回"原样返回 src"，不影响其它功能 */
+  }
+}
+
+/**
+ * 把一段 base64 写进 Documents 下的相对路径（图片落盘用）。
+ * Android 上拖进来的 File 没有真实路径，只能走这条路。
+ */
+export async function writeImageFile(relPath: string, base64: string): Promise<string | null> {
+  if (!hasNativeFs()) return null
+  try {
+    await Filesystem.writeFile({
+      path: relPath,
+      data: base64,
+      directory: Directory.Documents,
+      recursive: true,
+    })
+    return relPath
+  } catch {
+    return null
+  }
+}
+
+/** 某个相对路径在 Documents 下是否已存在（附件目录探测用） */
+export async function existsUnderDocs(relPath: string): Promise<boolean> {
+  if (!hasNativeFs()) return false
+  try {
+    await Filesystem.stat({ path: relPath, directory: Directory.Documents })
+    return true
+  } catch {
+    return false
+  }
+}
+
+/* ---------------------------------------------------------------------------
  * 「打开方式 / 分享」接收通道（Android IntentPipe 插件）
  *
  * 系统把 .md/.txt 用 Lypora 打开（ACTION_VIEW），或从分享面板发来文本/文件

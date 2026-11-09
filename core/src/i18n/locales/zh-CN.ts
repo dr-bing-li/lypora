@@ -34,6 +34,7 @@ export default {
     view: '显示',
     theme: '主题',
     language: '语言',
+    settings: '设置',
     help: '帮助',
   },
 
@@ -81,7 +82,28 @@ export default {
     code: '行内代码',
     link: '超链接',
     image: '图像',
+    insertImage: '插入图片…',
     clear: '清除格式',
+  },
+
+  settings: {
+    imageRef: '图片引用方式',
+    imageRefFile: '引用文件（推荐）',
+    imageRefEmbed: '内嵌为 base64',
+    imagePath: '图片路径处理',
+  },
+
+  /** 状态栏三态开关与设置菜单共用的一套文案；*Short 是状态栏里的短标签 */
+  imagePath: {
+    copy: '拷贝到附件目录',
+    relative: '保留相对路径',
+    absolute: '保留绝对路径',
+    copyShort: '拷贝',
+    relativeShort: '相对',
+    absoluteShort: '绝对',
+    embeddedShort: '内嵌',
+    title: '插入图片时的路径处理方式（点击切换）',
+    locked: '当前为「内嵌 base64」，路径处理不生效；可在「设置 → 图片引用方式」里改回',
   },
 
   view: {
@@ -216,6 +238,14 @@ export default {
     clipboardReadDenied: '浏览器拒绝读取剪贴板，请用 Ctrl+V',
     selectToClear: '选中要清除格式的文字',
     imageInserted: '已插入图片（内嵌 base64）',
+    imageCopied: '已插入 {value} 张图片，已拷贝到 {dir}/',
+    imageLinked: '已插入 {value} 张图片（{mode}）',
+    imageNeedSave: '请先保存文档：图片要放到文档同级目录，才能用相对路径引用',
+    imageNoPath: '当前环境拿不到源文件路径，已改为内嵌 base64',
+    imageFailed: '图片插入失败',
+    imagePathMode: '图片路径：{mode}',
+    imageRefFile: '图片引用方式：引用文件',
+    imageRefEmbed: '图片引用方式：内嵌 base64',
     fullscreenUnsupported: '当前环境不支持全屏',
     popupBlocked: '浏览器拦截了弹出窗口，请允许后重试',
     columnEven: '列宽已均分',

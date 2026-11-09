@@ -172,7 +172,8 @@ const SPOT = {
   'help-about': 'help.about',
 }
 
-const MENU_IDS = ['file', 'edit', 'paragraph', 'format', 'view', 'theme', 'language', 'help']
+// v0.8.0 起多了「设置」：图片引用方式是跨插入/渲染/导出的全局策略，值得一个顶级入口
+const MENU_IDS = ['file', 'edit', 'paragraph', 'format', 'view', 'theme', 'language', 'settings', 'help']
 
 async function collect(page) {
   return page.evaluate(async (menuIds) => {

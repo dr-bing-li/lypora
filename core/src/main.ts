@@ -33,7 +33,18 @@ import {
   type MessageKey,
 } from './i18n'
 import { openFile, saveFile, openWorkspace, desktop, type WorkspaceEntry } from './io/files'
-import { bindIncomingIntent, consumeIncomingIntent, isNative, nativePlatform, imeInfo, showIme, type IncomingIntent } from './io/native'
+import { bindIncomingIntent, consumeIncomingIntent, isNative, nativePlatform, imeInfo, showIme, primeAppDirUri, type IncomingIntent } from './io/native'
+import {
+  getImagePathMode,
+  getImageRefMode,
+  nextImagePathMode,
+  setCurrentDocPath,
+  setImagePathMode,
+  setImageRefMode,
+  type ImagePathMode,
+  type ImageRefMode,
+} from './io/image-path'
+import { insertImages, isImageFile } from './io/image-insert'
 import { exportHtml, exportMarkdown, exportPdf } from './io/export'
 import { putDoc, listDocs, getDoc, readSetting, writeSetting, migrateLegacySettings } from './io/store'
 import { SAMPLE_MD, SAMPLE_NAME } from './sample'
@@ -119,6 +130,8 @@ function boot(): void {
   if (window.innerWidth <= 860) $('sidebar').classList.add('collapsed')
   void renderRecents()
   registerServiceWorker()
+  // Android 上相对路径图片的基准目录（Documents/Lypora）只能异步取，预热一次备用
+  void primeAppDirUri()
 
   // 桌面版：接收"用本应用打开文件"（双击 .md / 命令行参数 / 第二实例转发）
   desktop()?.onOpenPath((payload) => {
@@ -530,6 +543,8 @@ function loadDocument(
   app.fileName = name
   app.handle = handle
   app.path = path
+  // 相对路径图片的解析基准跟着文档走：切文档必须立刻同步，否则会按上一篇的目录去拼
+  setCurrentDocPath(path)
   app.docId = `doc:${path || name}`
   if (app.view) {
     app.view.dispatch({
@@ -550,9 +565,14 @@ async function doSave(forceAs: boolean): Promise<boolean> {
   const target = forceAs ? undefined : { handle: app.handle, path: app.path }
   const res = await saveFile(content, app.fileName, target)
   if (!res) return false
+  const pathBefore = app.path
   if (res.handle) app.handle = res.handle
   if (res.path) app.path = res.path
   app.fileName = res.name
+  // 另存为之后基准目录变了，已渲染的图片必须按新目录重算一次。空事务即可触发
+  // ViewPlugin.update（它靠 transactions.length > 0 判断要不要重建装饰）。
+  setCurrentDocPath(app.path)
+  if (pathBefore !== app.path) app.view?.dispatch({})
   setDirty(false)
   updateTitle()
   await persistCurrent()
@@ -742,6 +762,86 @@ function syncStatusToggles(): void {
   $('btn-source').classList.toggle('on', previewSettings.sourceMode)
   $('btn-focus').classList.toggle('on', previewSettings.focusMode)
   $('btn-typewriter').classList.toggle('on', previewSettings.typewriter)
+  syncImagePathToggle()
+}
+
+/* ------------------------------------------------------------------ *
+ * 图片路径开关（状态栏三态）
+ *
+ * 「设置 → 图片引用方式」优先级更高：选了内嵌 base64 之后，路径这个概念整个
+ * 不参与插入，所以这里必须置灰而不是假装还能点 —— 点了没反应的按钮比没有更糟。
+ * ------------------------------------------------------------------ */
+
+function imagePathLabel(mode: ImagePathMode): string {
+  if (mode === 'copy') return t('imagePath.copy')
+  if (mode === 'relative') return t('imagePath.relative')
+  return t('imagePath.absolute')
+}
+
+/** 状态栏只有一格的位置，用两字短标签；菜单和 toast 才用完整说法 */
+function imagePathShort(mode: ImagePathMode): string {
+  if (mode === 'copy') return t('imagePath.copyShort')
+  if (mode === 'relative') return t('imagePath.relativeShort')
+  return t('imagePath.absoluteShort')
+}
+
+function syncImagePathToggle(): void {
+  const btn = document.getElementById('btn-image-path') as HTMLButtonElement | null
+  if (!btn) return
+  const embed = getImageRefMode() === 'embed'
+  const mode = getImagePathMode()
+  btn.textContent = embed ? t('imagePath.embeddedShort') : imagePathShort(mode)
+  btn.disabled = embed
+  btn.classList.toggle('is-disabled', embed)
+  btn.classList.toggle('on', !embed && mode !== 'copy')
+  btn.title = embed ? t('imagePath.locked') : t('imagePath.title')
+}
+
+function cycleImagePathMode(): void {
+  if (getImageRefMode() === 'embed') return
+  const next = nextImagePathMode()
+  setImagePathMode(next)
+  syncImagePathToggle()
+  toast(t('toast.imagePathMode', { mode: imagePathLabel(next) }), 1600)
+}
+
+/* ------------------------------------------------------------------ *
+ * 插入图片（菜单 / 快捷键 / 拖放 三条入口共用同一条管线）
+ * ------------------------------------------------------------------ */
+
+/** 「设置」里的引用方式：优先级最高，选 embed 后路径策略整段不参与 */
+function applyImageRefMode(mode: ImageRefMode): void {
+  setImageRefMode(mode)
+  syncImagePathToggle()
+  menubar?.redraw()
+  toast(t(mode === 'embed' ? 'toast.imageRefEmbed' : 'toast.imageRefFile'), 2200)
+}
+
+function applyImagePathMode(mode: ImagePathMode): void {
+  setImagePathMode(mode)
+  syncImagePathToggle()
+  menubar?.redraw()
+  toast(t('toast.imagePathMode', { mode: imagePathLabel(mode) }), 1600)
+}
+
+function pickImages(): void {
+  const input = $<HTMLInputElement>('image-file')
+  input.value = ''
+  input.click()
+}
+
+async function runImageInsert(files: File[]): Promise<void> {
+  const view = app.view
+  if (!view) return
+  const content = view.state.doc.toString()
+  await insertImages(view, files, app.path, content, (m) => toast(m), {
+    inserted: () => t('toast.imageInserted'),
+    copied: (n, dir) => t('toast.imageCopied', { value: String(n), dir }),
+    linked: (n, mode) => t('toast.imageLinked', { value: String(n), mode: imagePathLabel(mode as ImagePathMode) }),
+    needSave: t('toast.imageNeedSave'),
+    noPath: t('toast.imageNoPath'),
+    failed: t('toast.imageFailed'),
+  })
 }
 
 /* ------------------------------------------------------------------ *
@@ -932,7 +1032,7 @@ function buildMenus(): MenuDef[] {
         { id: 'format-code', label: t('format.code'), shortcut: 'Ctrl+E', action: withView(cmd.code) },
         { sep: true },
         { id: 'format-link', label: t('format.link'), shortcut: 'Ctrl+K', action: withView(cmd.link) },
-        { id: 'format-image', label: t('format.image'), shortcut: 'Ctrl+Shift+I', action: withView(cmd.image) },
+        { id: 'format-image', label: t('format.insertImage'), shortcut: 'Ctrl+Shift+I', action: () => pickImages() },
         { sep: true },
         { id: 'format-clear', label: t('format.clear'), action: clearFormat },
       ],
@@ -1116,6 +1216,61 @@ function buildMenus(): MenuDef[] {
       ],
     },
     {
+      // 「设置」独立成顶级菜单：图片引用方式是一个横跨"插入 / 渲染 / 导出"的全局策略，
+      // 塞进「格式 → 图片」会让人以为它只管那一个菜单项。
+      id: 'settings',
+      label: t('menu.settings'),
+      items: [
+        {
+          id: 'settings-image-ref',
+          label: t('settings.imageRef'),
+          items: [
+            {
+              id: 'settings-image-ref-file',
+              label: t('settings.imageRefFile'),
+              checked: getImageRefMode() === 'reference',
+              action: () => applyImageRefMode('reference'),
+            },
+            {
+              id: 'settings-image-ref-embed',
+              label: t('settings.imageRefEmbed'),
+              checked: getImageRefMode() === 'embed',
+              action: () => applyImageRefMode('embed'),
+            },
+          ],
+        },
+        {
+          // 父项不置灰：置灰的父项在菜单里连子菜单都展不开，用户就看不到"当前值是什么、
+          // 为什么失效"。让子项各自 disabled，父项仍可 hover 查看。
+          id: 'settings-image-path',
+          label: t('settings.imagePath'),
+          items: [
+            {
+              id: 'settings-image-path-copy',
+              label: t('imagePath.copy'),
+              checked: getImagePathMode() === 'copy',
+              disabled: getImageRefMode() === 'embed',
+              action: () => applyImagePathMode('copy'),
+            },
+            {
+              id: 'settings-image-path-relative',
+              label: t('imagePath.relative'),
+              checked: getImagePathMode() === 'relative',
+              disabled: getImageRefMode() === 'embed',
+              action: () => applyImagePathMode('relative'),
+            },
+            {
+              id: 'settings-image-path-absolute',
+              label: t('imagePath.absolute'),
+              checked: getImagePathMode() === 'absolute',
+              disabled: getImageRefMode() === 'embed',
+              action: () => applyImagePathMode('absolute'),
+            },
+          ],
+        },
+      ],
+    },
+    {
       id: 'help',
       label: t('menu.help'),
       items: [
@@ -1176,6 +1331,7 @@ function bindUI(): void {
   $('btn-source').addEventListener('click', toggleSource)
   $('btn-focus').addEventListener('click', toggleFocus)
   $('btn-typewriter').addEventListener('click', toggleTypewriter)
+  document.getElementById('btn-image-path')?.addEventListener('click', cycleImagePathMode)
   bindWidthGrip()
 
   // 自定义主题导入（对应参考实现「把 .css 丢进主题文件夹」）
@@ -1204,6 +1360,14 @@ function bindUI(): void {
     reader.readAsText(file)
   })
 
+  // 插入图片：菜单 / 快捷键 / 移动工具栏都只是这条 input 的触发器
+  $<HTMLInputElement>('image-file').addEventListener('change', (e) => {
+    const input = e.currentTarget as HTMLInputElement
+    const files = Array.from(input.files ?? [])
+    input.value = ''
+    if (files.length) void runImageInsert(files)
+  })
+
   // 移动端工具栏
   document.querySelectorAll<HTMLButtonElement>('#mobile-toolbar button').forEach((btn) => {
     btn.addEventListener('mousedown', (e) => e.preventDefault())
@@ -1223,7 +1387,7 @@ function bindUI(): void {
         case 'table': cmd.table(v); break
         case 'math': cmd.mathBlock(v); break
         case 'link': cmd.link(v); break
-        case 'image': cmd.image(v); break
+        case 'image': pickImages(); break
       }
       v.focus()
     })
@@ -1353,12 +1517,13 @@ function bindUI(): void {
     }
   }
 
-  // 拖入 .md 文件直接打开
+  // 拖入 .md 文件直接打开；拖入图片走与「格式 → 插入图片」完全相同的管线
   window.addEventListener('dragover', (e) => e.preventDefault())
   window.addEventListener('drop', async (e) => {
     e.preventDefault()
-    const f = e.dataTransfer?.files?.[0]
-    if (!f) return
+    const files = Array.from(e.dataTransfer?.files ?? [])
+    if (!files.length) return
+    const f = files[0]
     if (/\.(md|markdown|txt)$/i.test(f.name)) {
       loadDocument(await f.text(), f.name)
       toast(t('toast.opened', { name: f.name }))
@@ -1378,18 +1543,9 @@ function bindUI(): void {
           : t('toast.themeImported', { name }),
         3200,
       )
-    } else if (f.type.startsWith('image/')) {
-      const reader = new FileReader()
-      reader.onload = () => {
-        const src = String(reader.result)
-        const v = app.view
-        if (!v) return
-        const r = v.state.selection.main
-        const insert = `![${f.name}](${src})`
-        v.dispatch({ changes: { from: r.from, to: r.to, insert }, selection: { anchor: r.from + insert.length } })
-        toast(t('toast.imageInserted'))
-      }
-      reader.readAsDataURL(f)
+    } else {
+      const images = files.filter(isImageFile)
+      if (images.length) await runImageInsert(images)
     }
   })
 

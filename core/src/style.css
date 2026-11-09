@@ -787,6 +787,17 @@ body.full-width .editor-host {
   color: var(--accent-text);
   font-weight: 600;
 }
+/* 被「设置 → 图片引用方式」接管的状态栏开关：置灰但保留位置，避免布局跳动 */
+.status-toggle.is-disabled,
+.status-toggle:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.status-toggle.is-disabled:hover,
+.status-toggle:disabled:hover {
+  background: transparent;
+  color: var(--fg-chrome-dim);
+}
 
 /* ==========================================================================
    CodeMirror 编辑器容器

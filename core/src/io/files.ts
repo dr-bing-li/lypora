@@ -53,7 +53,19 @@ interface DesktopBridge {
   openDirectory(): Promise<DirNode | null>
   revealInFolder(p: string): void
   onOpenPath(cb: (p: { name: string; path: string; content: string }) => void): void
+  /** 拖放文件 → 磁盘绝对路径（Electron 32 起 File.path 已移除，只能走 webUtils） */
+  pathForFile(file: File): string
+  /** 把图片复制到文档同级的附件目录；rel 是写进 markdown 的正斜杠相对路径 */
+  placeImage(payload: {
+    srcPath: string
+    docPath: string
+    candidates: string[]
+  }): Promise<PlaceImageResult>
 }
+
+export type PlaceImageResult =
+  | { rel: string; abs: string; copied: boolean; renamed?: boolean }
+  | { error: string }
 
 interface DirNode {
   name: string

@@ -23,6 +23,7 @@ export default {
     view: '보기',
     theme: '테마',
     language: '언어',
+    settings: '설정',
     help: '도움말',
   },
 
@@ -70,7 +71,28 @@ export default {
     code: '인라인 코드',
     link: '하이퍼링크',
     image: '이미지',
+    insertImage: '이미지 삽입…',
     clear: '서식 지우기',
+  },
+
+  settings: {
+    imageRef: '이미지 참조 방식',
+    imageRefFile: '파일 참조(권장)',
+    imageRefEmbed: 'base64로 포함',
+    imagePath: '이미지 경로 처리',
+  },
+
+  /** 状态栏三态开关与设置菜单共用的一套文案；*Short 是状态栏里的短标签 */
+  imagePath: {
+    copy: '첨부 폴더로 복사',
+    relative: '상대 경로 유지',
+    absolute: '절대 경로 유지',
+    copyShort: '복사',
+    relativeShort: '상대',
+    absoluteShort: '절대',
+    embeddedShort: '포함',
+    title: '이미지 삽입 시 경로 처리 방식(클릭하여 전환)',
+    locked: '현재 "base64로 포함"이므로 경로 처리가 적용되지 않습니다. 설정 → 이미지 참조 방식에서 변경하세요.',
   },
 
   view: {
@@ -205,6 +227,14 @@ export default {
     clipboardReadDenied: '브라우저가 클립보드 읽기를 거부했습니다. Ctrl+V를 사용하세요',
     selectToClear: '서식을 지울 텍스트를 선택하세요',
     imageInserted: '이미지를 삽입했습니다(base64로 포함)',
+    imageCopied: '이미지 {value}장을 삽입하고 {dir}/에 복사했습니다',
+    imageLinked: '이미지 {value}장을 삽입했습니다({mode})',
+    imageNeedSave: '먼저 문서를 저장하세요. 상대 경로로 참조하려면 이미지가 문서와 같은 위치에 있어야 합니다.',
+    imageNoPath: '이 환경에서는 원본 파일 경로를 가져올 수 없어 base64로 포함했습니다.',
+    imageFailed: '이미지를 삽입하지 못했습니다',
+    imagePathMode: '이미지 경로: {mode}',
+    imageRefFile: '이미지 참조 방식: 파일 참조',
+    imageRefEmbed: '이미지 참조 방식: base64로 포함',
     fullscreenUnsupported: '이 환경에서는 전체 화면을 지원하지 않습니다',
     popupBlocked: '브라우저가 팝업을 차단했습니다. 허용한 뒤 다시 시도하세요',
     columnEven: '열 너비를 균등하게 맞췄습니다',

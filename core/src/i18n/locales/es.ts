@@ -23,6 +23,7 @@ export default {
     view: 'Ver',
     theme: 'Tema',
     language: 'Idioma',
+    settings: 'Ajustes',
     help: 'Ayuda',
   },
 
@@ -70,7 +71,28 @@ export default {
     code: 'Código en línea',
     link: 'Hipervínculo',
     image: 'Imagen',
+    insertImage: 'Insertar imagen…',
     clear: 'Borrar formato',
+  },
+
+  settings: {
+    imageRef: 'Referencia de imágenes',
+    imageRefFile: 'Referenciar archivos (recomendado)',
+    imageRefEmbed: 'Incrustar como base64',
+    imagePath: 'Tratamiento de rutas',
+  },
+
+  /** 状态栏三态开关与设置菜单共用的一套文案；*Short 是状态栏里的短标签 */
+  imagePath: {
+    copy: 'Copiar a la carpeta de adjuntos',
+    relative: 'Mantener ruta relativa',
+    absolute: 'Mantener ruta absoluta',
+    copyShort: 'Copiar',
+    relativeShort: 'Relativa',
+    absoluteShort: 'Absoluta',
+    embeddedShort: 'Incrustada',
+    title: 'Cómo se tratan las rutas al insertar (clic para cambiar)',
+    locked: 'Ahora «Incrustar como base64»: el tratamiento de rutas no se aplica. Cámbialo en Ajustes → Referencia de imágenes.',
   },
 
   view: {
@@ -205,6 +227,14 @@ export default {
     clipboardReadDenied: 'El navegador rechazó la lectura del portapapeles; use Ctrl+V',
     selectToClear: 'Seleccione el texto cuyo formato quiere borrar',
     imageInserted: 'Imagen insertada (incluida en base64)',
+    imageCopied: '{value} imagen(es) insertada(s), copiada(s) a {dir}/',
+    imageLinked: '{value} imagen(es) insertada(s) ({mode})',
+    imageNeedSave: 'Guarda el documento primero: las imágenes deben estar junto a él para usar rutas relativas.',
+    imageNoPath: 'Aquí no se puede obtener la ruta de origen; se incrustó como base64.',
+    imageFailed: 'No se pudo insertar la imagen',
+    imagePathMode: 'Ruta de imagen: {mode}',
+    imageRefFile: 'Referencia de imágenes: referenciar archivos',
+    imageRefEmbed: 'Referencia de imágenes: incrustar como base64',
     fullscreenUnsupported: 'La pantalla completa no está disponible aquí',
     popupBlocked: 'El navegador bloqueó la ventana emergente; permítala y reintente',
     columnEven: 'Columnas igualadas',
