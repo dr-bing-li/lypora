@@ -236,10 +236,10 @@ Lypora 是一个即时渲染的 Markdown 编辑器。你在编辑区里写 Markd
 
 | 文件 | 平台 | 格式 | 大小 | SHA256 |
 |---|---|---|---|---|
-| [`lypora_0.8.1_amd64.deb`](https://github.com/dr-bing-li/lypora/releases/download/v0.8.1/lypora_0.8.1_amd64.deb) | Debian 11+ / Ubuntu 20.04+ / 深度 / 麒麟 | 系统包，`sudo apt install ./…deb` | {{DEB_SIZE}} | `{{DEB_SHORT}}` |
-| [`lypora-0.8.1-1.x86_64.rpm`](https://github.com/dr-bing-li/lypora/releases/download/v0.8.1/lypora-0.8.1-1.x86_64.rpm) | Fedora 32+ / RHEL 9+ / openSUSE | 系统包，`sudo dnf install ./…rpm` | {{RPM_SIZE}} | `{{RPM_SHORT}}` |
-| [`Lypora-0.8.1-linux-x64.AppImage`](https://github.com/dr-bing-li/lypora/releases/download/v0.8.1/Lypora-0.8.1-linux-x64.AppImage) | 任意 x86-64 发行版 | 单文件，`chmod +x` 后直接跑 | {{AI_SIZE}} | `{{AI_SHORT}}` |
-| [`Lypora-0.8.1-linux-x64.tar.gz`](https://github.com/dr-bing-li/lypora/releases/download/v0.8.1/Lypora-0.8.1-linux-x64.tar.gz) | 任意 x86-64 发行版（glibc ≥ 2.31） | tar.gz + `install.sh`（per-user，不要 root） | {{TG_SIZE}} | `{{TG_SHORT}}` |
+| [`lypora_0.8.1_amd64.deb`](https://github.com/dr-bing-li/lypora/releases/download/v0.8.1/lypora_0.8.1_amd64.deb) | Debian 11+ / Ubuntu 20.04+ / 深度 / 麒麟 | 系统包，`sudo apt install ./…deb` | 79.4 MiB | `5673fd86…4e3b7` |
+| [`lypora-0.8.1-1.x86_64.rpm`](https://github.com/dr-bing-li/lypora/releases/download/v0.8.1/lypora-0.8.1-1.x86_64.rpm) | Fedora 32+ / RHEL 9+ / openSUSE | 系统包，`sudo dnf install ./…rpm` | 79.5 MiB | `d4e5cff9…2e6a2` |
+| [`Lypora-0.8.1-linux-x64.AppImage`](https://github.com/dr-bing-li/lypora/releases/download/v0.8.1/Lypora-0.8.1-linux-x64.AppImage) | 任意 x86-64 发行版 | 单文件，`chmod +x` 后直接跑 | 95.6 MiB | `5631b92f…abf09` |
+| [`Lypora-0.8.1-linux-x64.tar.gz`](https://github.com/dr-bing-li/lypora/releases/download/v0.8.1/Lypora-0.8.1-linux-x64.tar.gz) | 任意 x86-64 发行版（glibc ≥ 2.31） | tar.gz + `install.sh`（per-user，不要 root） | 102.5 MiB | `71bc2aef…073f8` |
 | [`Lypora-0.8.1-win-x64.zip`](https://github.com/dr-bing-li/lypora/releases/download/v0.8.1/Lypora-0.8.1-win-x64.zip) | Windows 10/11 x64 | 便携版 ZIP，解压即用 | 111.1 MiB | `d7ea36ff…e5197` |
 | [`Lypora-0.8.1-macos-arm64.tar.gz`](https://github.com/dr-bing-li/lypora/releases/download/v0.8.1/Lypora-0.8.1-macos-arm64.tar.gz) | macOS 11+（Apple Silicon） | `.app` bundle，ad-hoc 签名 | 95.9 MiB | `f387406c…212bb` |
 | [`Lypora-0.8.1-macos-x64.tar.gz`](https://github.com/dr-bing-li/lypora/releases/download/v0.8.1/Lypora-0.8.1-macos-x64.tar.gz) | macOS 11+（Intel） | `.app` bundle，ad-hoc 签名 | 100.3 MiB | `b54c4c32…7ac15` |

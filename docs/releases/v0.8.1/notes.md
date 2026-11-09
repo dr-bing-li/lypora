@@ -24,10 +24,10 @@ copied images too.
 | 文件 / File | 平台 / Platform | 格式 / Format | 大小 / Size | SHA256 |
 |---|---|---|---|---|
 | `Lypora-0.8.1-android.apk` | Android 10+（API 29+） | APK（debug 签名，直接安装）<br>APK, debug-signed, sideload | 10.6 MiB | `1ba559fe9a4239fce7d929504dc18282fbb7f5e96c6040f01670b1b17727029c` |
-| `lypora_0.8.1_amd64.deb` | Debian 11+ / Ubuntu 20.04+ / 深度 / 麒麟 | 系统包（`apt install`）<br>System package | {{DEB_SIZE}} | `{{DEB_SHA}}` |
-| `lypora-0.8.1-1.x86_64.rpm` | Fedora 32+ / RHEL 9+ / openSUSE | 系统包（`dnf install`）<br>System package | {{RPM_SIZE}} | `{{RPM_SHA}}` |
-| `Lypora-0.8.1-linux-x64.AppImage` | 任意 x86-64 发行版 | 单文件，免安装<br>Single file, no install | {{AI_SIZE}} | `{{AI_SHA}}` |
-| `Lypora-0.8.1-linux-x64.tar.gz` | 任意 x86-64 发行版（glibc ≥ 2.31） | tar.gz + `install.sh`（per-user） | {{TG_SIZE}} | `{{TG_SHA}}` |
+| `lypora_0.8.1_amd64.deb` | Debian 11+ / Ubuntu 20.04+ / 深度 / 麒麟 | 系统包（`apt install`）<br>System package | 79.4 MiB | `5673fd86afddca7a3392fd541551ebdb09e1ed1c8a821a0ea719c46e7824e3b7` |
+| `lypora-0.8.1-1.x86_64.rpm` | Fedora 32+ / RHEL 9+ / openSUSE | 系统包（`dnf install`）<br>System package | 79.5 MiB | `d4e5cff9a56e1fd6daa3172713fc79b55d2226a81a904d4a53b601db7662e6a2` |
+| `Lypora-0.8.1-linux-x64.AppImage` | 任意 x86-64 发行版 | 单文件，免安装<br>Single file, no install | 95.6 MiB | `5631b92f2a0b6a6e13beb26965283d5353036cb9a0e5fcc578cf24d192cabf09` |
+| `Lypora-0.8.1-linux-x64.tar.gz` | 任意 x86-64 发行版（glibc ≥ 2.31） | tar.gz + `install.sh`（per-user） | 102.5 MiB | `71bc2aef4ea991ba75ab2450e97af86dfa64119ef9d18d7c7c27dcdaff6073f8` |
 | `Lypora-0.8.1-win-x64.zip` | Windows 10/11 x64 | 便携版 ZIP（解压即用）<br>Portable ZIP — unzip and run | 111.1 MiB | `d7ea36ff2a88e953c9a28380f931a391f340f7288ca47a2b7a5cf2b2626e5197` |
 | `Lypora-0.8.1-macos-arm64.tar.gz` | macOS 11+ / Apple Silicon | `.app` bundle（ad-hoc 签名）<br>`.app` bundle, ad-hoc signed | 95.9 MiB | `f387406c6064a202ea8944034fd8b62e323656b2fc734176b62f34141d3212bb` |
 | `Lypora-0.8.1-macos-x64.tar.gz` | macOS 11+ / Intel | `.app` bundle（ad-hoc 签名）<br>`.app` bundle, ad-hoc signed | 100.3 MiB | `b54c4c327f558ec2361fb07a65065f44aea0b7a2a70a5e38c052797d7207ac15` |
