@@ -27,14 +27,14 @@ on demand, pinyin composition and candidate selection work end to end.
 
 | 文件 / File | 平台 / Platform | 格式 / Format | 大小 / Size | SHA256 |
 |---|---|---|---|---|
-| `Lypora-0.7.1-android.apk` | Android 10+（API 29+） | APK（debug 签名，直接安装）<br>APK, debug-signed, sideload | {{APK_SIZE}} | `{{APK_SHA}}` |
-| `lypora_0.7.1_amd64.deb` | Debian 11+ / Ubuntu 20.04+ / 深度 / 麒麟 | 系统包（`apt install`）<br>System package | {{DEB_SIZE}} | `{{DEB_SHA}}` |
-| `lypora-0.7.1-1.x86_64.rpm` | Fedora 32+ / RHEL 9+ / openSUSE | 系统包（`dnf install`）<br>System package | {{RPM_SIZE}} | `{{RPM_SHA}}` |
-| `Lypora-0.7.1-linux-x64.AppImage` | 任意 x86-64 发行版 | 单文件，免安装<br>Single file, no install | {{AI_SIZE}} | `{{AI_SHA}}` |
-| `Lypora-0.7.1-linux-x64.tar.gz` | 任意 x86-64 发行版（glibc ≥ 2.31） | tar.gz + `install.sh`（per-user） | {{TG_SIZE}} | `{{TG_SHA}}` |
-| `Lypora-0.7.1-win-x64.zip` | Windows 10/11 x64 | 便携版 ZIP（解压即用）<br>Portable ZIP — unzip and run | {{WIN_SIZE}} | `{{WIN_SHA}}` |
-| `Lypora-0.7.1-macos-arm64.tar.gz` | macOS 11+ / Apple Silicon | `.app` bundle（ad-hoc 签名）<br>`.app` bundle, ad-hoc signed | {{ARM_SIZE}} | `{{ARM_SHA}}` |
-| `Lypora-0.7.1-macos-x64.tar.gz` | macOS 11+ / Intel | `.app` bundle（ad-hoc 签名）<br>`.app` bundle, ad-hoc signed | {{X64_SIZE}} | `{{X64_SHA}}` |
+| `Lypora-0.7.1-android.apk` | Android 10+（API 29+） | APK（debug 签名，直接安装）<br>APK, debug-signed, sideload | 10.6 MiB | `2a84f80fed6e25fcd61815a8475c6ec60372c5187952f78b0046db070fce68d1` |
+| `lypora_0.7.1_amd64.deb` | Debian 11+ / Ubuntu 20.04+ / 深度 / 麒麟 | 系统包（`apt install`）<br>System package | 79.4 MiB | `aca3793d2b6313d95eb1b424b71464bdff3e4a9cdef7d0f5f57468e9fec650a3` |
+| `lypora-0.7.1-1.x86_64.rpm` | Fedora 32+ / RHEL 9+ / openSUSE | 系统包（`dnf install`）<br>System package | 79.4 MiB | `8cb930730bce0efc0ab36f5fb333cc66c81f860594e560839ee22b5bd4be4778` |
+| `Lypora-0.7.1-linux-x64.AppImage` | 任意 x86-64 发行版 | 单文件，免安装<br>Single file, no install | 95.6 MiB | `8c59a36a314cb4f1d96a8ec58dcf97f2af233d1057dc1cacfa6570c208447d9f` |
+| `Lypora-0.7.1-linux-x64.tar.gz` | 任意 x86-64 发行版（glibc ≥ 2.31） | tar.gz + `install.sh`（per-user） | 102.4 MiB | `003f77272cca6e8f31a593040d049da6321dcfa9b9a64358d9543e631ebccea2` |
+| `Lypora-0.7.1-win-x64.zip` | Windows 10/11 x64 | 便携版 ZIP（解压即用）<br>Portable ZIP — unzip and run | 111.0 MiB | `a78682247dc03115e13489458cdfcd53b307516ee70c1406bfa561ab3ed52ad8` |
+| `Lypora-0.7.1-macos-arm64.tar.gz` | macOS 11+ / Apple Silicon | `.app` bundle（ad-hoc 签名）<br>`.app` bundle, ad-hoc signed | 95.8 MiB | `35da75af864e316e65543d64719c93da078f8e8c701b0928f60752884b632599` |
+| `Lypora-0.7.1-macos-x64.tar.gz` | macOS 11+ / Intel | `.app` bundle（ad-hoc 签名）<br>`.app` bundle, ad-hoc signed | 100.2 MiB | `e3b742647f34a4bb54d64d2cc54bef4df728c1aa52238efdb5b8fcd50d87a65b` |
 | `SHA256SUMS.txt` | 任意 / any | 全部产物的校验清单<br>Checksums for every artefact | 8 条 / 8 entries | — |
 
 **校验方法 / How to verify**

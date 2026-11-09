@@ -37,14 +37,14 @@ Latest: **[v0.7.1](https://github.com/dr-bing-li/lypora/releases/tag/v0.7.1)** �
 
 | File | Platform | Format | Size | SHA256 |
 |---|---|---|---|---|
-| [`lypora_0.7.1_amd64.deb`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.1/lypora_0.7.1_amd64.deb) | Debian 11+ / Ubuntu 20.04+ | System package — `sudo apt install ./…deb` | {{DEB_SIZE}} | `{{DEB_SHORT}}` |
-| [`lypora-0.7.1-1.x86_64.rpm`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.1/lypora-0.7.1-1.x86_64.rpm) | Fedora 32+ / RHEL 9+ / openSUSE | System package — `sudo dnf install ./…rpm` | {{RPM_SIZE}} | `{{RPM_SHORT}}` |
-| [`Lypora-0.7.1-linux-x64.AppImage`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.1/Lypora-0.7.1-linux-x64.AppImage) | any x86_64 distro | Single file — `chmod +x` and run | {{AI_SIZE}} | `{{AI_SHORT}}` |
-| [`Lypora-0.7.1-linux-x64.tar.gz`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.1/Lypora-0.7.1-linux-x64.tar.gz) | any x86_64 distro, glibc ≥2.31 | Self-contained dir — `./lypora.sh` or `./install.sh` | {{TG_SIZE}} | `{{TG_SHORT}}` |
-| [`Lypora-0.7.1-win-x64.zip`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.1/Lypora-0.7.1-win-x64.zip) | Windows 10/11 x64 | Portable ZIP — unzip and run | {{WIN_SIZE}} | `{{WIN_SHORT}}` |
-| [`Lypora-0.7.1-macos-arm64.tar.gz`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.1/Lypora-0.7.1-macos-arm64.tar.gz) | macOS 11+ Apple Silicon | `.app` in tar.gz — run `mac-finalize.command` once | {{ARM_SIZE}} | `{{ARM_SHORT}}` |
-| [`Lypora-0.7.1-macos-x64.tar.gz`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.1/Lypora-0.7.1-macos-x64.tar.gz) | macOS 11+ Intel | `.app` in tar.gz — run `mac-finalize.command` once | {{X64_SIZE}} | `{{X64_SHORT}}` |
-| [`Lypora-0.7.1-android.apk`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.1/Lypora-0.7.1-android.apk) | Android 10+ (API 29+) | APK, debug-signed — sideload | {{APK_SIZE}} | `{{APK_SHORT}}` |
+| [`lypora_0.7.1_amd64.deb`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.1/lypora_0.7.1_amd64.deb) | Debian 11+ / Ubuntu 20.04+ | System package — `sudo apt install ./…deb` | 79.4 MiB | `aca3793d…650a3` |
+| [`lypora-0.7.1-1.x86_64.rpm`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.1/lypora-0.7.1-1.x86_64.rpm) | Fedora 32+ / RHEL 9+ / openSUSE | System package — `sudo dnf install ./…rpm` | 79.4 MiB | `8cb93073…e4778` |
+| [`Lypora-0.7.1-linux-x64.AppImage`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.1/Lypora-0.7.1-linux-x64.AppImage) | any x86_64 distro | Single file — `chmod +x` and run | 95.6 MiB | `8c59a36a…47d9f` |
+| [`Lypora-0.7.1-linux-x64.tar.gz`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.1/Lypora-0.7.1-linux-x64.tar.gz) | any x86_64 distro, glibc ≥2.31 | Self-contained dir — `./lypora.sh` or `./install.sh` | 102.4 MiB | `003f7727…ccea2` |
+| [`Lypora-0.7.1-win-x64.zip`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.1/Lypora-0.7.1-win-x64.zip) | Windows 10/11 x64 | Portable ZIP — unzip and run | 111.0 MiB | `a7868224…52ad8` |
+| [`Lypora-0.7.1-macos-arm64.tar.gz`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.1/Lypora-0.7.1-macos-arm64.tar.gz) | macOS 11+ Apple Silicon | `.app` in tar.gz — run `mac-finalize.command` once | 95.8 MiB | `35da75af…32599` |
+| [`Lypora-0.7.1-macos-x64.tar.gz`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.1/Lypora-0.7.1-macos-x64.tar.gz) | macOS 11+ Intel | `.app` in tar.gz — run `mac-finalize.command` once | 100.2 MiB | `e3b74264…7a65b` |
+| [`Lypora-0.7.1-android.apk`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.1/Lypora-0.7.1-android.apk) | Android 10+ (API 29+) | APK, debug-signed — sideload | 10.6 MiB | `2a84f80f…e68d1` |
 | [`SHA256SUMS.txt`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.1/SHA256SUMS.txt) | any | Checksums for every artefact (8 entries) | see file | — |
 
 `deb` / `rpm` install into `/opt/lypora` with a `/usr/bin/lypora` shim, a menu entry and 8 icon sizes; removing
@@ -365,14 +365,14 @@ Lypora 是一个即时渲染的 Markdown 编辑器。你在编辑区里写 Markd
 
 | 文件 | 平台 | 格式 | 大小 | SHA256 |
 |---|---|---|---|---|
-| [`lypora_0.7.1_amd64.deb`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.1/lypora_0.7.1_amd64.deb) | Debian 11+ / Ubuntu 20.04+ / 深度 / 麒麟 | 系统包，`sudo apt install ./…deb` | {{DEB_SIZE}} | `{{DEB_SHORT}}` |
-| [`lypora-0.7.1-1.x86_64.rpm`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.1/lypora-0.7.1-1.x86_64.rpm) | Fedora 32+ / RHEL 9+ / openSUSE | 系统包，`sudo dnf install ./…rpm` | {{RPM_SIZE}} | `{{RPM_SHORT}}` |
-| [`Lypora-0.7.1-linux-x64.AppImage`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.1/Lypora-0.7.1-linux-x64.AppImage) | 任意 x86-64 发行版 | 单文件，`chmod +x` 后直接跑 | {{AI_SIZE}} | `{{AI_SHORT}}` |
-| [`Lypora-0.7.1-linux-x64.tar.gz`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.1/Lypora-0.7.1-linux-x64.tar.gz) | 任意 x86-64 发行版（glibc ≥ 2.31） | tar.gz + `install.sh`（per-user，不要 root） | {{TG_SIZE}} | `{{TG_SHORT}}` |
-| [`Lypora-0.7.1-win-x64.zip`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.1/Lypora-0.7.1-win-x64.zip) | Windows 10/11 x64 | 便携版 ZIP，解压即用 | {{WIN_SIZE}} | `{{WIN_SHORT}}` |
-| [`Lypora-0.7.1-macos-arm64.tar.gz`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.1/Lypora-0.7.1-macos-arm64.tar.gz) | macOS 11+（Apple Silicon） | `.app` bundle，ad-hoc 签名 | {{ARM_SIZE}} | `{{ARM_SHORT}}` |
-| [`Lypora-0.7.1-macos-x64.tar.gz`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.1/Lypora-0.7.1-macos-x64.tar.gz) | macOS 11+（Intel） | `.app` bundle，ad-hoc 签名 | {{X64_SIZE}} | `{{X64_SHORT}}` |
-| [`Lypora-0.7.1-android.apk`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.1/Lypora-0.7.1-android.apk) | Android 10+（API 29+） | APK，debug 签名，直接侧载 | {{APK_SIZE}} | `{{APK_SHORT}}` |
+| [`lypora_0.7.1_amd64.deb`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.1/lypora_0.7.1_amd64.deb) | Debian 11+ / Ubuntu 20.04+ / 深度 / 麒麟 | 系统包，`sudo apt install ./…deb` | 79.4 MiB | `aca3793d…650a3` |
+| [`lypora-0.7.1-1.x86_64.rpm`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.1/lypora-0.7.1-1.x86_64.rpm) | Fedora 32+ / RHEL 9+ / openSUSE | 系统包，`sudo dnf install ./…rpm` | 79.4 MiB | `8cb93073…e4778` |
+| [`Lypora-0.7.1-linux-x64.AppImage`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.1/Lypora-0.7.1-linux-x64.AppImage) | 任意 x86-64 发行版 | 单文件，`chmod +x` 后直接跑 | 95.6 MiB | `8c59a36a…47d9f` |
+| [`Lypora-0.7.1-linux-x64.tar.gz`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.1/Lypora-0.7.1-linux-x64.tar.gz) | 任意 x86-64 发行版（glibc ≥ 2.31） | tar.gz + `install.sh`（per-user，不要 root） | 102.4 MiB | `003f7727…ccea2` |
+| [`Lypora-0.7.1-win-x64.zip`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.1/Lypora-0.7.1-win-x64.zip) | Windows 10/11 x64 | 便携版 ZIP，解压即用 | 111.0 MiB | `a7868224…52ad8` |
+| [`Lypora-0.7.1-macos-arm64.tar.gz`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.1/Lypora-0.7.1-macos-arm64.tar.gz) | macOS 11+（Apple Silicon） | `.app` bundle，ad-hoc 签名 | 95.8 MiB | `35da75af…32599` |
+| [`Lypora-0.7.1-macos-x64.tar.gz`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.1/Lypora-0.7.1-macos-x64.tar.gz) | macOS 11+（Intel） | `.app` bundle，ad-hoc 签名 | 100.2 MiB | `e3b74264…7a65b` |
+| [`Lypora-0.7.1-android.apk`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.1/Lypora-0.7.1-android.apk) | Android 10+（API 29+） | APK，debug 签名，直接侧载 | 10.6 MiB | `2a84f80f…e68d1` |
 | [`SHA256SUMS.txt`](https://github.com/dr-bing-li/lypora/releases/download/v0.7.1/SHA256SUMS.txt) | 任意 | 全部产物的校验清单（8 条） | 见文件 | — |
 
 deb / rpm 会装进 `/opt/lypora`，附带 `/usr/bin/lypora` 命令、应用菜单项和 8 档图标，`apt remove` /
