@@ -26,10 +26,10 @@ images in the first place.
 | 文件 / File | 平台 / Platform | 格式 / Format | 大小 / Size | SHA256 |
 |---|---|---|---|---|
 | `Lypora-0.8.0-android.apk` | Android 10+（API 29+） | APK（debug 签名，直接安装）<br>APK, debug-signed, sideload | 10.6 MiB | `fa69f1a401f39b374dd5f8ab5848e3fb2b1eceef44b59287cb13d182f7a1b506` |
-| `lypora_0.8.0_amd64.deb` | Debian 11+ / Ubuntu 20.04+ / 深度 / 麒麟 | 系统包（`apt install`）<br>System package | {{DEB_SIZE}} | `{{DEB_SHA}}` |
-| `lypora-0.8.0-1.x86_64.rpm` | Fedora 32+ / RHEL 9+ / openSUSE | 系统包（`dnf install`）<br>System package | {{RPM_SIZE}} | `{{RPM_SHA}}` |
-| `Lypora-0.8.0-linux-x64.AppImage` | 任意 x86-64 发行版 | 单文件，免安装<br>Single file, no install | {{APPIMAGE_SIZE}} | `{{APPIMAGE_SHA}}` |
-| `Lypora-0.8.0-linux-x64.tar.gz` | 任意 x86-64 发行版（glibc ≥ 2.31） | tar.gz + `install.sh`（per-user） | {{TARGZ_SIZE}} | `{{TARGZ_SHA}}` |
+| `lypora_0.8.0_amd64.deb` | Debian 11+ / Ubuntu 20.04+ / 深度 / 麒麟 | 系统包（`apt install`）<br>System package | 79.4 MiB | `3c34bccdc025c5d416bfb0528a275ec6c86627c428f2b173dd21987adca98d70` |
+| `lypora-0.8.0-1.x86_64.rpm` | Fedora 32+ / RHEL 9+ / openSUSE | 系统包（`dnf install`）<br>System package | 79.5 MiB | `27ff3f7a74c5c03ed5c7c7ad433c85d984788a7f23c6e6f1fcdcce9fd2483c54` |
+| `Lypora-0.8.0-linux-x64.AppImage` | 任意 x86-64 发行版 | 单文件，免安装<br>Single file, no install | 95.6 MiB | `4f6a159c4ed5d86804d11d9103ab7f52a152e3aab26ed786a97d1d56d660f945` |
+| `Lypora-0.8.0-linux-x64.tar.gz` | 任意 x86-64 发行版（glibc ≥ 2.31） | tar.gz + `install.sh`（per-user） | 102.5 MiB | `c25be67c89b5d1dc169327fca68b14a7967f6cbc724139ad96a3ed6eb1248e81` |
 | `Lypora-0.8.0-win-x64.zip` | Windows 10/11 x64 | 便携版 ZIP（解压即用）<br>Portable ZIP — unzip and run | 111.0 MiB | `c07549c630b56030dc526e29a5f88601f865006e5a856840b256415e90dd858a` |
 | `Lypora-0.8.0-macos-arm64.tar.gz` | macOS 11+ / Apple Silicon | `.app` bundle（ad-hoc 签名）<br>`.app` bundle, ad-hoc signed | 95.9 MiB | `8c8f96627749acb3b05a0925dbb3617f813357117377b3942e85a33c45f35e4d` |
 | `Lypora-0.8.0-macos-x64.tar.gz` | macOS 11+ / Intel | `.app` bundle（ad-hoc 签名）<br>`.app` bundle, ad-hoc signed | 100.3 MiB | `b89f6c851376ee07cead2f84200c8da927436123749d2dfd34ee6e27f17bff9a` |
