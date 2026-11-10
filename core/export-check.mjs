@@ -13,7 +13,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 
-const URL = 'http://127.0.0.1:4173/index.html'
+const URL = process.env.PAGE_URL || 'http://127.0.0.1:4173/index.html'
 const EDGE = 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe'
 const OUT = path.resolve(import.meta.dirname, '..', 'artifacts')
 fs.mkdirSync(OUT, { recursive: true })

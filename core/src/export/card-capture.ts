@@ -1,25 +1,26 @@
 /**
- * 卡片光栅化与 PDF 打包 —— 零依赖，桌面与 Android 走同一条路。
+ * 卡片光栅化与 PDF / ZIP 打包 —— 零依赖，桌面与 Android 走同一条路。
  *
  * 为什么不用 html2canvas 这类库：它们要重新实现一遍 CSS 布局（背景渐变、伪元素、
- * flex 都靠 patch），渲染结果和真实浏览器有差异，越复杂的风格越容易翻车；而且
- * 多数库不支持 `katex` 的绝对定位细节。这里走浏览器的原生能力：
+ * flex 都靠 patch），渲染结果和真实浏览器有差异，越复杂的模板越容易翻车；而且
+ * 多数库不支持 KaTeX 的绝对定位细节。这里走浏览器的原生能力：
  *
- *   卡片 DOM → XHTML → <svg><foreignObject> → <img> → canvas → PNG
+ *   卡片 DOM → XHTML → <svg><foreignObject> → <img> → canvas → PNG / JPEG
  *
- * foreignObject 交给浏览器自己的排版引擎去画，输出与屏幕所见像素级一致
- * （同一个 Chromium 内核）。代价是必须**内联一切外部资源**：CSS、图片、字体。
- * CSS 我们自带（CARD_CSS），图片在截图前统一转成 data URL，字体用系统字体不嵌入。
+ * foreignObject 交给浏览器自己的排版引擎去画，输出与屏幕所见像素级一致。
+ * 代价是必须**内联一切外部资源**：CSS、图片、字体。
+ * Lypora 里 CSS 由模板编译而来（`stylesheetFor(tpl)`），图片统一转 data URL，
+ * 字体只使用系统字体栈 —— 这正是"完全离线"的物理前提。
  *
- * PDF 不引 jsPDF：PDF 1.4 里嵌 JPEG 是 DCTDecode 直通，不需要重新编码，
- * 一个 60 行的写入器就够了 —— 省掉一个几百 KB 的依赖，且行为完全可预测。
+ * PDF 与 ZIP 都是自研写入器（DCTDecode 直通 / store 模式），不引第三方库。
  */
 
-import { CARD_CSS } from './card-themes'
 import { KATEX_CSS } from '../io/katex-inline'
 import type { CardPage } from './card-layout'
 import { pageAsFragment } from './card-layout'
 import type { CardSize } from './card-themes'
+import type { CardTemplate } from './template/types'
+import { stylesheetFor } from './template/compile'
 
 /* ------------------------------------------------------------------ *
  * 图片内联
@@ -75,15 +76,15 @@ export interface CaptureOptions {
   scale: number
   /** 卡片外的底色（圆角处会露出） */
   backdrop: string
+  /** 当前模板编译出的样式（骨架 + 变量），必须与预览、测量用同一份 */
+  css: string
 }
-
-const XLINK = 'http://www.w3.org/1999/xlink'
 
 export async function captureCard(fragmentHtml: string, size: CardSize, opts: CaptureOptions): Promise<HTMLCanvasElement> {
   // 离屏宿主：必须在文档里才能布局与加载图片
   const host = document.createElement('div')
   host.style.cssText = 'position:fixed;left:-30000px;top:0;pointer-events:none;opacity:0'
-  host.innerHTML = `<style>${CARD_CSS}</style>${fragmentHtml}`
+  host.innerHTML = `<style>${opts.css}</style>${fragmentHtml}`
   document.body.appendChild(host)
 
   const card = host.querySelector('.ly-card') as HTMLElement
@@ -101,20 +102,18 @@ export async function captureCard(fragmentHtml: string, size: CardSize, opts: Ca
   const xhtml = new XMLSerializer().serializeToString(card)
 
   // 公式样式必须跟着走：KaTeX 的 HTML 没有 CSS 就退化成"平铺文字"
-  // （∫₀¹ 会变成 ∫01，上标全部掉到基线上）。文档里没有公式就不塞，省 360KB。
+  // （∫₀¹ 会变成 ∫01，上标全部掉到基线上）。没有公式就不塞，省 360KB。
   const mathCss = fragmentHtml.includes('class="katex') ? KATEX_CSS : ''
 
-  // foreignObject 的内部必须是 XHTML 命名空间，且样式只能走内联 <style>
   const svg =
     `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">` +
     `<foreignObject x="0" y="0" width="100%" height="100%">` +
     `<div xmlns="http://www.w3.org/1999/xhtml" style="width:${w}px;height:${h}px">` +
-    `<style>${CARD_CSS}${mathCss}</style>${xhtml}` +
+    `<style>${opts.css}${mathCss}</style>${xhtml}` +
     `</div></foreignObject></svg>`
 
-  // 用 data URI 而不是 blob URL：blob: 作为 <img> 源时，Chromium 会把画到 canvas
-  // 的结果标成 tainted，toDataURL 抛 SecurityError（实测 Edge/Chromium 均如此）。
-  // 代价是 encodeURIComponent 后的体积膨胀，KaTeX 那份 CSS 约 1MB，仍在 data URI 上限内。
+  // 必须用 data URI：blob: 作为 <img> 源时 Chromium 会把画到 canvas 的结果标成
+  // tainted，toDataURL 抛 SecurityError（实测 Edge/Chromium 均如此）
   const svgUrl = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg)
 
   const img = new Image()
@@ -122,8 +121,7 @@ export async function captureCard(fragmentHtml: string, size: CardSize, opts: Ca
   await new Promise<void>((resolve, reject) => {
     img.onload = () => resolve()
     img.onerror = () => {
-      // 定位用：SVG 作为图片加载失败时，把 XML 解析器的报错带出来，
-      // 否则只能看到一句"图片加载失败"，无从下手
+      // 定位用：SVG 加载失败时把 XML 解析器的报错带出来
       let diag = ''
       try {
         const doc = new DOMParser().parseFromString(svg, 'image/svg+xml')
@@ -172,10 +170,17 @@ interface PdfImagePage {
   pxH: number
 }
 
-/**
- * 生成 PDF：每张卡片一页，页面尺寸按 96dpi → pt（×0.75）换算，
- * 图片铺满整页不带页边距（卡片本身就是版面）。
- */
+function latin1(s: string): Uint8Array {
+  const u = new Uint8Array(s.length)
+  for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i) & 0xff
+  return u
+}
+
+function round2(n: number): string {
+  return String(Math.round(n * 100) / 100)
+}
+
+/** 每张卡片一页；页面尺寸按 96dpi → pt（×0.75），图片铺满整页不带页边距 */
 export function buildPdf(pages: PdfImagePage[], pageW: number, pageH: number): Blob {
   const chunks: Uint8Array[] = []
   let offset = 0
@@ -195,7 +200,6 @@ export function buildPdf(pages: PdfImagePage[], pageW: number, pageH: number): B
 
   const pageCount = pages.length
   const kidIds: number[] = []
-  // 对象编号：1 Catalog, 2 Pages, 之后每页 3 个对象（Page / Contents / Image）
   for (let i = 0; i < pageCount; i++) kidIds.push(3 + i * 3)
 
   startObj(1)
@@ -219,7 +223,6 @@ export function buildPdf(pages: PdfImagePage[], pageW: number, pageH: number): B
         `/Contents ${contentId} 0 R >>\nendobj\n`,
     )
 
-    // 单位矩阵铺满：cm 把 1×1 的图像区域放大到整页
     const content = `q\n${W} 0 0 ${H} 0 0 cm\n/Im0 Do\nQ\n`
     startObj(contentId)
     push(`<< /Length ${latin1(content).length} >>\nstream\n`)
@@ -247,63 +250,6 @@ export function buildPdf(pages: PdfImagePage[], pageW: number, pageH: number): B
   return new Blob(chunks as BlobPart[], { type: 'application/pdf' })
 }
 
-function latin1(s: string): Uint8Array {
-  const u = new Uint8Array(s.length)
-  for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i) & 0xff
-  return u
-}
-
-function round2(n: number): string {
-  return String(Math.round(n * 100) / 100)
-}
-
-/* ------------------------------------------------------------------ *
- * 高层出口
- * ------------------------------------------------------------------ */
-
-export interface RenderResult {
-  blobs: Blob[]
-  size: CardSize
-}
-
-/** 逐页渲染成 PNG（每页一个文件，与业界习惯一致） */
-export async function renderPagesToPng(
-  pages: CardPage[],
-  size: CardSize,
-  styleId: string,
-  backdrop: string,
-): Promise<RenderResult> {
-  const blobs: Blob[] = []
-  for (const page of pages) {
-    const canvas = await captureCard(pageAsFragment(page, size, styleId), size, { scale: size.scale, backdrop })
-    blobs.push(await canvasToBlob(canvas, 'image/png'))
-  }
-  return { blobs, size }
-}
-
-/** 逐页渲染后拼成一份 PDF */
-export async function renderPagesToPdf(
-  pages: CardPage[],
-  size: CardSize,
-  styleId: string,
-  backdrop: string,
-): Promise<Blob> {
-  const imgs: PdfImagePage[] = []
-  for (const page of pages) {
-    const canvas = await captureCard(pageAsFragment(page, size, styleId), size, { scale: size.scale, backdrop })
-    imgs.push({ jpeg: await canvasToJpeg(canvas), pxW: canvas.width, pxH: canvas.height })
-  }
-  // 逻辑像素 → pt：96dpi 的 px 换算到 72dpi 的 pt
-  return buildPdf(imgs, size.w * 0.75, size.h * 0.75)
-}
-
-/** 把页面渲染成 data URL，用于面板预览 */
-export async function renderPagePreview(page: CardPage, size: CardSize, styleId: string, backdrop: string): Promise<string> {
-  const scale = Math.min(1, 300 / size.w)
-  const canvas = await captureCard(pageAsFragment(page, size, styleId), size, { scale, backdrop })
-  return canvas.toDataURL('image/png')
-}
-
 /* ------------------------------------------------------------------ *
  * 极简 ZIP（store 模式，不压缩）—— 多页 PNG 打成一个包，避免浏览器
  * 连续的多次下载触发"阻止多个文件下载"的拦截
@@ -325,7 +271,7 @@ function crc32(buf: Uint8Array): number {
   return (c ^ 0xffffffff) >>> 0
 }
 
-interface ZipEntry {
+export interface ZipEntry {
   name: string
   data: Uint8Array
 }
@@ -346,8 +292,8 @@ export function buildZip(entries: ZipEntry[]): Blob {
     const lh = new DataView(new ArrayBuffer(30))
     lh.setUint32(0, 0x04034b50, true)
     lh.setUint16(4, 20, true)
-    lh.setUint16(6, 0x0800, true) // UTF-8 文件名
-    lh.setUint16(8, 0, true) // store
+    lh.setUint16(6, 0x0800, true)
+    lh.setUint16(8, 0, true)
     lh.setUint16(10, dosTime, true)
     lh.setUint16(12, dosDate, true)
     lh.setUint32(14, crc, true)
@@ -389,4 +335,48 @@ export function buildZip(entries: ZipEntry[]): Blob {
   end.setUint32(16, offset, true)
 
   return new Blob([...locals, ...centrals, new Uint8Array(end.buffer)] as BlobPart[], { type: 'application/zip' })
+}
+
+/* ------------------------------------------------------------------ *
+ * 高层出口
+ * ------------------------------------------------------------------ */
+
+export interface RenderResult {
+  blobs: Blob[]
+  size: CardSize
+}
+
+/** 逐页渲染成 PNG（每页一个文件） */
+export async function renderPagesToPng(
+  pages: CardPage[],
+  size: CardSize,
+  tpl: CardTemplate,
+  backdrop: string,
+): Promise<RenderResult> {
+  const css = stylesheetFor(tpl)
+  const blobs: Blob[] = []
+  for (const page of pages) {
+    const canvas = await captureCard(pageAsFragment(page, size, tpl), size, { scale: size.scale, backdrop, css })
+    blobs.push(await canvasToBlob(canvas, 'image/png'))
+  }
+  return { blobs, size }
+}
+
+/** 逐页渲染后拼成一份 PDF */
+export async function renderPagesToPdf(pages: CardPage[], size: CardSize, tpl: CardTemplate, backdrop: string): Promise<Blob> {
+  const css = stylesheetFor(tpl)
+  const imgs: PdfImagePage[] = []
+  for (const page of pages) {
+    const canvas = await captureCard(pageAsFragment(page, size, tpl), size, { scale: size.scale, backdrop, css })
+    imgs.push({ jpeg: await canvasToJpeg(canvas), pxW: canvas.width, pxH: canvas.height })
+  }
+  return buildPdf(imgs, size.w * 0.75, size.h * 0.75)
+}
+
+/** 面板预览：低倍率出图，避免每次调参数都等 2 倍图 */
+export async function renderPagePreview(page: CardPage, size: CardSize, tpl: CardTemplate, backdrop: string): Promise<string> {
+  const css = stylesheetFor(tpl)
+  const scale = Math.min(1, 320 / size.w)
+  const canvas = await captureCard(pageAsFragment(page, size, tpl), size, { scale, backdrop, css })
+  return canvas.toDataURL('image/png')
 }

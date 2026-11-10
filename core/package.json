@@ -1,9 +1,9 @@
 {
   "name": "lypora-core",
   "private": true,
-  "version": "0.8.2",
+  "version": "0.9.0",
   "type": "module",
-  "description": "Lypora: cross-platform live-preview Markdown editor core",
+  "description": "Lypora: cross-platform live-preview Markdown editor core (with card beautify output)",
   "scripts": {
     "dev": "node scripts/gen-katex-css.mjs && vite",
     "build": "node scripts/gen-katex-css.mjs && vite build",

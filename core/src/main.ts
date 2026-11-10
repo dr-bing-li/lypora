@@ -46,7 +46,7 @@ import {
 } from './io/image-path'
 import { insertImages, isImageFile, type ImageInput } from './io/image-insert'
 import { exportHtml, exportMarkdown, exportPdf } from './io/export'
-import { createCardExportPanel } from './ui/card-export-panel'
+import { createBeautifyPanel } from './ui/beautify-panel'
 import { putDoc, listDocs, getDoc, readSetting, writeSetting, migrateLegacySettings } from './io/store'
 import { SAMPLE_MD, SAMPLE_NAME } from './sample'
 import { fmtNum } from './util'
@@ -719,7 +719,7 @@ function doExport(kind: 'md' | 'html' | 'pdf'): void {
  * 卡片导出（图片 / PDF）—— 与"导出 PDF（打印）"是两条不同的路：
  * 打印那条服从 A4 纸张与分页规则，这条按卡片版面重排，产物是可直接发布的图片。
  * ------------------------------------------------------------------ */
-const cardExport = createCardExportPanel({
+const beautify = createBeautifyPanel({
   getContent: () => app.view?.state.doc.toString() ?? '',
   getDocName: () => app.fileName,
 })
@@ -1032,9 +1032,9 @@ function buildMenus(): MenuDef[] {
           action: () => doExport('pdf'),
         },
         {
-          id: 'file-export-card',
-          label: t('file.exportCard'),
-          action: () => cardExport.open(),
+          id: 'file-beautify',
+          label: t('file.beautify'),
+          action: () => beautify.open(),
         },
       ],
     },

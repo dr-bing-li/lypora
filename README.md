@@ -152,6 +152,7 @@ as described in [`desktop/README.md`](desktop/README.md).
 cd core
 node verify.mjs            # 15 UI assertions + screenshots (needs `npm run preview` running)
 node export-check.mjs      # export path: HTML / @media print / real PDF / print iframe
+node beautify-check.mjs    # beautify output: 12 templates, param re-pagination, template I/O, offline audit
 
 node mobile-check.mjs      # touch shell: 5 viewports, tap targets, drawer, menu sheet
 node i18n-check.mjs        # i18n: 7 locales × key parity / placeholders / real DOM rendering
@@ -396,7 +397,7 @@ Lypora 是一个**小小的、刻意不做大的替代品**，用来临时顶一
 | 版式 | 8 个顶级菜单（含二级）、左侧栏大纲 / 文件树 / 最近、源代码模式、专注模式、打字机模式、全屏、页面宽度可调（620 / 860 / 1080 / 全宽 / 自定义，或拖右边缘把手） |
 | 多语言 | 7 种界面语言：简体中文 / English / 日本語 / 한국어 / Español / Français / Deutsch。可在**语言**菜单里运行时切换，或跟随系统语言；选择会被记住 |
 | 文件 | 打开 / 保存 / 另存、最近文件、工作区文件树、导出 Markdown / 单文件 HTML / PDF（KaTeX 的 CSS 与字体内联，离线打开公式也是对的） |
-| 卡片导出 | **文件 → 导出卡片**：按卡片版面重排出图，8 套输出风格（素纸 / 便签 / 杂志 / 暗夜 / 渐变海报 / 打字机 / 方格笔记 / 水墨）、4 种尺寸（竖版 3:4 / 方版 1:1 / 长竖 9:16 / A4）、三种分页（自动 / 按 `---` / 不分页）、含封面页；产物为 PNG（多页打 ZIP）、PDF（一卡一页）、或复制当前页到剪贴板。风格与界面主题**互不影响**——界面用暗色，导出的卡片仍是你要的纸感。详见 [docs/08](docs/08-卡片导出与输出风格.md) |
+| 美化输出 | **文件 → 美化输出**：把 Markdown 重排成可直接发布的图文卡片。**12 套模板**（素纸 / 便签 / 杂志 / 暗夜 / 渐变海报 / 打字机 / 方格笔记 / 水墨 / 暖沙 / 极简黑白 / 钴蓝 / 林间），**17 项可调参数**（纸张与墨色、字号行高留白圆角、8 种纹理、4 个强调位、折角 / 胶带 / 印章、页眉页码）+ 4 种字体族；模板可导出为 `.lyt.json` 再导入，可存为「我的模板」。**4 种画布尺寸**（竖版 3:4 / 方版 1:1 / 长竖 9:16 / A4）、**三种分页**（自动 / 按 `---` / 不分页）、可含封面页；产物为 PNG（多页打 ZIP）、PDF（一卡一页）、或复制当前页到剪贴板。改参数会**重新分页**（不是只换 CSS）；模板与界面主题互不影响；全流程**零网络请求**。详见 [docs/08](docs/08-美化输出与卡片模板.md) / [docs/09](docs/09-美化输出与模板引擎.md) |
 | 桌面 | 原生对话框、单实例、关窗前未保存拦截、文件关联 |
 | 平台 | Windows 便携版 `.exe` + ZIP、macOS `.app`（Apple Silicon 与 Intel）、Linux x64 的 `.deb` / `.rpm` / AppImage / tar.gz（都带 `.desktop` 集成）、Android APK、以及浏览器 / PWA 版——一个 TypeScript 核心，五套外壳 |
 | 发布 | `git push origin v0.8.2` 就够了：GitHub Actions 构建前端、摊一棵 FHS 树、封成 deb / rpm / AppImage / tar.gz、在干净容器里把 deb 和 rpm 真装一遍，然后把全部产物和合并后的 `SHA256SUMS.txt` 传上 Release |
@@ -522,6 +523,7 @@ node tools/build-android.mjs
 cd core
 node verify.mjs            # 15 步 UI 断言 + 截图（需先 npm run preview）
 node export-check.mjs      # 导出链路：HTML / @media print / 真 PDF / 打印 iframe
+node beautify-check.mjs    # 美化输出：12 套模板、参数重排、模板导入导出、零外部请求审计
 
 node mobile-check.mjs      # 触屏外壳：5 种视口、点击区、抽屉、菜单面板
 node i18n-check.mjs        # 国际化：7 种语言 × 键齐备 / 占位符 / 真实 DOM 渲染
