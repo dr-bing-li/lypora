@@ -346,7 +346,8 @@ v0.4.1 起，Lypora 也注册进了系统的**「打开方式」**列表（在�
 
 - **运行时证据覆盖 Windows、Android、macOS 与 Linux。** Windows 打包版跑过 `--selftest`（原生菜单 9 项、桥接 API 11 项、
   Electron 33.4.11，退出码 0）、真实鼠标事件、关窗拦截四场景；APK 是构建后用 `aapt2` / `apksigner` 逐项核
-  元数据，触屏布局在 Chromium 五档视口下逐条断言。这台机器没接安卓真机，所以原生文件读写与系统分享面板**没有**在真实硬件上验证过。v0.8.1 的图片管线另有两层：38 条纯函数用例（`core/image-check.mjs`）
+  元数据，触屏布局在 Chromium 五档视口下逐条断言。构建机没接安卓真机，所以原生文件读写与系统分享面板**没有**在真实硬件上验证过；APK 的真机证据只有装包后
+  看到的图标（H30），不是功能级验证。v0.8.1 的图片管线另有两层：38 条纯函数用例（`core/image-check.mjs`）
   加 24 条端到端断言（`tools/imgtest.mjs`，真启动 Electron、写真 PNG、断言 `naturalWidth > 0`，再走完六条
   插入路径），打包版 `--selftest` 报 9 个菜单根（含「设置」）与零 console 报错。
 - **macOS 和 Linux 一开始只有结构证据，v0.8.2 补上了真机证据。** 构建机是 Windows，WSL 与 Docker 在本机
