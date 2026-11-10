@@ -32,19 +32,19 @@ the next version of it.
 |---|---|---|---|---|
 | `Lypora-0.9.0-win-x64.zip` | Windows 10/11 x64 | 便携版 ZIP（解压即用）<br>Portable ZIP — unzip and run | 111.8 MiB | `10c720ff79e5b11795230f8ea9c99a9d289b551ce5836c8ef58cdfb1d873b5c8` |
 | `Lypora-0.9.0-android.apk` | Android 10+（API 29+） | APK（debug 签名，直接安装）<br>APK, debug-signed, sideload | 13.6 MiB | `24403ee6f0d1215b2559b22babf2134db05cba4197b09a744c07a430c0ac3c58` |
-| `Lypora-0.9.0-macos-arm64.tar.gz` | macOS 11+ / Apple Silicon | `.app` bundle（ad-hoc 签名） | 由 CI 构建，发布时回填<br>built by CI, filled at publish | — |
-| `Lypora-0.9.0-macos-x64.tar.gz` | macOS 11+ / Intel | `.app` bundle（ad-hoc 签名） | 同上 / same | — |
-| `Lypora-0.9.0-linux-x64.tar.gz` | 任意 x86-64 发行版（glibc ≥ 2.31） | tar.gz + `install.sh`（per-user） | 同上 / same | — |
-| `Lypora-0.9.0-linux-x64.AppImage` | 任意 x86-64 发行版 | 单文件，免安装 | 同上 / same | — |
-| `lypora_0.9.0_amd64.deb` | Debian 11+ / Ubuntu 20.04+ / 深度 / 麒麟 | 系统包（`apt install`） | 同上 / same | — |
-| `lypora-0.9.0-1.x86_64.rpm` | Fedora 32+ / RHEL 9+ / openSUSE | 系统包（`dnf install`） | 同上 / same | — |
+| `Lypora-0.9.0-macos-arm64.tar.gz` | macOS 11+ / Apple Silicon | `.app` bundle（ad-hoc 签名） | 98.5 MiB | `b6aaa499dad7bddd454f8b4ec8f11f3c9efc78edb0954c6db3fa2c87335b9eef` |
+| `Lypora-0.9.0-macos-x64.tar.gz` | macOS 11+ / Intel | `.app` bundle（ad-hoc 签名） | 102.9 MiB | `e5c91e9ca148e26da191ef2632aebeb45b95c527eac44a591d9a9e6e3100d21f` |
+| `Lypora-0.9.0-linux-x64.tar.gz` | 任意 x86-64 发行版（glibc ≥ 2.31） | tar.gz + `install.sh`（per-user） | 104.3 MiB | `616ed1d7caec9f04c8ca5404c16b2552e0a404059fd6ec9b777d8c49b2823846` |
+| `Lypora-0.9.0-linux-x64.AppImage` | 任意 x86-64 发行版 | 单文件，免安装 | 96.8 MiB | `5d9408199059469829e3521f339d0799bdc06b75c4f73d44c0cd9958eed04720` |
+| `lypora_0.9.0_amd64.deb` | Debian 11+ / Ubuntu 20.04+ / 深度 / 麒麟 | 系统包（`apt install`） | 80.7 MiB | `e0a84d73f857e3e8e401b2bc42bfce391add34d282d032c08a0f81e536d77771` |
+| `lypora-0.9.0-1.x86_64.rpm` | Fedora 32+ / RHEL 9+ / openSUSE | 系统包（`dnf install`） | 80.8 MiB | `30a803f1cd8977f503748d9bdb487ce43a5cef64de2c56a52985d3194fee5505` |
 | `SHA256SUMS.txt` | 任意 / any | 全部产物的校验清单 | 发布时生成 / generated at publish | — |
 
-Windows 与 Android 两件是本机构建并自检过的；macOS / Linux 四件由 CI 在打 tag 时构建，
-体积与校验值在发布时回填（`docs/07` 的流水线没有变）。
+Windows、Android 与 macOS 两件（arm64 / x64）在本机构建，Linux 四件由 CI 在打 tag 时构建；
+上表的体积与校验值取自发布产物本身（`docs/07` 的流水线没有变）。
 
-The Windows and Android artefacts were built and self-tested locally; the macOS / Linux ones are built by CI
-on the tag and get their sizes and hashes filled in at publish time.
+The Windows, Android and macOS artefacts were built locally; the four Linux ones are built by CI on the tag.
+Sizes and hashes above are read back from the published assets.
 
 **校验方法 / How to verify**
 
@@ -160,7 +160,7 @@ PNG（多页打 ZIP）、PDF（一卡一页）、复制当前页到剪贴板、�
 | 打包版 `--selftest` | `ok: true`、版本 `0.9.0`、9 个顶级菜单、`bridgeApi` 含 `saveBinary`、`consoleErrors: []` |
 | APK | `app.lypora.editor` / `versionCode 13` / `versionName 0.9.0` / minSdk 29 / 13.6 MiB；包内 `assets/public` 已确认是新代码 |
 
-产物体积：Windows 便携包 111.8 MiB（147 个文件），APK 13.6 MiB。
+产物体积：Windows 便携包 111.8 MiB（147 个文件），APK 13.6 MiB；九件资产合计 689.4 MiB。
 
 ## 安装方式
 
@@ -285,7 +285,7 @@ editor theme.
 | Packaged `--selftest` | `ok: true`, version `0.9.0`, 9 top-level menus, `bridgeApi` includes `saveBinary`, `consoleErrors: []` |
 | APK | `app.lypora.editor` / `versionCode 13` / `versionName 0.9.0` / minSdk 29 / 13.6 MiB; the bundled `assets/public` is the new build |
 
-Artefact size: Windows portable ZIP 111.8 MiB (147 files), APK 13.6 MiB.
+Artefact size: Windows portable ZIP 111.8 MiB (147 files), APK 13.6 MiB; all nine assets total 689.4 MiB.
 
 ## Known limitations
 
