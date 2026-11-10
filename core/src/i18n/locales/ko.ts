@@ -38,6 +38,7 @@ export default {
     exportHtml: 'HTML 내보내기',
     exportPdf: 'PDF 내보내기(인쇄)',
     exportPdfUnsupported: 'PDF 내보내기(모바일 미지원)',
+    exportCard: '카드 내보내기(이미지 / PDF)',
   },
 
   edit: {
@@ -240,4 +241,30 @@ export default {
     columnEven: '열 너비를 균등하게 맞췄습니다',
     columnPx: '열 너비 {px} px(구분선을 두 번 클릭하면 균등 분할)',
   },
+  card: {
+    title: '카드 내보내기',
+    style: '스타일',
+    size: '크기',
+    split: '페이지 분할',
+    splitAuto: '자동 분할',
+    splitRule: '구분선으로 분할',
+    splitNone: '분할 안 함',
+    cover: '표지 포함',
+    working: '렌더링 중…',
+    done: '완료',
+    failed: '내보내기 실패',
+    empty: '내보낼 내용이 없습니다',
+    pageCount: '총 {n}페이지',
+    clipped: '{n}개 블록이 카드를 넘어 잘렸습니다',
+    exportPng: 'PNG 내보내기',
+    exportPdf: 'PDF 내보내기',
+    copy: '이미지 복사',
+    copied: '클립보드에 복사했습니다',
+    copyUnsupported: '이 환경에서는 이미지를 복사할 수 없습니다. 내보내기를 사용하세요',
+    savedPng: '{path}에 저장했습니다',
+    savedPdf: '{path}에 저장했습니다',
+    savedZip: '카드 {n}장을 묶었습니다',
+    close: '닫기',
+  },
+
 }

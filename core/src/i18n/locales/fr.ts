@@ -38,6 +38,7 @@ export default {
     exportHtml: 'Exporter en HTML',
     exportPdf: 'Exporter en PDF (impression)',
     exportPdfUnsupported: 'Exporter en PDF (indisponible sur mobile)',
+    exportCard: 'Exporter les cartes (image / PDF)',
   },
 
   edit: {
@@ -240,4 +241,30 @@ export default {
     columnEven: 'Colonnes égalisées',
     columnPx: 'Largeur de colonne {px} px (double-clic sur un séparateur pour égaliser)',
   },
+  card: {
+    title: 'Exporter les cartes',
+    style: 'Style',
+    size: 'Taille',
+    split: 'Pagination',
+    splitAuto: 'Automatique',
+    splitRule: 'Couper sur les lignes',
+    splitNone: 'Une seule carte',
+    cover: 'Inclure la couverture',
+    working: 'Rendu en cours…',
+    done: 'Terminé',
+    failed: 'Échec de l’export',
+    empty: 'Rien à exporter',
+    pageCount: '{n} pages',
+    clipped: '{n} blocs ont été coupés (trop hauts)',
+    exportPng: 'Exporter en PNG',
+    exportPdf: 'Exporter en PDF',
+    copy: 'Copier l’image',
+    copied: 'Copié dans le presse-papiers',
+    copyUnsupported: 'La copie d’image n’est pas disponible ici, utilisez l’export',
+    savedPng: 'Enregistré dans {path}',
+    savedPdf: 'Enregistré dans {path}',
+    savedZip: '{n} cartes empaquetées',
+    close: 'Fermer',
+  },
+
 }

@@ -38,6 +38,7 @@ export default {
     exportHtml: 'HTML exportieren',
     exportPdf: 'PDF exportieren (Drucken)',
     exportPdfUnsupported: 'PDF exportieren (auf Mobilgeräten nicht verfügbar)',
+    exportCard: 'Karten exportieren (Bild / PDF)',
   },
 
   edit: {
@@ -240,4 +241,30 @@ export default {
     columnEven: 'Spalten ausgeglichen',
     columnPx: 'Spaltenbreite {px} px (Doppelklick auf einen Trenner gleicht aus)',
   },
+  card: {
+    title: 'Karten exportieren',
+    style: 'Stil',
+    size: 'Größe',
+    split: 'Seitenumbruch',
+    splitAuto: 'Automatisch',
+    splitRule: 'An Trennlinien trennen',
+    splitNone: 'Eine Karte',
+    cover: 'Deckblatt einfügen',
+    working: 'Wird gerendert…',
+    done: 'Fertig',
+    failed: 'Export fehlgeschlagen',
+    empty: 'Nichts zu exportieren',
+    pageCount: '{n} Seiten',
+    clipped: '{n} Blöcke waren zu hoch und wurden abgeschnitten',
+    exportPng: 'PNG exportieren',
+    exportPdf: 'PDF exportieren',
+    copy: 'Bild kopieren',
+    copied: 'In die Zwischenablage kopiert',
+    copyUnsupported: 'Bildkopie wird hier nicht unterstützt – bitte exportieren',
+    savedPng: 'Gespeichert: {path}',
+    savedPdf: 'Gespeichert: {path}',
+    savedZip: '{n} Karten gepackt',
+    close: 'Schließen',
+  },
+
 }

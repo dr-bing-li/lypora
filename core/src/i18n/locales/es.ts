@@ -38,6 +38,7 @@ export default {
     exportHtml: 'Exportar HTML',
     exportPdf: 'Exportar PDF (imprimir)',
     exportPdfUnsupported: 'Exportar PDF (no disponible en móvil)',
+    exportCard: 'Exportar tarjetas (imagen / PDF)',
   },
 
   edit: {
@@ -240,4 +241,30 @@ export default {
     columnEven: 'Columnas igualadas',
     columnPx: 'Ancho de columna {px} px (doble clic en un separador para igualar)',
   },
+  card: {
+    title: 'Exportar tarjetas',
+    style: 'Estilo',
+    size: 'Tamaño',
+    split: 'Paginación',
+    splitAuto: 'Automática',
+    splitRule: 'Dividir por líneas',
+    splitNone: 'Una sola tarjeta',
+    cover: 'Incluir portada',
+    working: 'Renderizando…',
+    done: 'Listo',
+    failed: 'Error al exportar',
+    empty: 'No hay nada que exportar',
+    pageCount: '{n} páginas',
+    clipped: 'Se recortaron {n} bloques que no cabían',
+    exportPng: 'Exportar PNG',
+    exportPdf: 'Exportar PDF',
+    copy: 'Copiar imagen',
+    copied: 'Copiado al portapapeles',
+    copyUnsupported: 'No se puede copiar imágenes aquí; usa la exportación',
+    savedPng: 'Guardado en {path}',
+    savedPdf: 'Guardado en {path}',
+    savedZip: 'Se empaquetaron {n} tarjetas',
+    close: 'Cerrar',
+  },
+
 }

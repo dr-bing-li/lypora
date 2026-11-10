@@ -38,6 +38,7 @@ export default {
     exportHtml: 'Export HTML',
     exportPdf: 'Export PDF (print)',
     exportPdfUnsupported: 'Export PDF (not on mobile)',
+    exportCard: 'Export cards (image / PDF)',
   },
 
   edit: {
@@ -240,4 +241,30 @@ export default {
     columnEven: 'Columns evened out',
     columnPx: 'Column width {px} px (double-click a divider to even out)',
   },
+  card: {
+    title: 'Export cards',
+    style: 'Style',
+    size: 'Size',
+    split: 'Pagination',
+    splitAuto: 'Auto',
+    splitRule: 'Split on rules',
+    splitNone: 'Single card',
+    cover: 'Include cover',
+    working: 'Rendering…',
+    done: 'Done',
+    failed: 'Export failed',
+    empty: 'Nothing to export',
+    pageCount: '{n} pages',
+    clipped: '{n} block(s) overflowed and were clipped',
+    exportPng: 'Export PNG',
+    exportPdf: 'Export PDF',
+    copy: 'Copy image',
+    copied: 'Copied to clipboard',
+    copyUnsupported: 'Copying images is not supported here — use export instead',
+    savedPng: 'Saved {path}',
+    savedPdf: 'Saved {path}',
+    savedZip: 'Packed {n} cards',
+    close: 'Close',
+  },
+
 }

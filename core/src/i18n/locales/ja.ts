@@ -38,6 +38,7 @@ export default {
     exportHtml: 'HTML を書き出す',
     exportPdf: 'PDF を書き出す（印刷）',
     exportPdfUnsupported: 'PDF を書き出す（モバイル非対応）',
+    exportCard: 'カードを書き出す（画像 / PDF）',
   },
 
   edit: {
@@ -240,4 +241,30 @@ export default {
     columnEven: '列幅を均等にしました',
     columnPx: '列幅 {px} px（区切りをダブルクリックで均等化）',
   },
+  card: {
+    title: 'カードを書き出す',
+    style: 'スタイル',
+    size: 'サイズ',
+    split: 'ページ分割',
+    splitAuto: '自動分割',
+    splitRule: '区切り線で分割',
+    splitNone: '分割しない',
+    cover: '表紙を含める',
+    working: 'レンダリング中…',
+    done: '完了',
+    failed: '書き出しに失敗しました',
+    empty: '書き出せる内容がありません',
+    pageCount: '全 {n} ページ',
+    clipped: '{n} 件のブロックがはみ出して切り取られました',
+    exportPng: 'PNG を書き出す',
+    exportPdf: 'PDF を書き出す',
+    copy: '画像をコピー',
+    copied: 'クリップボードにコピーしました',
+    copyUnsupported: 'この環境では画像をコピーできません。書き出しをご利用ください',
+    savedPng: '{path} に保存しました',
+    savedPdf: '{path} に保存しました',
+    savedZip: '{n} 枚のカードをまとめました',
+    close: '閉じる',
+  },
+
 }

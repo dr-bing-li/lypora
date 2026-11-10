@@ -144,9 +144,36 @@ export async function shareFile(
   }
 }
 
-/** 直接打开系统文件选择器外的兜底：把内容写进应用目录后返回其 URI */
-export async function localUri(name: string, content: string): Promise<string | null> {
+/**
+ * 二进制落盘 + 分享（PNG / PDF / ZIP 用）。
+ * Capacitor 的 Filesystem 只认 UTF-8 文本或 base64，所以二进制统一走 base64，
+ * 不传 encoding —— 传了 UTF8 会把图片写成一堆替换字符。
+ */
+export async function shareBinary(
+  name: string,
+  base64: string,
+  mime: string,
+): Promise<{ ok: boolean; path?: string }> {
+  if (!isNative()) return { ok: false }
   try {
+    await ensureDir()
+    const file = safeName(name)
+    await Filesystem.writeFile({
+      path: joinPath(file),
+      data: base64,
+      directory: Directory.Documents,
+      recursive: true,
+    })
+    const uri = await Filesystem.getUri({ path: joinPath(file), directory: Directory.Documents })
+    await Share.share({ title: file, url: uri.uri, dialogTitle: t('dock.export') })
+    return { ok: true, path: uri.uri }
+  } catch {
+    return { ok: false }
+  }
+}
+
+/** 直接打开系统文件选择器外的兜底：把内容写进应用目录后返回其 URI */
+export async function localUri(name: string, content: string): Promise<string | null> {  try {
     await writeDoc(name, content)
     const uri = await Filesystem.getUri({ path: joinPath(safeName(name)), directory: Directory.Documents })
     return uri.uri

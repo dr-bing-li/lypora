@@ -49,6 +49,7 @@ export default {
     exportHtml: '导出 HTML',
     exportPdf: '导出 PDF（打印）',
     exportPdfUnsupported: '导出 PDF（手机版不支持）',
+    exportCard: '导出卡片（图片 / PDF）',
   },
 
   edit: {
@@ -251,4 +252,30 @@ export default {
     columnEven: '列宽已均分',
     columnPx: '列宽 {px} px（双击分隔线均分）',
   },
+  card: {
+    title: '导出卡片',
+    style: '风格',
+    size: '尺寸',
+    split: '分页',
+    splitAuto: '自动分页',
+    splitRule: '按横线分页',
+    splitNone: '不分页',
+    cover: '含封面页',
+    working: '正在渲染…',
+    done: '已完成',
+    failed: '导出失败',
+    empty: '没有可导出的内容',
+    pageCount: '共 {n} 页',
+    clipped: '有 {n} 处内容超出卡片，已被裁切',
+    exportPng: '导出 PNG',
+    exportPdf: '导出 PDF',
+    copy: '复制图片',
+    copied: '已复制到剪贴板',
+    copyUnsupported: '当前环境不支持复制图片，请改用导出',
+    savedPng: '已导出 {path}',
+    savedPdf: '已导出 {path}',
+    savedZip: '已打包 {n} 张卡片',
+    close: '关闭',
+  },
+
 }

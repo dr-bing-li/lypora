@@ -1799,3 +1799,260 @@ body.col-resizing * {
     margin: 18mm 16mm;
   }
 }
+
+/* ================================================================== *
+ * 卡片导出面板（导出 → 卡片图片 / PDF）
+ * 面板自身用应用主题变量，卡片区域用 card-themes.ts 里的 --c-* 变量，
+ * 两套变量互不影响 —— 这是"输出风格与界面主题解耦"的落地方式。
+ * ================================================================== */
+.ce-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 420;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(16, 18, 22, 0.42);
+  backdrop-filter: blur(2px);
+}
+.ce {
+  display: flex;
+  flex-direction: column;
+  width: min(940px, 100%);
+  max-height: min(680px, 100%);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  box-shadow: 0 28px 72px rgba(0, 0, 0, 0.34);
+  overflow: hidden;
+}
+.ce-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px 12px 18px;
+  border-bottom: 1px solid var(--border);
+}
+.ce-title {
+  font-family: var(--font-head);
+  font-size: 13.5px;
+  font-weight: 650;
+  color: var(--fg);
+}
+.ce-x {
+  margin-left: auto;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  color: var(--fg-muted);
+  font-size: 17px;
+  line-height: 1;
+}
+.ce-x:hover {
+  background: var(--bg-elev);
+  border-color: var(--border);
+}
+.ce-body {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+}
+.ce-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 20px;
+  background: var(--bg-side, var(--bg-elev));
+  border-right: 1px solid var(--border);
+  flex: 0 0 46%;
+}
+.ce-stage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  flex: 1 1 auto;
+  width: 100%;
+}
+.ce-img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: 6px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.2);
+  background: #fff;
+}
+.ce-pager {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 11.5px;
+  color: var(--fg-muted);
+  font-variant-numeric: tabular-nums;
+}
+.ce-arrow {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  color: var(--fg);
+  background: var(--bg);
+  line-height: 1;
+}
+.ce-arrow:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.ce-settings {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 16px 18px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.ce-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ce-label {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--fg-faint);
+}
+.ce-styles {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+.ce-style {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 4px 6px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--fg-muted);
+  font-size: 10.5px;
+}
+.ce-style.on {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent) inset;
+  color: var(--fg);
+}
+.ce-chip {
+  display: block;
+  width: 100%;
+  height: 30px;
+  border-radius: 5px;
+  border: 1px solid rgba(128, 128, 128, 0.22);
+}
+.ce-style-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.ce-seg {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.ce-seg-btn {
+  padding: 5px 11px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--fg-muted);
+  font-size: 11.5px;
+}
+.ce-seg-btn.on {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--fg);
+}
+.ce-check {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  color: var(--fg-muted);
+  cursor: pointer;
+}
+.ce-check input {
+  accent-color: var(--accent);
+}
+.ce-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 18px;
+  border-top: 1px solid var(--border);
+}
+.ce-status {
+  margin-right: auto;
+  font-size: 11.5px;
+  color: var(--fg-faint);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ce-status[data-tone='ok'] {
+  color: var(--fg-muted);
+}
+.ce-status[data-tone='err'] {
+  color: #c2410c;
+}
+.ce-btn {
+  padding: 7px 15px;
+  border-radius: 7px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--fg);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.ce-btn:hover {
+  border-color: var(--accent);
+}
+.ce-btn.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+}
+.ce-btn.primary:hover {
+  filter: brightness(1.06);
+}
+@media (max-width: 760px) {
+  .ce-mask {
+    padding: 0;
+    align-items: stretch;
+  }
+  .ce {
+    border-radius: 0;
+    max-height: none;
+    height: 100%;
+  }
+  .ce-body {
+    flex-direction: column;
+  }
+  .ce-preview {
+    flex: 0 0 44%;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    padding: 12px;
+  }
+  .ce-styles {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}

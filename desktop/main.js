@@ -372,8 +372,31 @@ ipcMain.handle('file:save', async (_e, { content, filePath, suggestedName }) => 
   return { path: target, name: path.basename(target) }
 })
 
-ipcMain.handle('dir:open', async () => {
-  const res = await dialog.showOpenDialog(win, {
+/**
+ * 二进制另存为（导出 PNG / PDF / ZIP 用）。
+ * 渲染进程只给字节和建议文件名，落盘位置由用户在系统对话框里决定 —— 不给默认
+ * 静默写入，导出产物必须让用户知道落在哪。
+ */
+ipcMain.handle('file:save-binary', async (_e, { data, suggestedName, mime }) => {
+  const ext = (suggestedName || '').split('.').pop() || 'bin'
+  const filters =
+    mime === 'application/pdf'
+      ? [{ name: 'PDF', extensions: ['pdf'] }]
+      : mime === 'application/zip'
+        ? [{ name: 'ZIP', extensions: ['zip'] }]
+        : [{ name: 'PNG', extensions: ['png'] }]
+  const res = await dialog.showSaveDialog(win, {
+    title: '导出',
+    defaultPath: suggestedName || `export.${ext}`,
+    filters,
+  })
+  if (res.canceled || !res.filePath) return null
+  const buf = Buffer.isBuffer(data) ? data : Buffer.from(data)
+  await fs.writeFile(res.filePath, buf)
+  return { path: res.filePath, name: path.basename(res.filePath) }
+})
+
+ipcMain.handle('dir:open', async () => {  const res = await dialog.showOpenDialog(win, {
     title: '打开文件夹作为工作区',
     properties: ['openDirectory'],
   })

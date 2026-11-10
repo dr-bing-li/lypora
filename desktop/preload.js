@@ -13,6 +13,9 @@ contextBridge.exposeInMainWorld('lyporaDesktop', {
   /** 保存；filePath 为空则弹另存为 → { path, name } | null */
   saveFile: (content, filePath, suggestedName) =>
     ipcRenderer.invoke('file:save', { content, filePath, suggestedName }),
+  /** 二进制另存为（PNG / PDF / ZIP）→ { path, name } | null */
+  saveBinary: (data, suggestedName, mime) =>
+    ipcRenderer.invoke('file:save-binary', { data, suggestedName, mime }),
   /** 打开文件夹工作区 → 目录树 | null */
   openDirectory: () => ipcRenderer.invoke('dir:open'),
   /** 在资源管理器中定位文件 */
