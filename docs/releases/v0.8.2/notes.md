@@ -138,6 +138,8 @@ README 英文段的快速开始少了开头围栏——`### Deployment` 连同�
 | Linux 图标 | 从 `Lypora-0.8.2-linux-x64.tar.gz` 里解出 `hicolor/512x512/apps/lypora.png` 核对为新标志；暂存树 16–512 八档齐全 |
 | APK | 从 APK 里解出 `mipmap-xxxhdpi-v4/ic_launcher{,_round}.png` 与 `drawable-port-xhdpi-v4/splash.png` 目视核对；`aapt2 dump badging` 确认 `versionName 0.8.2` / `versionCode 12` |
 | Android 真机 | **装到 Android 14–15 手机上实测**：桌面图标、圆形图标（启动器圆形遮罩）、冷启动图均显示正常，无黑边、无拉伸、无旧蓝条残留 |
+| Linux 真机（Mint） | **在 Linux Mint 上解开 `tar.gz` 实测**：正常启动，图标显示正确，菜单可展开可用，打开 / 编辑 / 保存文档正常，含图片的文档图片显示正常 |
+| macOS 真机（Apple Silicon） | **在 Apple Silicon Mac 上实测**：正常启动，图标显示正确，菜单可展开可用，编辑与保存正常，图片显示正常 |
 
 ## 安装方式
 
@@ -172,7 +174,11 @@ adb install -r Lypora-0.8.2-android.apk
   换成留边又会在圆形遮罩下露底，两害取轻。
 - **Android 只验了一种遮罩形状**：Android 14–15 手机上桌面图标、圆形图标与冷启动图都正常；泪滴、方形等
   其它自适应遮罩形状没逐一看过。
-- **Linux / macOS 仍未真机启动**：包结构与图标是静态证据；macOS 的 icns 在 Finder 里长什么样，没看过。
+- **Linux 只验过 tar.gz 这一种形态**：Mint 上是解压 `tar.gz` 直接跑通的；`deb` / `rpm` / `AppImage` 三种安装包
+  仍只有 CI 容器里的安装证据（装上了、`/usr/bin/lypora` 可执行、setuid 位在、程序能起），没在真实桌面上点开过。
+- **macOS 只验了 arm64**：Apple Silicon 那台跑通了；Intel 的 `macos-x64` 包仍是结构证据，没在真机上启动过。
+- **macOS 首次打开时的 Gatekeeper 拦截形态未记录**：能正常用，但没有专门复现「未识别开发者」提示与右键「打开」
+  那一整套首次启动流程。
 
 ---
 
@@ -270,6 +276,8 @@ code block. Restored `# 1. build the core` and the fence.
 | Linux icons | `hicolor/512x512/apps/lypora.png` extracted from `Lypora-0.8.2-linux-x64.tar.gz` and checked; eight sizes present in the staged tree |
 | APK | `mipmap-xxxhdpi-v4/ic_launcher{,_round}.png` and `drawable-port-xhdpi-v4/splash.png` extracted and inspected; `aapt2 dump badging` confirms `versionName 0.8.2` / `versionCode 12` |
 | Android device | **Installed on a phone running Android 14–15**: launcher icon, round icon (circular launcher mask) and splash screen all render correctly — no dark border, no stretching, no leftover blue bars |
+| Linux device (Mint) | **Extracted the `tar.gz` and ran it on Linux Mint**: starts normally, icon renders correctly, menus open and work, documents open / edit / save correctly, images in a document display correctly |
+| macOS device (Apple Silicon) | **Ran it on an Apple Silicon Mac**: starts normally, icon renders correctly, menus open and work, editing and saving work, images display correctly |
 
 ## Installation
 
@@ -304,8 +312,13 @@ adb install -r Lypora-0.8.2-android.apk
   That is the price of full-bleed; adding a margin reintroduces the background ring under circular masks.
 - **Only one adaptive mask shape was checked**: on a phone running Android 14–15 the launcher icon, the round icon
   and the splash screen all render correctly. Teardrop and squircle masks were not inspected individually.
-- **Linux and macOS still have not been launched on real hardware**: structure and icons are static evidence. Nobody
-  has looked at that icns in Finder.
+- **Only the tarball has been proven on Linux**: on Mint it was the extracted `tar.gz` that ran. The `deb`, `rpm` and
+  `AppImage` variants still rest on container evidence only (installs, `/usr/bin/lypora` is executable, the setuid bit
+  survives, the binary starts) — none of them has been opened on a real desktop.
+- **Only arm64 has been proven on macOS**: the Apple Silicon machine works; the Intel `macos-x64` build is still
+  structure-only evidence.
+- **The Gatekeeper first-launch flow was not recorded**: the app is usable, but the "unidentified developer" prompt and
+  the right-click → Open sequence were not reproduced deliberately.
 
 ---
 

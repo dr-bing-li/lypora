@@ -170,10 +170,12 @@ python ../tools/icon-probe.py
 # -> .github/workflows/linux-installers.yml
 ```
 
-Be clear about what the last command proves: it parses the Mach-O and ELF headers, `Info.plist`,
-`.desktop`, icon sizes, symlink targets and file modes inside the archives, but it does **not** boot the app
-on macOS or Linux — this project is developed on Windows, and there is no macOS or Linux machine in the loop.
-Windows and Android are the two platforms with real runtime evidence. v0.8.2's icon set is verified a third way: the
+Be clear about what that command does *not* prove: it parses the Mach-O and ELF headers, `Info.plist`,
+`.desktop`, icon sizes, symlink targets and file modes inside the archives, but it never boots the app. Runtime
+evidence is a separate line of work — the packaged Windows build, the APK, and since v0.8.2 real hardware on
+both desktop platforms: an **Apple Silicon Mac** and **Linux Mint** (extracted tarball), where the app launched,
+opened and saved documents, displayed images, and showed the new icon correctly.
+v0.8.2's icon set is verified a third way: the
 frames are dug back out of the shipped artefacts — all seven ICO sizes found byte-for-byte inside `Lypora.exe`,
 eleven frames inside the macOS icns, the APK's own mipmaps re-extracted — and then looked at on a real phone
 running Android 14–15, where the launcher icon, round icon and splash screen all render correctly. For v0.8.1's image pipeline there are two
@@ -342,20 +344,23 @@ v0.4.1 起，Lypora 也注册进了系统的**「打开方式」**列表（在�
 
 **验过什么、没验什么，分开说：**
 
-- **运行时证据只有 Windows 和 Android。** Windows 打包版跑过 `--selftest`（原生菜单 9 项、桥接 API 11 项、
+- **运行时证据覆盖 Windows、Android、macOS 与 Linux。** Windows 打包版跑过 `--selftest`（原生菜单 9 项、桥接 API 11 项、
   Electron 33.4.11，退出码 0）、真实鼠标事件、关窗拦截四场景；APK 是构建后用 `aapt2` / `apksigner` 逐项核
   元数据，触屏布局在 Chromium 五档视口下逐条断言。这台机器没接安卓真机，所以原生文件读写与系统分享面板**没有**在真实硬件上验证过。v0.8.1 的图片管线另有两层：38 条纯函数用例（`core/image-check.mjs`）
   加 24 条端到端断言（`tools/imgtest.mjs`，真启动 Electron、写真 PNG、断言 `naturalWidth > 0`，再走完六条
   插入路径），打包版 `--selftest` 报 9 个菜单根（含「设置」）与零 console 报错。
-- **macOS 和 Linux 只有结构证据 + 容器安装证据。** 没有 Mac、没有 Linux 桌面，WSL 与 Docker 在本机不可用，
-  所以这些包**没在任何真实桌面上启动过**。能验的都验了：Mach-O 架构与代码签名段、ELF 类型、`Info.plist`
-  九个键、`.desktop` 七个键、8 档图标尺寸、14 个符号链接、SUID 位、包内前端与 `core/dist` 逐文件 sha256
-  一致——由 `python tools/check-package.py` 断言，全绿。
+- **macOS 和 Linux 一开始只有结构证据，v0.8.2 补上了真机证据。** 构建机是 Windows，WSL 与 Docker 在本机
+  不可用，所以先验的是包内事实：Mach-O 架构与代码签名段、ELF 类型、`Info.plist` 九个键、`.desktop` 七个键、
+  8 档图标尺寸、14 个符号链接、SUID 位、包内前端与 `core/dist` 逐文件 sha256 一致——由
+  `python tools/check-package.py` 断言，全绿。随后两台真机跑通：**Apple Silicon Mac** 上启动、菜单、编辑
+  保存、图片显示与新图标全部正常；**Linux Mint** 上解开 `tar.gz` 同样正常。
+  **范围要说准**：macOS 验的是 arm64（Intel 的 `macos-x64` 包仍只有结构证据），Linux 验的是 `tar.gz`
+  （deb / rpm / AppImage 仍只有容器安装证据）。
 - **deb 和 rpm 额外多一层：在容器里真装了一遍。** CI 会起 `debian:12` 与 `fedora:40` 两个容器，走
   `apt install ./x.deb` / `dnf install ./x.rpm`，然后断言四件事：装上了、`/usr/bin/lypora` 可执行、
   `chrome-sandbox` 的 setuid 位还在、程序能执行。这仍然不是桌面证据——容器没有 GPU、没有 D-Bus、没有桌面
-  会话，**上面那句"没在真实桌面上启动过"依然成立**。**它证明的是"包能装、权限对、能起"，不是"界面画对了"。**
-  装完打不开请开 issue。
+  会话。**它证明的是"包能装、权限对、能起"，不是"界面画对了"。** 桌面证据来自 Mint 上那个 tar.gz，
+  但这一条不能顺移给 deb / rpm——要确认装完能正常打开，还得在真机上装一次。装完打不开请开 issue。
 
 运行前先校验：
 
@@ -533,8 +538,9 @@ python ../tools/icon-probe.py
 ```
 
 最后一条能证明什么、不能证明什么，得说清楚：它会解析包里的 Mach-O / ELF 头、`Info.plist`、`.desktop`、
-图标尺寸、符号链接指向和文件权限位，但**它不会在 macOS 或 Linux 上把应用跑起来**——这台构建机是 Windows，
-手上没有 Mac，也没有 Linux 桌面。有真机运行证据的只有 Windows 和 Android 两个平台。
+图标尺寸、符号链接指向和文件权限位，但**它不会把应用跑起来**。运行证据是另一条线：Windows 打包版、APK，
+以及 v0.8.2 起在 **Apple Silicon Mac** 与 **Linux Mint（tar.gz）** 上的实测——启动、菜单、编辑保存、
+图片显示和新图标都正常。
 
 Android 这边 v0.7.1 多了一条真正的设备级证据：包装到平板上、接着蓝牙键盘，中文输入法能直接调起并正常
 组词上屏，全程没碰屏幕软键盘（`docs/04` V50 / H25）。v0.8.2 又补了一条：装到 Android 14–15 手机上，
