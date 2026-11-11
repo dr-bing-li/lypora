@@ -19,10 +19,11 @@ import { paginate, type CardPage, type SplitMode } from '../export/card-layout'
 import { buildZip, renderPagePreview, renderPagesToPdf, renderPagesToPng } from '../export/card-capture'
 import { saveBinary } from '../export/save-binary'
 import { BUILTIN_TEMPLATES, swatchOf } from '../export/template/builtin'
-import { PARAM_SPECS, getPath, setPath, type ParamSpec } from '../export/template/params'
-import { exportTemplate, importTemplate, listUserTemplates, loadCurrent, saveCurrent, saveUserTemplates } from '../export/template/io'
-import { FONT_PRESETS, type CardTemplate } from '../export/template/types'
+import { BG_PREVIEW, BG_PREVIEW_SIZE, PARAM_SPECS, getPath, setPath, type ParamSpec } from '../export/template/params'
+import { exportTemplate, importTemplate, listUserTemplates, loadCurrent, sanitizeBgImage, saveCurrent, saveUserTemplates } from '../export/template/io'
+import { FONT_PRESETS, BG_PRESETS, type CardTemplate } from '../export/template/types'
 import { t } from '../i18n'
+import { askText } from './ask'
 
 /** 参数表的 labelKey 是普通 string（模板可携带任意键），这里统一收口成 MessageKey */
 const tl = (k: string): string => t(k as Parameters<typeof t>[0])
@@ -31,6 +32,21 @@ import { toast } from './toast'
 export interface BeautifyDeps {
   getContent: () => string
   getDocName: () => string
+}
+
+/** 与外界共享的布局态：一级「排版」菜单按它画勾选、按它改值 */
+export interface BeautifyLayout {
+  sizeId: string
+  mode: SplitMode
+  withCover: boolean
+}
+
+export interface BeautifyHandle {
+  open: () => void
+  /** 菜单要画"当前选的是哪个尺寸/分页/封面" */
+  getLayout: () => BeautifyLayout
+  /** 菜单直接改布局；面板开着就顺手刷一遍 */
+  setLayout: (p: Partial<BeautifyLayout>) => void
 }
 
 interface State {
@@ -70,7 +86,7 @@ function saveLayout(s: State): void {
 /** 深色模板的背板色：圆角被归零前，边缘露出的颜色 */
 const backdropOf = (tpl: CardTemplate): string => (tpl.dark ? '#12141a' : '#ffffff')
 
-export function createBeautifyPanel(deps: BeautifyDeps): { open: () => void } {
+export function createBeautifyPanel(deps: BeautifyDeps): BeautifyHandle {
   let mask: HTMLElement | null = null
   let state: State = { template: loadCurrent(), ...loadLayout(), index: 0 }
   let pages: CardPage[] = []
@@ -88,6 +104,7 @@ export function createBeautifyPanel(deps: BeautifyDeps): { open: () => void } {
     mineWrap: HTMLElement
     paramHost: HTMLElement
     coverInput: HTMLInputElement
+    bgInput: HTMLInputElement
     fontSelect: HTMLSelectElement
   } | null = null
 
@@ -106,9 +123,9 @@ export function createBeautifyPanel(deps: BeautifyDeps): { open: () => void } {
     b.dataset.tpl = tpl.id
     b.title = `${tpl.name} · ${tpl.enName}`
     const chip = el('span', 'ce-chip')
-    chip.style.background = tpl.tokens.paper.includes('gradient')
-      ? tpl.tokens.paper
-      : `linear-gradient(135deg, ${tpl.tokens.paper} 0 58%, ${tpl.tokens.accent} 58% 100%)`
+    // 三色小样（纸 / 强调 / 墨）：v0.9.0 只有纸+强调两色斜切，
+    // 素纸与极简黑白在缩略图上长得一样，选不出"这套到底多深"
+    chip.style.background = swatchOf(tpl).css
     const name = el('span', 'ce-style-name', tpl.name)
     b.append(chip, name)
     if (mine) {
@@ -150,10 +167,17 @@ export function createBeautifyPanel(deps: BeautifyDeps): { open: () => void } {
 
   /* ---------------- 参数控件 ---------------- */
 
+  /** 统一写入口：改字段 → 存 → 防抖重排（背景/装订等专用控件也走这里） */
+  function applyPath(path: string, value: unknown, rebuild = false): void {
+    state.template = setPath(state.template, path, value)
+    saveCurrent(state.template)
+    if (rebuild) renderParams()
+    window.clearTimeout(debounce)
+    debounce = window.setTimeout(() => void recompute(), 160)
+  }
+
   function renderParam(spec: ParamSpec): HTMLElement {
     const row = el('div', 'ce-param')
-    // data-path 同时给自动化测试用：按参数路径定位控件，不靠"第几个 input"这种脆弱假设
-    row.dataset.path = spec.path
     // data-path 同时给自动化测试用：按参数路径定位控件，不靠"第几个 input"这种脆弱假设
     row.dataset.path = spec.path
     const label = el('label', 'ce-param-label', tl(spec.labelKey))
@@ -161,12 +185,7 @@ export function createBeautifyPanel(deps: BeautifyDeps): { open: () => void } {
 
     const value = getPath(state.template, spec.path)
 
-    const apply = async (v: unknown) => {
-      state.template = setPath(state.template, spec.path, v)
-      saveCurrent(state.template)
-      window.clearTimeout(debounce)
-      debounce = window.setTimeout(() => void recompute(), 160)
-    }
+    const apply = async (v: unknown) => applyPath(spec.path, v)
 
     if (spec.kind === 'color') {
       const wrap = el('div', 'ce-color')
@@ -225,6 +244,61 @@ export function createBeautifyPanel(deps: BeautifyDeps): { open: () => void } {
     return row
   }
 
+  /** 背景组：预设用缩略图按钮（一眼看出是牛皮纸还是横线），自定义图走上传 */
+  function renderBgGroup(labelKey: string): HTMLElement {
+    const g = el('div', 'ce-group')
+    g.dataset.group = 'bg'
+    g.appendChild(el('div', 'ce-label', tl(labelKey)))
+
+    const grid = el('div', 'ce-bgs')
+    for (const id of BG_PRESETS) {
+      const b = el('button', 'ce-bg') as HTMLButtonElement
+      b.type = 'button'
+      b.dataset.bg = id
+      b.title = tl(`tpl.bg.${id}`)
+      if (id === 'none') {
+        b.classList.add('is-none')
+        b.textContent = '∅'
+      } else {
+        b.style.backgroundImage = BG_PREVIEW[id]
+        b.style.backgroundSize = BG_PREVIEW_SIZE[id] ?? 'auto'
+      }
+      b.classList.toggle('on', state.template.decor.bg === id && !state.template.decor.bgImage)
+      b.onclick = () => {
+        // 选预设时清掉自定义图：否则用户点了"方格"却还是自己那张照片，
+        // 只会觉得按钮坏了（这正是 v0.9.0 装饰"无效"的同类观感问题）
+        state.template = setPath(state.template, 'decor.bgImage', '')
+        applyPath('decor.bg', id, true)
+      }
+      grid.appendChild(b)
+    }
+    g.appendChild(grid)
+
+    const row = el('div', 'ce-seg')
+    const up = el('button', 'ce-seg-btn', t('card.bgUpload')) as HTMLButtonElement
+    up.type = 'button'
+    up.dataset.act = 'bg-upload'
+    up.onclick = () => refs?.bgInput.click()
+    const clr = el('button', 'ce-seg-btn', t('card.bgClear')) as HTMLButtonElement
+    clr.type = 'button'
+    clr.dataset.act = 'bg-clear'
+    clr.disabled = !state.template.decor.bgImage
+    clr.onclick = () => applyPath('decor.bgImage', '', true)
+    row.append(up, clr)
+    g.appendChild(row)
+
+    if (state.template.decor.bgImage) {
+      const thumb = el('img', 'ce-bg-thumb') as HTMLImageElement
+      thumb.src = state.template.decor.bgImage
+      thumb.alt = ''
+      g.appendChild(thumb)
+    }
+
+    const opacity = PARAM_SPECS.find((s) => s.path === 'decor.bgOpacity')
+    if (opacity) g.appendChild(renderParam(opacity))
+    return g
+  }
+
   function renderParams(): void {
     if (!refs) return
     const groups: { labelKey: string; paths: string[] }[] = [
@@ -233,12 +307,21 @@ export function createBeautifyPanel(deps: BeautifyDeps): { open: () => void } {
         labelKey: 'card.groupMetrics',
         paths: ['metrics.fontSize', 'metrics.lineHeight', 'metrics.titleSize', 'metrics.padX', 'metrics.radius'],
       },
-      { labelKey: 'card.groupDecor', paths: ['decor.texture', 'decor.accent', 'decor.corner', 'decor.cover', 'decor.tape', 'decor.stamp'] },
+      // paths 为空 = 用专用控件渲染（背景要缩略图，不能退化成一行文字 select）
+      { labelKey: 'card.groupBg', paths: [] },
+      {
+        labelKey: 'card.groupDecor',
+        paths: ['decor.texture', 'decor.accent', 'decor.corner', 'decor.cover', 'decor.binding', 'decor.tape', 'decor.stamp'],
+      },
       { labelKey: 'card.groupLayout', paths: ['metrics.headRule', 'metrics.pageNo'] },
     ]
     const host = refs.paramHost
     host.replaceChildren()
     for (const g of groups) {
+      if (!g.paths.length) {
+        host.appendChild(renderBgGroup(g.labelKey))
+        continue
+      }
       const section = el('div', 'ce-group')
       section.appendChild(el('div', 'ce-label', tl(g.labelKey)))
       for (const p of g.paths) {
@@ -421,15 +504,63 @@ export function createBeautifyPanel(deps: BeautifyDeps): { open: () => void } {
     void recompute()
   }
 
-  function saveAsMine(): void {
+  /**
+   * 存为我的模板：名字由用户定。
+   *
+   * v0.9.0 写死成「原名·改」，结果是"我的模板"里一堆同名的「渐变海报·改」，
+   * 存到第三套就分不清谁是谁。现在弹输入框，默认值仍给「原名·改」，
+   * 但重名时自动加序号，绝不静默覆盖。
+   */
+  async function saveAsMine(): Promise<void> {
     const list = listUserTemplates()
+    const base = state.template.name.replace(/·改\d*$/, '').trim() || t('card.mine')
+    const taken = new Set([...BUILTIN_TEMPLATES.map((x) => x.name), ...list.map((x) => x.name)])
+    let guess = `${base}·改`
+    for (let i = 2; taken.has(guess) && i < 100; i++) guess = `${base}·改${i}`
+
+    const name = await askText({
+      title: t('card.nameTitle'),
+      hint: t('card.nameHint'),
+      value: guess,
+      maxLength: 24,
+    })
+    if (!name) return
+    if (taken.has(name)) {
+      toast(t('card.nameTaken', { name }))
+      return
+    }
+
     const copy = structuredClone(state.template)
     copy.id = `mine-${Date.now().toString(36).slice(-5)}`
-    copy.name = `${state.template.name}·改`
+    copy.name = name
     list.unshift(copy)
     saveUserTemplates(list)
     renderGallery()
-    toast(t('card.savedMine'))
+    syncControls()
+    toast(t('card.savedMine', { name }))
+  }
+
+  /**
+   * 上传自定义背景图。
+   * 先压到 1200px 内再转 dataURL —— 原图直接塞 localStorage 会顶爆 5MB 配额，
+   * 而且 dataURL 会被写进 CSS 变量，60MB 的字符串会让每次重排都卡。
+   */
+  async function onBgFile(file: File): Promise<void> {
+    try {
+      const url = await shrinkImage(file, 1200, 0.82)
+      if (!url) {
+        toast(t('card.bgFailed'))
+        return
+      }
+      if (!sanitizeBgImage(url)) {
+        toast(t('card.bgTooLarge'))
+        return
+      }
+      applyPath('decor.bgImage', url, true)
+      toast(t('card.bgApplied'))
+    } catch {
+      toast(t('card.bgFailed'))
+    }
   }
 
   function exportCurrent(): void {
@@ -438,8 +569,7 @@ export function createBeautifyPanel(deps: BeautifyDeps): { open: () => void } {
     void saveBinary(blob, `${state.template.id}.lyt.json`, 'application/json')
   }
 
-  async function importFromFile(file: File): Promise<void> {
-    const text = await file.text()
+  async function importFromFile(file: File): Promise<void> {    const text = await file.text()
     const existing = listUserTemplates().map((x) => x.id)
     const res = importTemplate(text, existing)
     if (!res.ok || !res.template) {
@@ -511,7 +641,7 @@ export function createBeautifyPanel(deps: BeautifyDeps): { open: () => void } {
     gSize.appendChild(el('div', 'ce-label', t('card.size')))
     const sizes = el('div', 'ce-seg')
     for (const s of CARD_SIZES) {
-      const b = el('button', 'ce-seg-btn', s.label)
+      const b = el('button', 'ce-seg-btn', tl(s.labelKey))
       b.type = 'button'
       b.dataset.size = s.id
       b.onclick = () => {
@@ -574,7 +704,7 @@ export function createBeautifyPanel(deps: BeautifyDeps): { open: () => void } {
     }
     opRow.append(
       mkOp(t('card.reset'), resetTemplate),
-      mkOp(t('card.saveAsMine'), saveAsMine),
+      mkOp(t('card.saveAsMine'), () => void saveAsMine()),
       mkOp(t('card.exportTpl'), exportCurrent),
     )
     const importBtn = mkOp(t('card.importTpl'), () => fileInput.click())
@@ -592,6 +722,18 @@ export function createBeautifyPanel(deps: BeautifyDeps): { open: () => void } {
       fileInput.value = ''
     }
     settings.appendChild(fileInput)
+
+    const bgInput = el('input') as HTMLInputElement
+    bgInput.type = 'file'
+    bgInput.accept = 'image/*'
+    bgInput.hidden = true
+    bgInput.dataset.act = 'bg-file'
+    bgInput.onchange = () => {
+      const f = bgInput.files?.[0]
+      if (f) void onBgFile(f)
+      bgInput.value = ''
+    }
+    settings.appendChild(bgInput)
 
     body.appendChild(settings)
     box.appendChild(body)
@@ -628,7 +770,7 @@ export function createBeautifyPanel(deps: BeautifyDeps): { open: () => void } {
       }
     })
 
-    refs = { root, img, pos, status, gallery, mineWrap, paramHost, coverInput, fontSelect: null as unknown as HTMLSelectElement }
+    refs = { root, img, pos, status, gallery, mineWrap, paramHost, coverInput, bgInput, fontSelect: null as unknown as HTMLSelectElement }
     return root
   }
 
@@ -667,7 +809,51 @@ export function createBeautifyPanel(deps: BeautifyDeps): { open: () => void } {
     void recompute()
   }
 
-  return { open }
+  function getLayout(): BeautifyLayout {
+    return { sizeId: state.sizeId, mode: state.mode, withCover: state.withCover }
+  }
+
+  /**
+   * 菜单里改尺寸/分页/封面。
+   * 面板没开时只落 localStorage（open() 会读回来），开着时立刻重排 ——
+   * 否则菜单勾选变了、右边预览还是旧的，就是这个功能最典型的"点了没反应"。
+   */
+  function setLayout(p: Partial<BeautifyLayout>): void {
+    state = { ...state, ...p, index: 0 }
+    saveLayout(state)
+    if (mask) {
+      syncSegs()
+      void recompute()
+    }
+  }
+
+  return { open, getLayout, setLayout }
+}
+
+/**
+ * 把用户选中的图片压到 maxW 以内，返回 dataURL。
+ * 用 createImageBitmap 而不是 <img> + FileReader：前者能直接给 canvas 用，
+ * 省一次 base64 往返，也不必等 onload。
+ */
+async function shrinkImage(file: File, maxW: number, quality: number): Promise<string | null> {
+  if (!/^image\//.test(file.type)) return null
+  const bitmap = await createImageBitmap(file)
+  const w = Math.max(1, Math.round(bitmap.width > maxW ? maxW : bitmap.width))
+  const h = Math.max(1, Math.round((bitmap.height * w) / bitmap.width))
+  const cv = document.createElement('canvas')
+  cv.width = w
+  cv.height = h
+  const ctx = cv.getContext('2d')
+  if (!ctx) {
+    bitmap.close?.()
+    return null
+  }
+  ctx.drawImage(bitmap, 0, 0, w, h)
+  bitmap.close?.()
+  // webp 支持透明且比 png 小得多；不支持 webp 的引擎会自动回落成 png dataURL
+  let url = cv.toDataURL('image/webp', quality)
+  if (!url.startsWith('data:image/webp')) url = cv.toDataURL('image/jpeg', quality)
+  return url
 }
 
 /** `#rgb` → `#rrggbb`，喂给 <input type=color>；渐变/具名色退化成黑 */

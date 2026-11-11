@@ -47,6 +47,7 @@ import {
 import { insertImages, isImageFile, type ImageInput } from './io/image-insert'
 import { exportHtml, exportMarkdown, exportPdf } from './io/export'
 import { createBeautifyPanel } from './ui/beautify-panel'
+import { CARD_SIZES } from './export/card-themes'
 import { putDoc, listDocs, getDoc, readSetting, writeSetting, migrateLegacySettings } from './io/store'
 import { SAMPLE_MD, SAMPLE_NAME } from './sample'
 import { fmtNum } from './util'
@@ -991,6 +992,8 @@ function buildMenus(): MenuDef[] {
   // 手机壳里没有打印管线、没有目录句柄、没有主题文件落点，三项置灰并写明原因
   const native = isNative()
   const pref = getLocalePreference()
+  // 一级「排版」菜单要画勾选：直接问面板要当前布局，不另存一份（两处真源必然漂）
+  const layoutNow = beautify.getLayout()
 
   return [
     {
@@ -1031,11 +1034,8 @@ function buildMenus(): MenuDef[] {
           disabled: native,
           action: () => doExport('pdf'),
         },
-        {
-          id: 'file-beautify',
-          label: t('file.beautify'),
-          action: () => beautify.open(),
-        },
+        // 「美化输出」在 v0.10.0 升成一级菜单「排版」，不再挂在文件菜单下：
+        // 它是输出层的独立板块（模板/背景/尺寸/分页），不属于"导出这份文件"。
       ],
     },
     {
@@ -1279,24 +1279,39 @@ function buildMenus(): MenuDef[] {
       ],
     },
     {
-      // 语言单独一个顶级菜单：语言是"整个界面"的属性，藏在显示/帮助里没人找得到
-      id: 'language',
-      label: t('menu.language'),
+      // 「排版」一级菜单（v0.10.0 从「文件 → 美化输出」升上来）：
+      // 输出层已经是独立板块（20 套模板 / 背景 / 装订 / 尺寸 / 分页），
+      // 再挂在文件菜单下会让人以为它只是又一种"导出格式"。
+      id: 'layout',
+      label: t('menu.layout'),
       items: [
-        {
-          id: 'lang-system',
-          label: t('language.followSystem'),
-          checked: pref === 'system',
-          action: () => applyLocale('system'),
-        },
+        { id: 'layout-open', label: t('layout.open'), shortcut: 'Ctrl+Shift+P', action: () => beautify.open() },
         { sep: true },
-        // 各语言一律用母语名显示，不翻译（否则找不到自己那一项）
-        ...LANGUAGES.map((l) => ({
-          id: `lang-${l.id}`,
-          label: l.native,
-          checked: pref === l.id,
-          action: () => applyLocale(l.id),
-        })),
+        {
+          id: 'layout-size',
+          label: t('card.size'),
+          items: CARD_SIZES.map((s) => ({
+            id: `layout-size-${s.id}`,
+            label: t(s.labelKey as MessageKey),
+            checked: layoutNow.sizeId === s.id,
+            action: () => beautify.setLayout({ sizeId: s.id }),
+          })),
+        },
+        {
+          id: 'layout-split',
+          label: t('card.split'),
+          items: [
+            { id: 'layout-split-auto', label: t('card.splitAuto'), checked: layoutNow.mode === 'auto', action: () => beautify.setLayout({ mode: 'auto' }) },
+            { id: 'layout-split-rule', label: t('card.splitRule'), checked: layoutNow.mode === 'rule', action: () => beautify.setLayout({ mode: 'rule' }) },
+            { id: 'layout-split-none', label: t('card.splitNone'), checked: layoutNow.mode === 'none', action: () => beautify.setLayout({ mode: 'none' }) },
+          ],
+        },
+        {
+          id: 'layout-cover',
+          label: t('card.cover'),
+          checked: layoutNow.withCover,
+          action: () => beautify.setLayout({ withCover: !layoutNow.withCover }),
+        },
       ],
     },
     {
@@ -1306,7 +1321,29 @@ function buildMenus(): MenuDef[] {
       label: t('menu.settings'),
       items: [
         {
-          id: 'settings-image-ref',
+          // 语言从顶级降到这里（v0.10.0）：顶级菜单已经有 9 个，语言是低频设置项，
+          // 和"图片怎么存"属于同一类"这台机器怎么工作"的偏好。
+          // 各语言一律用母语名显示，不翻译（否则找不到自己那一项）。
+          id: 'settings-language',
+          label: t('menu.language'),
+          items: [
+            {
+              id: 'lang-system',
+              label: t('language.followSystem'),
+              checked: pref === 'system',
+              action: () => applyLocale('system'),
+            },
+            { sep: true },
+            ...LANGUAGES.map((l) => ({
+              id: `lang-${l.id}`,
+              label: l.native,
+              checked: pref === l.id,
+              action: () => applyLocale(l.id),
+            })),
+          ],
+        },
+        { sep: true },
+        { id: 'settings-image-ref', 
           label: t('settings.imageRef'),
           items: [
             {
@@ -1486,6 +1523,7 @@ function bindUI(): void {
     open: () => void doOpen(),
     save: () => void doSave(false),
     toggleOutline: () => togglePane('outline'),
+    beautify: () => beautify.open(),
   })
 
   // 全局快捷键（与菜单上标注的一致）
@@ -1541,6 +1579,11 @@ function bindUI(): void {
     if (mod && e.shiftKey && e.key.toLowerCase() === 'l') {
       e.preventDefault()
       setSidebar(!isSidebarOpen())
+      return
+    }
+    if (mod && e.shiftKey && e.key.toLowerCase() === 'p') {
+      e.preventDefault()
+      beautify.open()
       return
     }
     if (mod && e.shiftKey && (e.key === '=' || e.key === '+')) {

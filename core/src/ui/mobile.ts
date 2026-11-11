@@ -26,14 +26,17 @@ export interface MobileHandlers {
   save: () => void
   /** 切换侧栏（大纲） */
   toggleOutline: () => void
+  /** 打开「排版」面板（v0.10.0 起是一级功能，手机端给一个直达按钮） */
+  beautify: () => void
 }
 
-/** 底部工具栏的 6 个动作；`sheet` 表示"打开分区面板并滚到该菜单" */
+/** 底部工具栏的 7 个动作；`sheet` 表示"打开分区面板并滚到该菜单" */
 const DOCK: Array<{ id: string; labelKey: MessageKey; icon: string; sheet?: string }> = [
   { id: 'open', labelKey: 'dock.open', icon: '<path d="M2.5 5.2A1.2 1.2 0 013.7 4h2.9l1.1 1.4h4.6a1.2 1.2 0 011.2 1.2v5.2A1.2 1.2 0 0112.3 13H3.7A1.2 1.2 0 012.5 11.8V5.2z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>' },
   { id: 'save', labelKey: 'dock.save', icon: '<path d="M3.5 2.6h6.6L13.4 5.9v7.5H3.5z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M5.6 2.6v3.6h4.3V2.6M5.6 13.4V9.1h4.8v4.3" fill="none" stroke="currentColor" stroke-width="1.2"/>' },
   { id: 'outline', labelKey: 'dock.outline', icon: '<path d="M3 4h4M3 8h7M3 12h10" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" fill="none"/>' },
   { id: 'export', labelKey: 'dock.export', icon: '<path d="M8 2.6v7.2M5.2 7l2.8 2.8L10.8 7" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M2.8 11v1.8h10.4V11" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>', sheet: 'file' },
+  { id: 'layout', labelKey: 'dock.layout', icon: '<rect x="2.3" y="2.7" width="11.4" height="10.6" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M4.6 5.9h6.8M4.6 8h6.8M4.6 10.1h3.9" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" fill="none"/>' },
   { id: 'theme', labelKey: 'dock.theme', icon: '<circle cx="8" cy="8" r="5.2" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M8 2.8v10.4a5.2 5.2 0 000-10.4z" fill="currentColor"/>', sheet: 'theme' },
   { id: 'menu', labelKey: 'dock.menu', icon: '<path d="M3 4.5h10M3 8h10M3 11.5h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/>' },
 ]
@@ -133,6 +136,9 @@ function buildDock(handlers: MobileHandlers, openSheet: (section?: string) => vo
           break
         case 'export':
           openSheet('file')
+          break
+        case 'layout':
+          handlers.beautify()
           break
         case 'theme':
           openSheet('theme')

@@ -413,7 +413,9 @@ body.full-width .width-grip {
 .modal-mask {
   position: fixed;
   inset: 0;
-  z-index: 300;
+  /* 必须高于 .ce-mask（420）：否则从排版面板里弹出的命名框会被面板盖住，
+     用户看得见却点不到（v0.10.0 实测踩过，自动化点击直接被 .ce-style 拦截） */
+  z-index: 460;
   display: flex;
   align-items: flex-start;
   justify-content: center;
@@ -2038,22 +2040,56 @@ body.col-resizing * {
     padding: 0;
     align-items: stretch;
   }
-  .ce {
+  .ce,
+  .ce-wide {
     border-radius: 0;
     max-height: none;
+    width: 100%;
     height: 100%;
   }
   .ce-body {
     flex-direction: column;
   }
-  .ce-preview {
-    flex: 0 0 44%;
+  /*
+   * 预览区必须给"确定高度"（vh），不能让它被内容撑开：
+   * 9:16 竖图在窄屏上按宽度算出来的高度是宽度的 1.78 倍，
+   * 一旦 stage 由内容决定高度，预览就会把设置区整个顶出可视区
+   * （v0.9.0 手机端选「长竖 9:16」后设置项只剩一条缝，就是这个）。
+   */
+  .ce-preview,
+  .ce-wide .ce-preview {
+    flex: 0 0 auto;
+    height: 34vh;
+    min-height: 108px;
     border-right: none;
     border-bottom: 1px solid var(--border);
-    padding: 12px;
+    padding: 10px 12px 6px;
+    gap: 6px;
   }
+  .ce-stage {
+    overflow: hidden;
+  }
+  .ce-img {
+    max-height: 100%;
+    max-width: 100%;
+  }
+  .ce-settings {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 12px 14px;
+  }
+  /* 20 套模板在窄屏用 3 列：4 列时每格不到 90px，模板名会折成两行 */
   .ce-styles {
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .ce-foot {
+    flex-wrap: wrap;
+    row-gap: 6px;
+  }
+  .ce-foot .ce-status {
+    flex: 1 0 100%;
+    order: -1;
   }
 }
 
@@ -2065,6 +2101,45 @@ body.col-resizing * {
 .ce-wide .ce-preview {
   flex: 0 0 38%;
 }
+/* ---------- 美化输出：背景底纹选择 ---------- */
+.ce-bgs {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+.ce-bg {
+  height: 38px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background-color: #fff;
+  background-repeat: repeat;
+  background-position: center;
+  cursor: pointer;
+  position: relative;
+}
+.ce-bg:hover {
+  border-color: var(--accent);
+}
+.ce-bg.on {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.ce-bg.is-none {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  color: var(--fg-faint);
+  background-image: repeating-linear-gradient(45deg, var(--bg-elev) 0 6px, var(--bg) 6px 12px);
+}
+.ce-bg-thumb {
+  width: 100%;
+  max-height: 72px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+}
+
 .ce-params {
   display: flex;
   flex-direction: column;
@@ -2079,6 +2154,12 @@ body.col-resizing * {
   min-height: 26px;
   font-size: 12px;
   color: var(--fg-muted);
+  /* 8 个纹理选项在 390px 宽下放不下一行：允许换行，别把按钮挤出面板 */
+  flex-wrap: wrap;
+}
+.ce-param .ce-seg {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 .ce-param-label {
   flex: 0 0 82px;

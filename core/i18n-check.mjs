@@ -173,7 +173,8 @@ const SPOT = {
 }
 
 // v0.8.0 起多了「设置」：图片引用方式是跨插入/渲染/导出的全局策略，值得一个顶级入口
-const MENU_IDS = ['file', 'edit', 'paragraph', 'format', 'view', 'theme', 'language', 'settings', 'help']
+// v0.10.0：language 降进 settings 成为二级，顶上来的是 layout；总数仍是 9
+const MENU_IDS = ['file', 'edit', 'paragraph', 'format', 'view', 'theme', 'layout', 'settings', 'help']
 
 async function collect(page) {
   return page.evaluate(async (menuIds) => {
@@ -205,11 +206,22 @@ async function collect(page) {
       await sleep(60)
       const pop = document.querySelector('.menu-drop')
       if (pop) {
-        out.items[id] = [...pop.querySelectorAll('.menu-item')].map((b) => ({
-          mi: b.dataset.mi || '',
-          label: b.querySelector('.mi-label')?.textContent ?? '',
-          disabled: b.disabled,
-        }))
+        const read = (host) =>
+          [...host.querySelectorAll('.menu-item')].map((b) => ({
+            mi: b.dataset.mi || '',
+            label: b.querySelector('.mi-label')?.textContent ?? '',
+            disabled: b.disabled,
+          }))
+        const flat = read(pop)
+        // v0.10.0 起有二级菜单了（设置 → 语言、排版 → 尺寸…），逐项展开再读一遍，
+        // 否则「语言」降级后 lang-system 之类的项在顶层根本采不到
+        for (const parent of [...pop.querySelectorAll('.menu-item.has-sub')]) {
+          parent.dispatchEvent(new MouseEvent('mouseenter'))
+          await sleep(70)
+          const sub = document.querySelector('.menu-drop.sub')
+          if (sub) flat.push(...read(sub))
+        }
+        out.items[id] = flat
       }
       btn.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }))
       await sleep(40)
@@ -384,10 +396,14 @@ async function browserCheck(dicts) {
     const before = await page.evaluate(() => document.documentElement.lang)
     await page.evaluate(async () => {
       const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
-      const btn = document.querySelector('#menubar-items .menu-root[data-menu="language"]')
+      // v0.10.0：语言降进「设置」成为二级菜单，靠 mouseenter 展开（与 Windows 原生菜单一致）
+      const btn = document.querySelector('#menubar-items .menu-root[data-menu="settings"]')
       btn.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }))
       await sleep(80)
-      document.querySelector('.menu-drop .menu-item[data-mi="lang-ja"]')?.click()
+      const parent = document.querySelector('.menu-drop .menu-item[data-mi="settings-language"]')
+      parent?.dispatchEvent(new MouseEvent('mouseenter'))
+      await sleep(150)
+      document.querySelector('.menu-drop.sub .menu-item[data-mi="lang-ja"]')?.click()
       await sleep(250)
     })
     const after = await page.evaluate(() => ({

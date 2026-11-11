@@ -83,7 +83,21 @@ if (!sdk) die('找不到 Android SDK（需要 ANDROID_HOME 或 local.properties�
 log(`SDK → ${sdk}`)
 fs.writeFileSync(path.join(ANDROID, 'local.properties'), `sdk.dir=${sdk.replace(/\\/g, '\\\\')}\n`)
 
-const env = { ...process.env, JAVA_HOME: javaHome, ANDROID_HOME: sdk }
+const env = {
+  ...process.env,
+  JAVA_HOME: javaHome,
+  ANDROID_HOME: sdk,
+  // 必须强制 IPv4 栈。Gradle 8.11 的 FileLockCommunicator 起守护进程时会往
+  // InetAddress.getLoopbackAddress() 绑一个 UDP 端口做文件锁抢占通信；本机双栈环境下
+  // 这一步会抛 java.net.BindException: Address already in use: bind，然后报成
+  // "Unable to start the daemon process"，真正的异常藏在下面 60 行栈里，非常误导
+  // （看起来像 JDK 参数写错或端口被占，实际是 ::1 绑不上）。
+  // 手工验证过：同一个 JDK、同一份 build.gradle，只加这一条就从必失败变 BUILD SUCCESSFUL。
+  // 已经设过就别覆盖，留给用户自己调。
+  JAVA_TOOL_OPTIONS: [process.env.JAVA_TOOL_OPTIONS, '-Djava.net.preferIPv4Stack=true']
+    .filter(Boolean)
+    .join(' '),
+}
 
 /* 3. 构建 Web 资源 ----------------------------------------------------- */
 log('构建核心（vite build）…')

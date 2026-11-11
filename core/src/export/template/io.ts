@@ -6,7 +6,7 @@
  * 而不是"看着像个颜色就行"。这是本模块存在的主要理由。
  */
 
-import { TEMPLATE_SCHEMA, FONT_PRESETS, MONO_STACK, type CardTemplate, type TemplateDecor, type TemplateMetrics, type TemplateTokens } from './types'
+import { TEMPLATE_SCHEMA, FONT_PRESETS, MONO_STACK, BG_PRESETS, BINDINGS, type CardTemplate, type TemplateDecor, type TemplateMetrics, type TemplateTokens } from './types'
 import { ACCENTS, CORNERS, COVERS, TEXTURES } from './params'
 import { BUILTIN_TEMPLATES, builtinById } from './builtin'
 
@@ -49,6 +49,25 @@ export function sanitizeFontStack(input: unknown): string | null {
   if (/[;{}<>@\\]/.test(s)) return null
   if (/url\s*\(|expression\s*\(/i.test(s)) return null
   if (!/^[\w\s,'"\-]+$/.test(s)) return null
+  return s
+}
+
+/**
+ * 背景图校验：只收内联的位图 data URL。
+ *
+ * 为什么只认 `data:image/(png|jpeg|webp|gif);base64,`：
+ *   ① 模板会进 localStorage（约 5MB 配额），外部 URL 看似省空间，实际导出时会变成
+ *      一次跨域请求 —— 装版是 file://，直接 tainted，整张卡片 toDataURL 抛 SecurityError；
+ *   ② `url()` 是 CSS 里最容易被注入的入口，白名单到"只允许 base64 位图"这一种形态，
+ *      没有括号、引号、分号的构造空间。
+ * 3MB 的 base64 约等于 2.2MB 原图，够 1200px 宽的背景用。
+ */
+export function sanitizeBgImage(input: unknown): string {
+  if (typeof input !== 'string') return ''
+  const s = input.trim()
+  if (!s) return ''
+  if (s.length > 3_200_000) return ''
+  if (!/^data:image\/(png|jpeg|webp|gif);base64,[A-Za-z0-9+/=]+$/.test(s)) return ''
   return s
 }
 
@@ -121,6 +140,10 @@ export function normalizeTemplate(raw: unknown, fallback: CardTemplate): CardTem
     tape: typeof dc.tape === 'boolean' ? dc.tape : fallback.decor.tape,
     stamp: typeof dc.stamp === 'boolean' ? dc.stamp : fallback.decor.stamp,
     cover: pickEnum(dc.cover, COVERS, fallback.decor.cover),
+    bg: pickEnum(dc.bg, BG_PRESETS, fallback.decor.bg ?? 'none'),
+    bgImage: sanitizeBgImage(dc.bgImage) || (fallback.decor.bgImage ?? ''),
+    bgOpacity: clampNum(dc.bgOpacity, 0, 100, fallback.decor.bgOpacity ?? 100),
+    binding: pickEnum(dc.binding, BINDINGS, fallback.decor.binding ?? 'none'),
   }
 
   const code = {

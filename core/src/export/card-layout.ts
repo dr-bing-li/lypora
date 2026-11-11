@@ -416,8 +416,13 @@ export function paginate(md: string, opts: LayoutOptions): LayoutResult {
 
 /** 单页独立成卡片 DOM 字符串（预览、截图、导出共用） */
 export function pageAsFragment(page: CardPage, size: CardSize, tpl: CardTemplate): string {
-  const deco = (tpl.decor.tape ? '<i class="ly-tape"></i>' : '') + (tpl.decor.stamp ? '<i class="ly-stamp"></i>' : '')
-  return `<div class="ly-card${page.kind === 'cover' ? ' ly-cover' : ''}" data-tpl="${tpl.id}"${decorAttrs(tpl)} style="--ly-card-w:${size.w}px;--ly-card-h:${size.h}px">${deco}${page.inner}</div>`
+  // 背景层用真实元素而不是 ::before：::before 已经被「纹理」占了，
+  // 而且真实元素能随 HTML 一起序列化进 foreignObject，不依赖伪元素的绘制时机。
+  const deco =
+    (tpl.decor.binding && tpl.decor.binding !== 'none' ? '<i class="ly-bind"></i>' : '') +
+    (tpl.decor.tape ? '<i class="ly-tape"></i>' : '') +
+    (tpl.decor.stamp ? '<i class="ly-stamp"></i>' : '')
+  return `<div class="ly-card${page.kind === 'cover' ? ' ly-cover' : ''}" data-tpl="${tpl.id}"${decorAttrs(tpl)} style="--ly-card-w:${size.w}px;--ly-card-h:${size.h}px"><i class="ly-bg"></i>${deco}${page.inner}</div>`
 }
 
 /** 面板里直接预览 DOM 时注入的样式（截图走 capture 自己的内联，不依赖这里） */

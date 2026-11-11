@@ -31,7 +31,9 @@ const DEVICES = [
 const report = { url: PAGE_URL, devices: [], pass: false, errors: [] }
 
 /** 与 main.ts 的菜单 id 一一对应（面板分区用它做 key，不随语言变） */
-const MENU_IDS = ['file', 'edit', 'paragraph', 'format', 'view', 'theme', 'language', 'help']
+// 0.10.0：语言降为二级（settings-language），一级换成 layout；设置也要在手机面板里
+// ——否则手机上根本改不了语言。
+const MENU_IDS = ['file', 'edit', 'paragraph', 'format', 'view', 'theme', 'layout', 'settings', 'help']
 
 const browser = await chromium.launch({ executablePath: EDGE, headless: true })
 
@@ -117,10 +119,12 @@ for (const dev of DEVICES) {
       }),
     )
     r.tapTargets = acts
-    r.checks.dockHas6Actions = acts.length === 6
+    // 0.10.0 起是 7 个（新增「排版」，直达排版面板）
+    r.checks.dockHas7Actions = acts.length === 7
+    r.checks.dockHasLayoutAction = acts.some((a) => a.act === 'layout')
     // Material 建议 48dp；这里断言 ≥44（iOS HIG 下限）
     r.checks.dockTapTargetsOk = acts.every((a) => a.w >= 44 && a.h >= 44)
-    // 6 个按钮不能换行（一换行就是布局塌了）
+    // 7 个按钮不能换行（一换行就是布局塌了）
     r.checks.dockSingleRow =
       acts.length > 0 &&
       (await page.evaluate(() => {
@@ -169,8 +173,8 @@ for (const dev of DEVICES) {
       els.map((e) => e.dataset.section),
     )
     r.sheetSections = secs
-    // 8 个分区：文件/编辑/段落/格式/显示/主题/语言/帮助
-    r.checks.sheetHasAllMenus = secs.length === 8 && MENU_IDS.every((id) => secs.includes(id))
+    // 9 个分区：文件/编辑/段落/格式/显示/主题/排版/设置/帮助（与桌面菜单根一一对应）
+    r.checks.sheetHasAllMenus = secs.length === MENU_IDS.length && MENU_IDS.every((id) => secs.includes(id))
     const rows = await page.$$eval('#menu-sheet .sheet-row', (els) =>
       els.map((e) => ({ h: Math.round(e.getBoundingClientRect().height), text: e.textContent.trim() })),
     )

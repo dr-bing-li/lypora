@@ -10,6 +10,7 @@
  */
 
 import type { CardTemplate, ParamKind } from './types'
+import { BINDINGS } from './types'
 
 export interface ParamSpec {
   path: string
@@ -29,6 +30,45 @@ export const COVERS = ['center', 'top', 'band'] as const
 
 const enumOpts = (prefix: string, values: readonly string[]) =>
   values.map((v) => ({ value: v, labelKey: `${prefix}.${v}` }))
+
+/**
+ * 背景底纹预设 → CSS 背景值。
+ *
+ * 为什么用 CSS 而不是 PNG/SVG 文件：
+ *   ① 卡片最终要过 <foreignObject> 光栅化，CSS 渐变与 repeating-gradient 是
+ *      浏览器排版引擎的原生能力，一定画得出来；外部图片多一条"解码失败就空白"的路径；
+ *   ② 零文件、零请求、缩放不糊、导出天然内联，包体积一点都不涨。
+ * 用户上传的图才走真实的 url(data:image/…)，见 compile.ts 的 buildBgVars。
+ *
+ * 放在 params 里而不是 compile 里：面板要拿同一份值画"预设缩略图"，
+ * 两处各写一份必然漂移（用户选的和他看到的不一样）。
+ */
+export const BG_PREVIEW: Record<string, string> = {
+  kraft:
+    'repeating-linear-gradient(45deg, rgba(120, 92, 56, 0.055) 0 2px, transparent 2px 7px),' +
+    'repeating-linear-gradient(-45deg, rgba(90, 68, 40, 0.045) 0 3px, transparent 3px 11px)',
+  lined: 'repeating-linear-gradient(to bottom, rgba(70, 110, 190, 0.16) 0 1px, transparent 1px 28px)',
+  grid:
+    'linear-gradient(to right, rgba(0, 0, 0, 0.07) 1px, transparent 1px),' +
+    'linear-gradient(to bottom, rgba(0, 0, 0, 0.07) 1px, transparent 1px)',
+  dots: 'radial-gradient(rgba(0, 0, 0, 0.11) 1.1px, transparent 1.1px)',
+  watercolor:
+    'radial-gradient(ellipse at 18% 12%, rgba(122, 170, 255, 0.20), transparent 54%),' +
+    'radial-gradient(ellipse at 86% 82%, rgba(255, 158, 178, 0.18), transparent 50%),' +
+    'radial-gradient(ellipse at 58% 44%, rgba(168, 240, 196, 0.14), transparent 46%)',
+  paper:
+    'repeating-linear-gradient(92deg, rgba(0, 0, 0, 0.035) 0 1px, transparent 1px 5px),' +
+    'repeating-linear-gradient(2deg, rgba(0, 0, 0, 0.028) 0 1px, transparent 1px 7px)',
+}
+
+export const BG_PREVIEW_SIZE: Record<string, string> = {
+  kraft: 'auto',
+  lined: 'auto',
+  grid: '24px 24px',
+  dots: '16px 16px',
+  watercolor: 'auto',
+  paper: 'auto',
+}
 
 export const PARAM_SPECS: ParamSpec[] = [
   /* 颜色 */
@@ -55,6 +95,12 @@ export const PARAM_SPECS: ParamSpec[] = [
   { path: 'decor.cover', kind: 'select', labelKey: 'tpl.p.cover', options: enumOpts('tpl.cover', COVERS) },
   { path: 'decor.tape', kind: 'toggle', labelKey: 'tpl.p.tape' },
   { path: 'decor.stamp', kind: 'toggle', labelKey: 'tpl.p.stamp' },
+
+  /* 背景不透明度（bg 预设本身在面板里用缩略图按钮选，故不在这里占一行 select） */
+  { path: 'decor.bgOpacity', kind: 'number', labelKey: 'tpl.p.bgOpacity', min: 0, max: 100, step: 5, unit: '%' },
+
+  /* 装订 */
+  { path: 'decor.binding', kind: 'select', labelKey: 'tpl.p.binding', options: enumOpts('tpl.bind', BINDINGS) },
 ]
 
 /** 点路径读取（只看 tokens/metrics/decor 三层） */

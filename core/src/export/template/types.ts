@@ -13,7 +13,11 @@
  * 老的 8 个 id 全部保留，视觉由 token 重新表达，行为兼容。
  */
 
-export const TEMPLATE_SCHEMA = 2
+/**
+ * 3：新增背景底纹 / 自定义背景图 / 背景不透明度三个字段（v0.10.0）。
+ * 归一化不留旧版本分支：缺字段一律回落默认值，所以 schema 2 的模板与 .lyt.json 照旧能读。
+ */
+export const TEMPLATE_SCHEMA = 3
 
 /** 纸张与墨色：决定"这是什么质地"的六个基础色 */
 export interface TemplateTokens {
@@ -75,6 +79,23 @@ export type AccentMark = 'none' | 'left' | 'top' | 'corner'
 export type CornerStyle = 'none' | 'fold' | 'round'
 export type CoverLayout = 'center' | 'top' | 'band'
 
+/**
+ * 装订位：线圈本、回形针、订书钉。
+ * 单独一个字段而不是并进 accent —— 强调条在内容边缘，装订位在纸张边缘，
+ * 两者的语义（"强调"vs"这是张被装订的纸"）和视觉层都不一样。
+ */
+export type BindingStyle = 'none' | 'spiral' | 'clip' | 'staple'
+
+export const BINDINGS: readonly BindingStyle[] = ['none', 'spiral', 'clip', 'staple']
+
+/**
+ * 背景底纹预设。全部由代码生成 SVG data URL（见 compile.ts），
+ * 不落图片文件：离线必然可用、导出天然内联、缩放不糊、包体积零增长。
+ */
+export type BgPreset = 'none' | 'kraft' | 'lined' | 'grid' | 'dots' | 'watercolor' | 'wire'
+
+export const BG_PRESETS: readonly BgPreset[] = ['none', 'kraft', 'lined', 'grid', 'dots', 'watercolor', 'wire']
+
 export interface TemplateDecor {
   texture: Texture
   accent: AccentMark
@@ -85,6 +106,14 @@ export interface TemplateDecor {
   stamp: boolean
   /** 封面排布 */
   cover: CoverLayout
+  /** 装订位（线圈 / 回形针 / 订书钉） */
+  binding: BindingStyle
+  /** 背景底纹预设（与 bgImage 互斥，bgImage 非空时以图为准） */
+  bg: BgPreset
+  /** 自定义背景图：data:image/... 或空串。存 localStorage 前必须压到 1200px 内 */
+  bgImage: string
+  /** 背景图层不透明度 0–100 */
+  bgOpacity: number
 }
 
 /** 代码高亮配色：5 类 token */

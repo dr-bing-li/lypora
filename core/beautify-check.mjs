@@ -1,11 +1,15 @@
 /**
- * 「美化输出」验收 —— 五组硬指标，任一不过即失败。
+ * 「排版」验收 —— 七组硬指标，任一不过即失败。
  *
- *  A. 交互：菜单能开面板、12 套模板按钮齐全、20s 内出预览、Esc 能关。
- *  B. 模板：12 套逐一出图，且每张采样颜色数 > 8（防"白图假通过"）。
+ *  A. 交互：一级菜单「排版」能开面板、20 套模板按钮齐全、20s 内出预览、Esc 能关。
+ *  B. 模板：20 套逐一出图，且每张采样颜色数 > 8（防"白图假通过"）。
  *  C. 参数：改字号必须让页数变化（证明"参数→重排"链路真的通了，不是只换 CSS）；
- *           改纹理必须让像素变化（证明装饰位生效）。
- *  D. 模板进出：导出 .lyt.json → 再导入 → 出现在「我的模板」并成为当前模板。
+ *           纹理必须在**同一字号**下比「无 → 网格」，并且设回去要回到基线
+ *           （v0.9.0 拿改字号前的图当基线，纹理完全不可见也能通过）。
+ *  C2. 背景与装订：两种底纹必须产出不同像素、装订位必须看得见、
+ *           上传自定义图必须写进 decor.bgImage 并出现在缩略图。
+ *  D. 模板进出：导出 .lyt.json（schema 3，含 decor 新字段）→ 再导入 → 成为当前模板；
+ *           「存为我的模板」必须弹命名框，自定义名字要出现在「我的模板」里。
  *  E. 离线：整场操作**零外部网络请求**（除本机 127.0.0.1 静态资源）。
  *
  * 用法：node beautify-check.mjs [url]
@@ -52,8 +56,8 @@ export function compile(t: CardTemplate): string {
 
 | 项目 | 说明 | 状态 |
 | --- | --- | --- |
-| 模板 | 12 套内置 | 通过 |
-| 参数 | 17 项可调 | 通过 |
+| 模板 | 20 套内置 | 通过 |
+| 参数 | 19 项可调 | 通过 |
 
 ## 四、公式
 
@@ -95,18 +99,19 @@ await page.keyboard.insertText(SAMPLE)
 await page.waitForTimeout(500)
 
 await page.evaluate(() => {
-  const btn = document.querySelector('#menubar-items .menu-root[data-menu="file"]')
+  const btn = document.querySelector('#menubar-items .menu-root[data-menu="layout"]')
   btn.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }))
 })
 await page.waitForTimeout(200)
-await page.click('.menu-drop .menu-item[data-mi="file-beautify"]', { timeout: 5000 })
+// v0.10.0：入口从「文件 → 美化输出」升成一级菜单「排版 → 打开排版面板」
+await page.click('.menu-drop .menu-item[data-mi="layout-open"]', { timeout: 5000 })
 await page.waitForTimeout(1800)
 
 const open = await page.locator('.ce').count()
 const tplCount = await page.locator('.ce-style[data-tpl]').count()
 report.steps.panel = { open: open === 1, templates: tplCount }
-if (!open) errors.push('美化输出面板没有打开')
-if (tplCount < 12) errors.push(`模板数量不足：${tplCount} < 12`)
+if (!open) errors.push('排版面板没有打开')
+if (tplCount < 20) errors.push(`模板数量不足：${tplCount} < 20`)
 
 await page.waitForFunction(() => {
   const img = document.querySelector('.ce-img')
@@ -181,7 +186,12 @@ await page.waitForTimeout(1600)
 const bigPages = await pageCountOf()
 const bigShot = await grab('param-bigfont.png')
 
-// 纹理换成网格：像素必须变
+/*
+ * 纹理：必须在**同一字号**下对比「无纹理 → 网格」。
+ * v0.9.0 这里是对着"改字号之前"的图比的，字号变化本身就足以让像素不同，
+ * 于是"白线画白纸、纹理根本没画出来"照样通过 —— 假通过比没有测试更糟。
+ */
+const texBase = await grab('texture-none.png')
 await page.evaluate(() => {
   const btn = document.querySelector('.ce-param[data-path="decor.texture"] .ce-seg-btn[data-val="grid"]')
   btn.click()
@@ -189,15 +199,95 @@ await page.evaluate(() => {
 await page.waitForTimeout(1400)
 const texShot = await grab('param-texture.png')
 
+await page.evaluate(() => {
+  const btn = document.querySelector('.ce-param[data-path="decor.texture"] .ce-seg-btn[data-val="none"]')
+  btn.click()
+})
+await page.waitForTimeout(1200)
+const texBack = await grab('texture-back.png')
+
 report.steps.params = {
   basePages,
   bigFontPages: bigPages,
   fontChangedPages: basePages !== bigPages,
-  textureChangedPixels: !!(baseShot && texShot && baseShot.sig !== texShot.sig),
-  textureUnique: texShot?.unique,
+}
+report.steps.texture = {
+  noneVsGridDiffer: !!(texBase && texShot && texBase.sig !== texShot.sig),
+  gridUnique: texShot?.unique,
+  restoredToBaseline: !!(texBase && texBack && texBase.sig === texBack.sig),
 }
 if (basePages === bigPages) errors.push(`改字号后页数没变（${basePages}），参数→重排链路可能断了`)
-if (!(baseShot && texShot) || baseShot.sig === texShot.sig) errors.push('换纹理后像素没变')
+if (!(texBase && texShot) || texBase.sig === texShot.sig) errors.push('纹理设成网格后像素没变（纹理不可见？）')
+if (texBase && texBack && texBase.sig !== texBack.sig) errors.push('纹理设回「无」后像素与基线不一致')
+
+/* ---------- C2. 背景底纹 / 装订 / 自定义背景图 ---------- */
+const clickSeg = async (path, val) => {
+  await page.evaluate(
+    ([p, v]) => {
+      document.querySelector(`.ce-param[data-path="${p}"] .ce-seg-btn[data-val="${v}"]`)?.click()
+    },
+    [path, val],
+  )
+  await page.waitForTimeout(1300)
+}
+
+await page.click('.ce-bg[data-bg="kraft"]')
+await page.waitForTimeout(1400)
+const bgKraft = await grab('bg-kraft.png')
+
+await page.click('.ce-bg[data-bg="lined"]')
+await page.waitForTimeout(1400)
+const bgLined = await grab('bg-lined.png')
+
+await clickSeg('decor.binding', 'spiral')
+const bindShot = await grab('bind-spiral.png')
+await clickSeg('decor.binding', 'none')
+
+report.steps.background = {
+  kraftVsLined: !!(bgKraft && bgLined && bgKraft.sig !== bgLined.sig),
+  kraftVsBase: !!(bgKraft && texBack && bgKraft.sig !== texBack.sig),
+  bindingDrawn: !!(bindShot && texBack && bindShot.sig !== texBack.sig),
+}
+if (!(bgKraft && bgLined) || bgKraft.sig === bgLined.sig) errors.push('两种背景底纹产出的像素相同（背景没生效）')
+if (!(bgKraft && texBack) || bgKraft.sig === texBack.sig) errors.push('加了背景底纹但像素没变')
+if (!(bindShot && texBack) || bindShot.sig === texBack.sig) errors.push('装订位设成线圈后像素没变')
+
+// 自定义背景图：喂一张真实图片进 file input
+const bgPng = path.join(OUT, 'bg-source.png')
+// 现场用 canvas 造一张（不往仓库里塞二进制测试素材）：
+// 斜向橙红渐变 + 竖条，切到「封面」区域时保证能看出确实换了底
+if (!fs.existsSync(bgPng)) {
+  const b64 = await page.evaluate(() => {
+    const cv = document.createElement('canvas')
+    cv.width = 240
+    cv.height = 240
+    const g = cv.getContext('2d')
+    const grd = g.createLinearGradient(0, 0, 240, 240)
+    grd.addColorStop(0, '#ff5f6d')
+    grd.addColorStop(1, '#ffc371')
+    g.fillStyle = grd
+    g.fillRect(0, 0, 240, 240)
+    g.fillStyle = 'rgba(20, 20, 60, 0.28)'
+    for (let i = 0; i < 240; i += 26) g.fillRect(i, 0, 11, 240)
+    return cv.toDataURL('image/png').split(',')[1]
+  })
+  fs.writeFileSync(bgPng, Buffer.from(b64, 'base64'))
+}
+const bgInput = await page.$('.ce-settings input[data-act="bg-file"]')
+await bgInput.setInputFiles(bgPng)
+await page.waitForTimeout(1800)
+const bgCustom = await grab('bg-custom.png')
+const hasThumb = await page.locator('.ce-bg-thumb').count()
+report.steps.bgImage = {
+  thumbShown: hasThumb > 0,
+  differsFromPreset: !!(bgCustom && bgLined && bgCustom.sig !== bgLined.sig),
+}
+if (!hasThumb) errors.push('上传背景图后没有缩略图（decor.bgImage 没写进去）')
+if (!(bgCustom && bgLined) || bgCustom.sig === bgLined.sig) errors.push('上传背景图后画面没变')
+await page.evaluate(() => {
+  document.querySelector('.ce-seg-btn[data-act="bg-clear"]')?.click()
+})
+await page.waitForTimeout(1200)
 
 /* ---------- D. 模板导出 / 导入 ---------- */
 const dlTpl = page.waitForEvent('download', { timeout: 30000 }).catch(() => null)
@@ -219,7 +309,11 @@ else {
     hasMetrics: !!json.metrics,
     hasDecor: !!json.decor,
   }
-  if (json.schema !== 2 || !json.tokens?.accent) errors.push('导出的模板缺少 schema/tokens')
+  if (json.schema !== 3 || !json.tokens?.accent) errors.push('导出的模板缺少 schema/tokens')
+  // 新增字段必须随模板一起走，否则换台机器打开就丢背景
+  report.steps.templateExport.hasDecorFields =
+    json.decor && 'bg' in json.decor && 'bgImage' in json.decor && 'bgOpacity' in json.decor && 'binding' in json.decor
+  if (!report.steps.templateExport.hasDecorFields) errors.push('导出的模板缺 v0.10.0 的 decor 字段')
 
   // 改个名字再导入，避免与内置 id 冲突后走重命名分支（测主路径）
   json.id = 'imported-test'
@@ -235,6 +329,27 @@ else {
   if (mineCount < 1) errors.push('导入的模板没有出现在「我的模板」')
   if (curName !== '导入测试') errors.push(`导入后当前模板不是它：${curName}`)
 }
+
+/* ---------- D2. 我的模板：自定义名称 ---------- */
+await page.click('.ce-style[data-tpl="paper"]')
+await page.waitForTimeout(900)
+await page.evaluate(() => {
+  const btns = [...document.querySelectorAll('.ce-seg-btn')]
+  btns.find((b) => b.textContent.includes('存为我的模板'))?.click()
+})
+await page.waitForTimeout(500)
+const hasPrompt = await page.locator('.modal input[type="text"]').count()
+let defaultName = ''
+if (!hasPrompt) errors.push('点「存为我的模板」没有弹出命名框')
+else {
+  defaultName = await page.locator('.modal input[type="text"]').inputValue()
+  await page.fill('.modal input[type="text"]', '我的素纸A')
+  await page.click('.modal-actions .primary')
+  await page.waitForTimeout(800)
+}
+const named = await page.locator('.ce-style-name:has-text("我的素纸A")').count()
+report.steps.saveAsMine = { prompt: hasPrompt > 0, defaultName, found: named }
+if (hasPrompt && named < 1) errors.push('自定义名称没有出现在「我的模板」里')
 
 /* ---------- 导出产物 ---------- */
 await page.click('.ce-style[data-tpl="magazine"]')

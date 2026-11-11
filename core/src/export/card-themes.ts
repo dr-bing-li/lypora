@@ -11,8 +11,11 @@ export const BRAND = 'Lypora'
 
 export interface CardSize {
   id: string
+  /** 中文名（保留给归档、日志与老调用点） */
   label: string
   labelEn: string
+  /** 界面显示用：走 i18n，否则切换语言后菜单里会留一串中文 */
+  labelKey: string
   /** 逻辑像素宽 */
   w: number
   /** 逻辑像素高 */
@@ -22,10 +25,10 @@ export interface CardSize {
 }
 
 export const CARD_SIZES: CardSize[] = [
-  { id: 'xhs', label: '竖版 3:4', labelEn: 'Portrait 3:4', w: 540, h: 720, scale: 2 },
-  { id: 'square', label: '方版 1:1', labelEn: 'Square 1:1', w: 540, h: 540, scale: 2 },
-  { id: 'story', label: '长竖 9:16', labelEn: 'Story 9:16', w: 540, h: 960, scale: 2 },
-  { id: 'a4', label: 'A4 纸', labelEn: 'A4', w: 595, h: 842, scale: 2 },
+  { id: 'xhs', label: '竖版 3:4', labelEn: 'Portrait 3:4', labelKey: 'size.xhs', w: 540, h: 720, scale: 2 },
+  { id: 'square', label: '方版 1:1', labelEn: 'Square 1:1', labelKey: 'size.square', w: 540, h: 540, scale: 2 },
+  { id: 'story', label: '长竖 9:16', labelEn: 'Story 9:16', labelKey: 'size.story', w: 540, h: 960, scale: 2 },
+  { id: 'a4', label: 'A4 纸', labelEn: 'A4', labelKey: 'size.a4', w: 595, h: 842, scale: 2 },
 ]
 
 export function findSize(id: string): CardSize {

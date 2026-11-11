@@ -15,9 +15,23 @@
  */
 
 import { MONO_STACK, type CardTemplate } from './types'
+import { BG_PREVIEW, BG_PREVIEW_SIZE } from './params'
 
 /** 纹理 / 强调位 / 折角：全局唯一实现，靠 data 属性命中 */
 const DECOR_CSS = `
+/* ---- 背景层（底纹预设或自定义图）：最底下，压不到正文 ---- */
+.ly-card .ly-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image: var(--c-bg-img, none);
+  background-size: var(--c-bg-size, auto);
+  background-position: center;
+  background-repeat: var(--c-bg-repeat, repeat);
+  opacity: var(--c-bg-opacity, 1);
+}
+
 .ly-card::before { content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 1; }
 .ly-card::after { content: ""; position: absolute; pointer-events: none; z-index: 3; }
 .ly-card .ly-inner::after { content: ""; position: absolute; pointer-events: none; z-index: 3; }
@@ -101,6 +115,33 @@ const DECOR_CSS = `
   box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.34);
   transform: rotate(-3deg);
   z-index: 4;
+}
+/* ---- 装订位（真实元素，绝对定位，不参与布局） ---- */
+.ly-card .ly-bind { position: absolute; z-index: 5; pointer-events: none; }
+.ly-card[data-bind="spiral"] .ly-bind {
+  top: 0; bottom: 0; left: 6px; width: 22px;
+  background-image: radial-gradient(
+    circle at 11px 14px,
+    var(--c-paper-solid) 0 4.4px,
+    rgba(0, 0, 0, 0.26) 4.4px 5.8px,
+    transparent 5.8px
+  );
+  background-size: 22px 32px;
+  background-repeat: repeat-y;
+}
+.ly-card[data-bind="clip"] .ly-bind {
+  top: 16px; left: 50%; width: 26px; height: 64px;
+  transform: translateX(-50%) rotate(-2deg);
+  border: 2.6px solid rgba(148, 152, 158, 0.8);
+  border-bottom-color: transparent;
+  border-radius: 9px 9px 4px 4px;
+  box-shadow: inset 0 2px 3px rgba(255, 255, 255, 0.55);
+}
+.ly-card[data-bind="staple"] .ly-bind {
+  top: 22px; left: 50%; width: 36px; height: 8px;
+  transform: translateX(-50%) rotate(-4deg);
+  border: 2.4px solid rgba(138, 142, 148, 0.9);
+  border-radius: 3px;
 }
 `
 
@@ -352,9 +393,9 @@ export const CARD_BASE_CSS = `
 .ly-card .katex-display { margin: 0.5em 0; }
 ` + DECOR_CSS
 
-/** 模板的 data 属性：渲染卡片时挂到根节点，纹理/强调位/折角全靠它命中 */
+/** 模板的 data 属性：渲染卡片时挂到根节点，纹理/强调位/折角/装订全靠它命中 */
 export function decorAttrs(t: CardTemplate): string {
-  return ` data-tex="${t.decor.texture}" data-acc="${t.decor.accent}" data-corner="${t.decor.corner}" data-cover="${t.decor.cover}"`
+  return ` data-tex="${t.decor.texture}" data-acc="${t.decor.accent}" data-corner="${t.decor.corner}" data-cover="${t.decor.cover}" data-bind="${t.decor.binding ?? 'none'}"`
 }
 
 /**
@@ -364,8 +405,9 @@ export function decorAttrs(t: CardTemplate): string {
 export function compileTemplate(t: CardTemplate): string {
   const m = t.metrics
   const k = t.tokens
-  // 半透明纯色兜底：折角三角需要一个不透明的"纸色"，渐变纸在这里退化成白色
+  // 半透明纯色兜底：折角三角需要一个不透明的"纸色"，在这里退化成白色
   const solid = gradientSolid(k.paper)
+  const bg = buildBgVars(t.decor)
   return `
 .ly-card[data-tpl="${t.id}"] {
   --c-paper: ${k.paper};
@@ -382,10 +424,14 @@ export function compileTemplate(t: CardTemplate): string {
   --c-quote-rule: ${k.quoteRule};
   --c-mark: ${k.mark};
   --c-shadow: ${k.shadow};
-  --c-tex-line: ${t.decor.texture === 'none' ? 'transparent' : texLine(k.ink)};
+  --c-tex-line: ${t.decor.texture === 'none' ? 'transparent' : texLine(solid, t.dark)};
   --c-halo: ${t.dark ? haloOf(k.accent) : 'rgba(120, 160, 255, 0.14)'};
   --c-fold: ${foldOf(k.ink)};
   --c-tape: ${t.dark ? 'rgba(255,255,255,0.14)' : 'rgba(255,255,255,0.55)'};
+  --c-bg-img: ${bg.image};
+  --c-bg-size: ${bg.size};
+  --c-bg-repeat: ${bg.repeat};
+  --c-bg-opacity: ${Math.min(100, Math.max(0, t.decor.bgOpacity)) / 100};
   --c-pad-x: ${m.padX}px;
   --c-pad-top: ${m.padTop}px;
   --c-pad-bottom: ${m.padBottom}px;
@@ -411,11 +457,34 @@ function gradientSolid(paper: string): string {
   return m ? m[0] : '#ffffff'
 }
 
-function texLine(ink: string): string {
-  const rgb = toRgb(ink)
-  if (!rgb) return 'rgba(0, 0, 0, 0.07)'
-  const light = (rgb.r + rgb.g + rgb.b) / 3 > 150
-  return light ? 'rgba(0, 0, 0, 0.075)' : 'rgba(255, 255, 255, 0.085)'
+/**
+ * 纹理线的颜色：必须与**纸色**形成对比，不是与墨色。
+ *
+ * v0.9.0 这里判反了 —— 它看的是 ink 的亮度，浅色纸配深墨时返回
+ * `rgba(255,255,255,0.085)`，于是白线画在白纸上，8 种纹理里 5 种完全不可见
+ * （用户报的"纹理与装饰设了没效果"就是这个）。现在改成看纸色：
+ * 亮纸用深线、暗纸用浅线，并把透明度提到肉眼确实能看见的量级。
+ */
+function texLine(paper: string, dark?: boolean): string {
+  const rgb = toRgb(paper)
+  if (!rgb) return dark ? 'rgba(255, 255, 255, 0.13)' : 'rgba(0, 0, 0, 0.11)'
+  // 感知亮度（Rec.601）：比简单取均值更贴合"看起来亮不亮"
+  const lum = 0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b
+  return lum > 150 ? 'rgba(0, 0, 0, 0.11)' : 'rgba(255, 255, 255, 0.14)'
+}
+
+/**
+ * 生成背景层的变量；自定义图优先于预设。
+ * 预设的 CSS 值来自 params.ts（面板画缩略图用的是同一份，避免"选的"与"看到的"不一致）。
+ */
+function buildBgVars(d: CardTemplate['decor']): { image: string; size: string; repeat: string } {
+  if (d.bgImage && /^data:image\/(png|jpeg|webp|gif);base64,/.test(d.bgImage)) {
+    return { image: `url("${d.bgImage}")`, size: 'cover', repeat: 'no-repeat' }
+  }
+  const preset = BG_PREVIEW[d.bg]
+  return preset
+    ? { image: preset, size: BG_PREVIEW_SIZE[d.bg] ?? 'auto', repeat: 'repeat' }
+    : { image: 'none', size: 'auto', repeat: 'repeat' }
 }
 
 function haloOf(accent: string): string {
