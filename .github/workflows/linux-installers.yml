@@ -62,20 +62,65 @@ jobs:
       - name: 装打包工具
         run: |
           set -euo pipefail
-          # 索引更新失败不致命（部分源不可达时旧索引仍可用）；装包本身重试 3 次，
-          # 免得一次 DNS 抖动就把整条发版卡死（2026-11-11 踩过）。
-          sudo apt-get update -qq || echo "::warning::apt-get update 未完全成功，继续用旧索引"
-          # rpm 提供 rpmbuild；python3-pil 给图标缩放用（24.04 起 pip 装系统包会被 PEP 668 拦）
+          # rpm 提供 rpmbuild（步骤「生成 rpm」靠它）；python3-pil 给图标缩放用。
+          #
+          # 为什么要自己挑镜像：2026-11-11 打 v0.10.0 时，runner 上 apt 一条源都解析不了
+          # （先是 security.ubuntu.com，换了 24.04 之后是 azure.archive.ubuntu.com），
+          # 但 git / GitHub API 都正常 —— 是这台机器 DNS 对镜像域名不通，不是 GitHub 故障。
+          # 所以先探一遍候选镜像，把能通的那个写进 sources，再装包。
+          PKGS="rpm python3-pil xz-utils file"
+          CODENAME=$(. /etc/os-release && echo "$VERSION_CODENAME")
+
+          if sudo apt-get install -y -qq --no-install-recommends $PKGS 2>/dev/null; then
+            echo "系统默认源可用，无需换镜像"
+            exit 0
+          fi
+          echo "::warning::默认源装包失败，开始探测镜像"
+
+          MIRRORS="
+          http://azure.archive.ubuntu.com/ubuntu
+          http://archive.ubuntu.com/ubuntu
+          https://mirrors.tuna.tsinghua.edu.cn/ubuntu
+          https://mirrors.aliyun.com/ubuntu
+          https://mirrors.ustc.edu.cn/ubuntu
+          https://mirror.nju.edu.cn/ubuntu
+          "
+          PICK=""
+          for m in $MIRRORS; do
+            if curl -fsS -m 8 -o /dev/null "$m/dists/$CODENAME/Release" \
+               && curl -fsS -m 8 -o /dev/null "$m/dists/$CODENAME-security/Release"; then
+              PICK="$m"
+              echo "镜像可用：$PICK"
+              break
+            fi
+            echo "跳过（不可达或没有 $CODENAME-security）：$m"
+          done
+          if [ -z "$PICK" ]; then
+            echo "::error::所有候选镜像都不可达，runner 的 DNS 有问题"
+            cat /etc/resolv.conf || true
+            getent hosts archive.ubuntu.com || true
+            exit 1
+          fi
+
+          sudo mkdir -p /etc/apt/sources.list.d
+          sudo rm -f /etc/apt/sources.list.d/*.sources /etc/apt/sources.list.d/*.list
+          sudo tee /etc/apt/sources.list >/dev/null <<EOF
+          deb $PICK $CODENAME main restricted universe multiverse
+          deb $PICK $CODENAME-updates main restricted universe multiverse
+          deb $PICK $CODENAME-security main restricted universe multiverse
+          EOF
+
+          APT_OPTS="-o Acquire::Retries=3 -o Acquire::http::Timeout=20 -o Acquire::https::Timeout=20"
           for try in 1 2 3; do
-            if sudo apt-get install -y -qq --no-install-recommends rpm python3-pil xz-utils file; then
-              echo "装包成功（第 $try 次尝试）"
+            sudo apt-get $APT_OPTS update -qq || echo "::warning::第 $try 次 update 未完全成功"
+            if sudo apt-get $APT_OPTS install -y -qq --no-install-recommends $PKGS; then
+              echo "装包成功（第 $try 次尝试，镜像 $PICK）"
               exit 0
             fi
-            echo "::warning::第 $try 次装包失败，10s 后重试"
+            echo "::warning::第 $try 次装包失败"
             sleep 10
-            sudo apt-get update -qq || true
           done
-          echo "::error::打包工具安装失败（重试 3 次）"
+          echo "::error::打包工具安装失败（已换镜像并重试 3 次）"
           exit 1
 
       - name: 构建前端
