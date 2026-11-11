@@ -30,7 +30,11 @@ defaults:
 jobs:
   build:
     name: 构建并验证 deb / rpm / AppImage
-    runs-on: ubuntu-latest
+    # 钉 24.04，不用 ubuntu-latest。2026-11-11 打 v0.10.0 时 latest 已经滚到 26.04（resolute），
+    # 新镜像的 apt 源里 security.ubuntu.com 在 runner 上解析不了，`apt-get install` 连续两次
+    # 报 "Temporary failure resolving 'security.ubuntu.com'" → exit 100。与代码无关，
+    # 但会让发版卡住；LTS 镜像可复现，也和 v0.9.0 产包的环境一致。
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
 
     steps:
@@ -58,9 +62,21 @@ jobs:
       - name: 装打包工具
         run: |
           set -euo pipefail
-          sudo apt-get update -qq
+          # 索引更新失败不致命（部分源不可达时旧索引仍可用）；装包本身重试 3 次，
+          # 免得一次 DNS 抖动就把整条发版卡死（2026-11-11 踩过）。
+          sudo apt-get update -qq || echo "::warning::apt-get update 未完全成功，继续用旧索引"
           # rpm 提供 rpmbuild；python3-pil 给图标缩放用（24.04 起 pip 装系统包会被 PEP 668 拦）
-          sudo apt-get install -y -qq rpm python3-pil xz-utils file
+          for try in 1 2 3; do
+            if sudo apt-get install -y -qq --no-install-recommends rpm python3-pil xz-utils file; then
+              echo "装包成功（第 $try 次尝试）"
+              exit 0
+            fi
+            echo "::warning::第 $try 次装包失败，10s 后重试"
+            sleep 10
+            sudo apt-get update -qq || true
+          done
+          echo "::error::打包工具安装失败（重试 3 次）"
+          exit 1
 
       - name: 构建前端
         run: |
