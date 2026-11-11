@@ -44,14 +44,19 @@ const enumOpts = (prefix: string, values: readonly string[]) =>
  * 两处各写一份必然漂移（用户选的和他看到的不一样）。
  */
 export const BG_PREVIEW: Record<string, string> = {
+  // 牛皮纸：光有斜纹是不够的（alpha 0.05 在白纸上量不出来，用户会认为没生效）。
+  // 最底层加一层半透明牛皮色，白纸透出来是浅牛皮、牛皮纸模板（craft）透出来是深牛皮，
+  // 既保证「看得出来」，又不把模板自己的纸色整块盖死。
   kraft:
-    'repeating-linear-gradient(45deg, rgba(120, 92, 56, 0.055) 0 2px, transparent 2px 7px),' +
-    'repeating-linear-gradient(-45deg, rgba(90, 68, 40, 0.045) 0 3px, transparent 3px 11px)',
+    'repeating-linear-gradient(45deg, rgba(120, 92, 56, 0.075) 0 2px, transparent 2px 7px),' +
+    'repeating-linear-gradient(-45deg, rgba(90, 68, 40, 0.06) 0 3px, transparent 3px 11px),' +
+    'linear-gradient(rgba(214, 186, 142, 0.58), rgba(201, 170, 124, 0.62))',
   lined: 'repeating-linear-gradient(to bottom, rgba(70, 110, 190, 0.16) 0 1px, transparent 1px 28px)',
   grid:
     'linear-gradient(to right, rgba(0, 0, 0, 0.07) 1px, transparent 1px),' +
     'linear-gradient(to bottom, rgba(0, 0, 0, 0.07) 1px, transparent 1px)',
-  dots: 'radial-gradient(rgba(0, 0, 0, 0.11) 1.1px, transparent 1.1px)',
+  // 1.1px / alpha 0.11 在 2× 出图里几乎看不出「点阵」，实际用户感知就是「没效果」。
+  dots: 'radial-gradient(rgba(0, 0, 0, 0.17) 1.35px, transparent 1.4px)',
   watercolor:
     'radial-gradient(ellipse at 18% 12%, rgba(122, 170, 255, 0.20), transparent 54%),' +
     'radial-gradient(ellipse at 86% 82%, rgba(255, 158, 178, 0.18), transparent 50%),' +

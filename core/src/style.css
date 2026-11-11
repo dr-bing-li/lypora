@@ -2098,8 +2098,14 @@ body.col-resizing * {
   width: min(1040px, 100%);
   max-height: min(760px, 100%);
 }
-.ce-wide .ce-preview {
-  flex: 0 0 38%;
+/* 宽屏（横排）时预览占 38% 宽；窄屏要的是「固定 vh 高」，由上面的 @media (max-width:760px)
+ * 给出。这条规则必须限定在宽屏里 —— 早先它是全局的，写在媒体查询之后、特异性相同，
+ * 于是窄屏的 height:34vh 被 flex-basis:38% 悄悄顶掉（实测 390×844 下预览 239px 而不是 287px），
+ * 注释说的「给确定高度」实际没生效。 */
+@media (min-width: 761px) {
+  .ce-wide .ce-preview {
+    flex: 0 0 38%;
+  }
 }
 /* ---------- 美化输出：背景底纹选择 ---------- */
 .ce-bgs {

@@ -22,6 +22,10 @@ build/
 # Electron 官方预编译分发包（打包 macOS/Linux 用，各 ~100MB，脚本会自己下载）
 .tmp-elec/
 
+# i18n 验收把词表编译到这里（i18n-check.mjs 刻意不删，见脚本内注释）
+core/.tmp-i18n/
+core/.tmp-i18n.tsconfig.json
+
 # ---- 系统 / 编辑器 ----
 .DS_Store
 Thumbs.db

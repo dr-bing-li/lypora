@@ -53,7 +53,13 @@ function flatten(obj, prefix = '', out = {}) {
 const ph = (s) => [...String(s).matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort().join(',')
 
 function staticCheck() {
-  fs.rmSync(TMP, { recursive: true, force: true })
+  /*
+   * 刻意不删 TMP。tsc 的产物固定是那 7 个文件名，每次覆盖写，留着不影响下一轮结论；
+   * 而删目录这件事在部分环境里会把验收拖死：本机宿主的安全删除钩子对目录删是
+   * fail-closed 且会卡到 spawnSync ETIMEDOUT（实测 4 分钟才报错），Windows 上还可能是 EBUSY。
+   * 一个跑 40 秒的验收脚本不该因为「清理没做成」变成红的或变成 5 分钟。
+   * 目录已加进 .gitignore。
+   */
   // tsc 不许"命令行给了文件又读 tsconfig"（TS5112），所以另写一份只含词表的配置
   const tsconfig = path.join(HERE, '.tmp-i18n.tsconfig.json')
   fs.writeFileSync(
@@ -436,7 +442,7 @@ await browserCheck(dicts)
 report.pass = report.errors.length === 0
 const outFile = path.join(OUT, 'i18n-report.json')
 fs.writeFileSync(outFile, JSON.stringify(report, null, 2))
-fs.rmSync(TMP, { recursive: true, force: true })
+// 结尾同样不删 TMP，理由见 staticCheck() 开头。
 
 console.log(JSON.stringify(report, null, 2))
 process.exit(report.pass ? 0 : 1)

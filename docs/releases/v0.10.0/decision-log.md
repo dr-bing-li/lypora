@@ -111,6 +111,11 @@
 | 纹理用例假通过 | 基线截于改字号之前，字号变化本身就改了像素 | 同字号 A-B-A：`none → grid → none`，要求回到基线 |
 | 命名弹窗点不到 | `.modal-mask`(300) < `.ce-mask`(420) | `.modal-mask` → 460 + 注释说明 |
 | 9:16 窄屏设置区被挤出 | 预览区按宽度撑高，没有确定高度 | 窄屏预览 `flex: 0 0 auto; height: 34vh`，设置区 `min-height: 0; overflow-y: auto` |
+| 第六个底纹「宣纸」点了没反应 | `BG_PRESETS` 写的是 `wire`，CSS（`BG_PREVIEW`）与词表（`tpl.bg.*`）里叫 `paper`，三处对不上 | 枚举改为 `paper`；验收遍历所有 `.ce-bg[data-bg]`，逐个要求与空背景有可见差异 |
+| 牛皮纸看起来还是白纸 | 只有 alpha 0.055 的斜纹，没有底色 | 最底层加半透明牛皮色（0.58–0.62），白纸透出浅牛皮、手账模板透出深牛皮 |
+| 点阵量不出差异 | 比对把预览缩到 120×120，16px 网格上 1.1px 的点被平均成 0 | 比对提到 240×240；点阵提到 1.35px / alpha .17 |
+| `i18n-check` 偶发红/奇慢 | 收尾 `rmSync` 删临时目录，撞上宿主安全删除钩子（fail-closed，卡到 spawnSync ETIMEDOUT） | 改为不删（编译产物固定 7 个文件名，覆盖写即可），目录进 `.gitignore` |
+| 上一条的 34vh 其实没生效 | 媒体查询里的 `.ce-wide .ce-preview{height:34vh}` 被文件末尾同特异性的 `{flex:0 0 38%}` 顶掉，实测 239px | 把 38% 那条收进 `@media (min-width:761px)`；复测 390×844 得 287px（=34vh） |
 | 纹理 8 个按钮在 390px 溢出 | `.ce-param` 没有 `flex-wrap` | 加 `flex-wrap: wrap` + `.ce-seg { flex: 1 1 auto; min-width: 0 }` |
 | `mobile-check` 报 `dockHas6Actions` / `sheetHasAllMenus` / `desktopMenubar` 失败 | 脚本硬编码「6 按钮 / 8 分区 / 菜单含 language」 | 改为 7 按钮 / 9 分区 / 含 layout 与 settings，并加 `dockHasLayoutAction` |
 | `docs/04` 插入脚本报 `anchor not found` | 该文档全篇 CRLF（1257 处），脚本用 `\n` 拼锚点 | 读入折成 LF 匹配、写回用 `newline='\r\n'` |

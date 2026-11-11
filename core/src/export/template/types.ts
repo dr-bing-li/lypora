@@ -92,9 +92,15 @@ export const BINDINGS: readonly BindingStyle[] = ['none', 'spiral', 'clip', 'sta
  * 背景底纹预设。全部由代码生成 SVG data URL（见 compile.ts），
  * 不落图片文件：离线必然可用、导出天然内联、缩放不糊、包体积零增长。
  */
-export type BgPreset = 'none' | 'kraft' | 'lined' | 'grid' | 'dots' | 'watercolor' | 'wire'
+export type BgPreset = 'none' | 'kraft' | 'lined' | 'grid' | 'dots' | 'watercolor' | 'paper'
 
-export const BG_PRESETS: readonly BgPreset[] = ['none', 'kraft', 'lined', 'grid', 'dots', 'watercolor', 'wire']
+/**
+ * 这张表是「面板按钮 ↔ CSS 常量 ↔ 词表键」三处的唯一索引：
+ * 每一 id 必须在 params.ts 的 `BG_PREVIEW` 里有图案、在 `tpl.bg.*` 里有文案。
+ * 0.10.0 踩过：枚举里写的是 `wire`，而 CSS 与词表里叫 `paper` —— 面板照样生成按钮，
+ * 点下去既没图案也没文案，看起来就是「这个底纹坏了」。
+ */
+export const BG_PRESETS: readonly BgPreset[] = ['none', 'kraft', 'lined', 'grid', 'dots', 'watercolor', 'paper']
 
 export interface TemplateDecor {
   texture: Texture

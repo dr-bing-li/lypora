@@ -24,8 +24,8 @@ dimensions arrive — **backgrounds** (6 paper textures + local image upload + o
 
 | 文件 / File | 平台 / Platform | 格式 / Format | 大小 / Size | SHA256 |
 |---|---|---|---|---|
-| `Lypora-0.10.0-win-x64.zip` | Windows 10/11 x64 | 便携版 ZIP（解压即用）<br>Portable ZIP — unzip and run | 111.8 MiB | `27a12520af45dd2b8fb1f5410c1a829dea966e44b46d98f2e371f8c06541f530` |
-| `Lypora-0.10.0-android.apk` | Android 10+（API 29+） | APK（debug 签名，直接安装）<br>APK, debug-signed, sideload | 13.6 MiB | `fef610377af9370a8c887f8deab9d694bb71cf4f7bad793599f480936e16796a` |
+| `Lypora-0.10.0-win-x64.zip` | Windows 10/11 x64 | 便携版 ZIP（解压即用）<br>Portable ZIP — unzip and run | 111.8 MiB | `7f4d156a3925d666a5ec1db16d71ece60202539188ec747531b8bceca3d53189` |
+| `Lypora-0.10.0-android.apk` | Android 10+（API 29+） | APK（debug 签名，直接安装）<br>APK, debug-signed, sideload | 13.6 MiB | `a3d326a8a2e0ddbba5f95d91d6ec5ce325db51852f13ba366dfc59805ac58c9a` |
 | `Lypora-0.10.0-macos-arm64.tar.gz` | macOS 11+ / Apple Silicon | `.app` bundle（ad-hoc 签名） | 发布时回填 | 发布时回填 |
 | `Lypora-0.10.0-macos-x64.tar.gz` | macOS 11+ / Intel | `.app` bundle（ad-hoc 签名） | 发布时回填 | 发布时回填 |
 | `Lypora-0.10.0-linux-x64.tar.gz` | 任意 x86-64 发行版（glibc ≥ 2.31） | tar.gz + `install.sh`（per-user） | CI 构建后回填 | CI 构建后回填 |
@@ -98,10 +98,12 @@ shasum -a 256 -c SHA256SUMS.txt      # macOS
 
 ### 三、背景与装订（两个新维度）
 
-- **背景底纹 6 种**：牛皮纸 / 横线本 / 方格 / 点子 / 水彩 / 网线。全部用 CSS 渐变生成——
+- **背景底纹 6 种**：牛皮纸 / 横线本 / 方格 / 点阵 / 水彩 / 宣纸。全部用 CSS 渐变生成——
   不落图片文件、缩放不糊、导出时天然内联、包体积零增长。
 - **自定义背景图**：可以上传本地图片（压到长边 1600px 的 webp 存进模板），配 0–100% 浓度滑块。
   图片只存在你自己的模板 JSON 里，**不上传、不同步、不出本机**。
+- 6 种底纹**逐个都验过「看得出来」**：牛皮纸除了斜纹还有一层牛皮底色（原来只有 alpha 0.055 的纹，
+  在白纸上等于没有）；点阵从 1.1px 提到 1.35px 并加深，2× 出图里能看出是一张点阵纸。
 - **装订 4 档**：无 / 线圈 / 票夹 / 订书钉。
 
 ### 四、「存为我的模板」可以自己命名
@@ -141,8 +143,9 @@ export-check       pass = true, errors = []   原有 MD / HTML / PDF 链路无�
 --selftest         ok = true                 版本 0.10.0、9 个菜单根（排版在设置左侧）、consoleErrors []
 ```
 
-窄屏专项（390×844）：打开排版面板 → 切「长竖 9:16」→ 预览区约 34vh、设置区可滚动、
-滑块与背景色块均点得到、底栏完整。**未覆盖**：Android WebView / iOS Safari 上软键盘与
+窄屏专项（390×844）：从底栏「排版」按钮进入 → 切「长竖 9:16」→ 预览区 287px（=34vh）、
+设置区 342px 可滚动（内容 1851px）、底栏 78px 仍在视口内，6 个滑块与背景色块均点击命中，
+无横向溢出、无页面报错。**未覆盖**：Android WebView / iOS Safari 上软键盘与
 地址栏收缩后的可视高度。
 
 ## 安装方式
@@ -251,8 +254,10 @@ export-check       pass, errors []   Markdown / HTML / PDF export unchanged
 --selftest         ok               version 0.10.0, 9 menu roots (Layout left of Settings), consoleErrors []
 ```
 
-Narrow-screen probe (390×844): with 9:16 selected, the preview takes ~34vh, the settings column scrolls, the
-sliders and background chips are all clickable and the footer stays on screen. **Not covered**: the visual
+Narrow-screen probe (390×844): entering from the dock button and selecting 9:16, the preview measures
+287px (=34vh), the settings column is 342px tall with 1851px of scrollable content, the 78px footer stays
+in the viewport, all six sliders and the background chips accept a real click, with no horizontal overflow
+and no page errors. **Not covered**: the visual
 viewport after the soft keyboard or the address bar collapses on a real Android WebView / iOS Safari.
 
 ## Known limitations

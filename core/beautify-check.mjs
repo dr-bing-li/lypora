@@ -137,6 +137,46 @@ const colorStats = async (file) => {
   }, b64)
 }
 
+/**
+ * 两张预览图的像素差异占比（缩到 120×120 后逐像素比，通道差之和 > 12 才算「变了」）。
+ * 用来回答「这个底纹到底画出来没有」——只比 sig 只能知道「有差别」，
+ * 碰上 alpha 0.05 的白纹画在白纸上，sig 会变但人眼看不见。
+ */
+const diffRatio = async (fileA, fileB) => {
+  const a = fs.readFileSync(path.join(OUT, fileA)).toString('base64')
+  const b = fs.readFileSync(path.join(OUT, fileB)).toString('base64')
+  return page.evaluate(
+    async ([da, db]) => {
+      const load = async (d) => {
+        const img = new Image()
+        img.src = 'data:image/png;base64,' + d
+        await img.decode()
+        return img
+      }
+      // 240 而不是 120：点阵是 16px 网格上 1.1px 的点，缩到 120 会被邻域平均掉，
+      // 于是「画了」和「没画」算出同样的 0 差异 —— 这是测量分辨率问题，不是没生效。
+      const N = 240
+      const c = document.createElement('canvas')
+      c.width = N
+      c.height = N
+      const g = c.getContext('2d')
+      const pix = async (img) => {
+        g.clearRect(0, 0, N, N)
+        g.drawImage(img, 0, 0, N, N)
+        return g.getImageData(0, 0, N, N).data
+      }
+      const pa = await pix(await load(da))
+      const pb = await pix(await load(db))
+      let n = 0
+      for (let i = 0; i < pa.length; i += 4) {
+        if (Math.abs(pa[i] - pb[i]) + Math.abs(pa[i + 1] - pb[i + 1]) + Math.abs(pa[i + 2] - pb[i + 2]) > 12) n++
+      }
+      return +(n / (N * N)).toFixed(4)
+    },
+    [a, b],
+  )
+}
+
 const grab = async (name) => {
   const url = await page.evaluate(() => document.querySelector('.ce-img')?.src || '')
   if (!url.startsWith('data:image/png')) return null
@@ -239,6 +279,30 @@ await page.click('.ce-bg[data-bg="lined"]')
 await page.waitForTimeout(1400)
 const bgLined = await grab('bg-lined.png')
 
+/*
+ * 每个底纹都要「看得见」——不只比 sig，还要算像素差异占比。
+ * 0.10.0 踩过：枚举里写的是 `wire`，而 CSS/词表里叫 `paper`，于是面板生成了一个
+ * 点下去毫无变化的按钮（没图案、没文案），和用户报的「设了没效果」是同一类问题。
+ */
+const bgIds = await page.$$eval('.ce-bg[data-bg]', (els) =>
+  els.map((e) => e.dataset.bg).filter((id) => id && id !== 'none'),
+)
+const bgVisible = {}
+for (const id of bgIds) {
+  await page.click(`.ce-bg[data-bg="${id}"]`)
+  await page.waitForTimeout(1200)
+  const s = await grab(`bg-${id}.png`)
+  if (!s) {
+    errors.push(`背景 ${id} 没有产出预览`)
+    continue
+  }
+  const diff = await diffRatio('texture-back.png', `bg-${id}.png`)
+  bgVisible[id] = diff
+  if (diff < 0.004) errors.push(`背景 ${id} 选上后画面几乎没变（diff=${diff}），底纹可能没画出来`)
+}
+await page.click('.ce-bg[data-bg="kraft"]')
+await page.waitForTimeout(1200)
+
 await clickSeg('decor.binding', 'spiral')
 const bindShot = await grab('bind-spiral.png')
 await clickSeg('decor.binding', 'none')
@@ -247,6 +311,8 @@ report.steps.background = {
   kraftVsLined: !!(bgKraft && bgLined && bgKraft.sig !== bgLined.sig),
   kraftVsBase: !!(bgKraft && texBack && bgKraft.sig !== texBack.sig),
   bindingDrawn: !!(bindShot && texBack && bindShot.sig !== texBack.sig),
+  presets: bgIds.length,
+  diffByPreset: bgVisible,
 }
 if (!(bgKraft && bgLined) || bgKraft.sig === bgLined.sig) errors.push('两种背景底纹产出的像素相同（背景没生效）')
 if (!(bgKraft && texBack) || bgKraft.sig === texBack.sig) errors.push('加了背景底纹但像素没变')
