@@ -173,7 +173,15 @@ ARCH=x86_64 ./appimagetool --appimage-extract-and-run --no-appstream build/AppDi
 git tag -a v0.8.1 -m "…" && git push origin v0.8.1
 ```
 
-`linux-installers.yml` 会在 `ubuntu-latest` 上依次做：
+`linux-installers.yml` 会在 `ubuntu-24.04` 上依次做：
+
+> **为什么钉版本而不用 `ubuntu-latest`**：2026-11-11 打 v0.10.0 时 `latest` 已滚到 26.04（resolute），
+> 该镜像的 apt 源在 runner 上解析不了（`Temporary failure resolving ...`），`apt-get install` 直接 exit 100，
+> 连挂两次。换成 24.04 之后源变成了 `azure.archive.ubuntu.com`，同样解析失败 —— 是那台机器 DNS 不通，
+> 不是 GitHub 故障（状态页全绿）。所以「装打包工具」这步现在会先试默认源，失败则按
+> azure → archive.ubuntu → 清华 → 阿里 → 中科大 → 南大 逐个探测（要求 `dists/<codename>/Release` 与
+> `<codename>-security/Release` 都通），选中哪个就把 `/etc/apt/sources.list` 重写成哪个再装。
+> 发版当天就是靠这条路径过去的：runner DNS 不通也能出包。
 
 1. 检出（`ref` = 触发它的 tag）
 2. `npm ci` + `npm run build`

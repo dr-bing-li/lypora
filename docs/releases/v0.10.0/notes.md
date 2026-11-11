@@ -26,20 +26,20 @@ dimensions arrive — **backgrounds** (6 paper textures + local image upload + o
 |---|---|---|---|---|
 | `Lypora-0.10.0-win-x64.zip` | Windows 10/11 x64 | 便携版 ZIP（解压即用）<br>Portable ZIP — unzip and run | 111.8 MiB | `7f4d156a3925d666a5ec1db16d71ece60202539188ec747531b8bceca3d53189` |
 | `Lypora-0.10.0-android.apk` | Android 10+（API 29+） | APK（debug 签名，直接安装）<br>APK, debug-signed, sideload | 13.6 MiB | `a3d326a8a2e0ddbba5f95d91d6ec5ce325db51852f13ba366dfc59805ac58c9a` |
-| `Lypora-0.10.0-macos-arm64.tar.gz` | macOS 11+ / Apple Silicon | `.app` bundle（ad-hoc 签名） | 发布时回填 | 发布时回填 |
-| `Lypora-0.10.0-macos-x64.tar.gz` | macOS 11+ / Intel | `.app` bundle（ad-hoc 签名） | 发布时回填 | 发布时回填 |
-| `Lypora-0.10.0-linux-x64.tar.gz` | 任意 x86-64 发行版（glibc ≥ 2.31） | tar.gz + `install.sh`（per-user） | CI 构建后回填 | CI 构建后回填 |
-| `Lypora-0.10.0-linux-x64.AppImage` | 任意 x86-64 发行版 | 单文件，免安装 | CI 构建后回填 | CI 构建后回填 |
-| `lypora_0.10.0_amd64.deb` | Debian 11+ / Ubuntu 20.04+ / 深度 / 麒麟 | 系统包（`apt install`） | CI 构建后回填 | CI 构建后回填 |
-| `lypora-0.10.0-1.x86_64.rpm` | Fedora 32+ / RHEL 9+ / openSUSE | 系统包（`dnf install`） | CI 构建后回填 | CI 构建后回填 |
+| `Lypora-0.10.0-macos-arm64.tar.gz` | macOS 11+ / Apple Silicon | `.app` bundle（ad-hoc 签名） | 98.5 MiB | `1609591e97bba7dd0cce5c33188375b0450bfb6498cd6f29061f5437653a1be5` |
+| `Lypora-0.10.0-macos-x64.tar.gz` | macOS 11+ / Intel | `.app` bundle（ad-hoc 签名） | 102.9 MiB | `dced347968eb9529e6db530f764139f9e6fc208a730ea85b21e2f0ae64bcc51b` |
+| `Lypora-0.10.0-linux-x64.tar.gz` | 任意 x86-64 发行版（glibc ≥ 2.31） | tar.gz + `install.sh`（per-user） | 104.3 MiB | `5550f0b95bf65f8b4f69e2c85794881f9a33ea42f79d2d1a2b3ad0b0cf2e1648` |
+| `Lypora-0.10.0-linux-x64.AppImage` | 任意 x86-64 发行版 | 单文件，免安装 | 96.8 MiB | `0efbce2c7267a110a3fe825ec2aab1bf5aaac3707274c233e84ad56216a30ab9` |
+| `lypora_0.10.0_amd64.deb` | Debian 11+ / Ubuntu 20.04+ / 深度 / 麒麟 | 系统包（`apt install`） | 80.9 MiB | `b3bc81bc9e9a2c8b573deda1154fff6edb87ea88c7f482ed122353d842e310af` |
+| `lypora-0.10.0-1.x86_64.rpm` | Fedora 32+ / RHEL 9+ / openSUSE | 系统包（`dnf install`） | 104.9 MiB | `4c4f524e947221067e5db42e2fdaf8ffe12bfe304ec91a552159177656fa957f` |
 | `SHA256SUMS.txt` | 任意 / any | 全部产物的校验清单 | 发布时生成 / generated at publish | — |
 
-Windows 与 Android 在本机构建（上表为实测值）；macOS 两件由 `tools/pack-mac.py` 本地打，
-Linux 四件由 CI 在打 tag 时构建，它们的体积与校验值在发布流水线里回填。
+Windows 与 Android 在本机构建；macOS 两件由 `tools/pack-mac.py` 本地打；Linux 四件由 CI 在打 tag 时构建。
+上表的体积与校验值全部取自发布产物本身（不是手抄），逐条可用 `SHA256SUMS.txt` 复核。
 
-The Windows and Android artefacts were built locally (values above are measured); the two macOS builds come
-from `tools/pack-mac.py` locally, and the four Linux ones are built by CI on the tag. Their sizes and hashes
-are filled in by the release pipeline.
+The Windows and Android artefacts were built locally; the two macOS builds come from `tools/pack-mac.py`
+locally, and the four Linux ones are built by CI on the tag. Every size and hash above is read back from the
+published assets — verify with `SHA256SUMS.txt`.
 
 **校验方法 / How to verify**
 
