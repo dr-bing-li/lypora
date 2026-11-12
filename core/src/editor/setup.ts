@@ -1,4 +1,4 @@
-import { Compartment, EditorState, Prec } from '@codemirror/state'
+import { Compartment, EditorState, Prec, type Extension } from '@codemirror/state'
 import { EditorView, keymap, drawSelection, dropCursor, placeholder } from '@codemirror/view'
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands'
 import { search, searchKeymap, highlightSelectionMatches } from '@codemirror/search'
@@ -22,6 +22,36 @@ export interface EditorHooks {
  * EditorState，那会把撤销历史和光标一起丢掉。
  */
 export const placeholderComp = new Compartment()
+
+/**
+ * CodeMirror 搜索面板的文案（v0.11.1，审计 DLG-3）。
+ *
+ * @codemirror/search 的按钮与提示不走我们的 `t()` —— 它读 `EditorState.phrases` 这个 facet
+ * （面板内部一律 `phrase(view, "Find")`）。facet 是建 state 时定下的，所以只能在这里塞：
+ * 切语言后已经开着的标签要重建 state 才会换文案，新标签与重开应用立刻生效。
+ * 这是 CodeMirror 的机制，不重建 state 是刻意的（重建会丢撤销历史）。
+ */
+export function searchPhrases(): Extension {
+  return EditorState.phrases.of({
+    Find: t('search.find'),
+    Replace: t('search.replace'),
+    next: t('search.next'),
+    previous: t('search.previous'),
+    all: t('search.all'),
+    'match case': t('search.matchCase'),
+    regexp: t('search.regexp'),
+    'by word': t('search.byWord'),
+    replace: t('search.replaceOne'),
+    'replace all': t('search.replaceAll'),
+    close: t('search.close'),
+    'Go to line': t('search.goToLine'),
+    go: t('search.go'),
+    'current match': t('search.currentMatch'),
+    'on line': t('search.onLine'),
+    'replaced $ matches': t('search.replacedMatches'),
+    'replaced match on line $': t('search.replacedOnLine'),
+  })
+}
 
 /**
  * 只读开关单独一个 Compartment：帮助文档这类"只让看"的标签要能编辑态与只读态共存于
@@ -157,6 +187,8 @@ export function createEditorState(
       readOnlyComp.of(
         opts?.readonly ? [EditorState.readOnly.of(true), EditorView.editable.of(false)] : [],
       ),
+      // 搜索面板的中文文案随 state 走（切语言后新标签生效）
+      searchPhrases(),
       ...buildExtensions(hooks),
     ],
   })

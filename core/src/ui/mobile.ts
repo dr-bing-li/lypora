@@ -115,6 +115,32 @@ function buildDock(handlers: MobileHandlers, openSheet: (section?: string) => vo
   const fmt = document.getElementById('mobile-toolbar')
   if (fmt) dock.appendChild(fmt)
 
+  // 12 个格式化按钮均分 390px 每格只剩 30px（真要横滑又找不到第 12 个），
+  // 于是只留 6 个高频，其余搬进「更多」弹出层。按钮节点是整体搬家不是复制 ——
+  // 监听器在 main.ts 里已经绑上，搬完照常工作，也不会出现两份同 id 的 DOM。
+  const moreBtn = fmt?.querySelector<HTMLButtonElement>('#tb-more-btn') ?? null
+  if (fmt && moreBtn) {
+    const morePop = document.createElement('div')
+    morePop.className = 'tb-more'
+    morePop.id = 'tb-more'
+    morePop.hidden = true
+    for (const b of Array.from(fmt.querySelectorAll<HTMLButtonElement>('[data-overflow]'))) {
+      morePop.appendChild(b)
+    }
+    const setMore = (open: boolean) => {
+      morePop.hidden = !open
+      moreBtn.setAttribute('aria-expanded', String(open))
+    }
+    // 点任意一条命令即收起，否则弹出层会一直压着正文
+    morePop.addEventListener('click', () => setMore(false))
+    moreBtn.addEventListener('click', (e) => {
+      e.preventDefault()
+      // `hidden` 在 lib.dom 里是 boolean | "until-found"，取当前是否关闭再取反
+      setMore(morePop.hidden !== false)
+    })
+    dock.insertBefore(morePop, fmt)
+  }
+
   const row = document.createElement('div')
   row.className = 'mobile-actions'
   for (const item of DOCK) {
@@ -166,6 +192,16 @@ function renderEntries(items: MenuEntry[], depth: number, onDone: () => void): H
       const hr = document.createElement('div')
       hr.className = 'sheet-sep'
       out.push(hr)
+      continue
+    }
+    // 不可点的分组标题（设置菜单的「界面」「图片」）：沿用二级菜单那套小标题样式。
+    // 不单独处理就会掉进下面的通用行分支，生成一条没有文字的 48px 空行
+    // （i18n-check 的「面板空行」抓的就是这个）。
+    if (it.group) {
+      const head = document.createElement('div')
+      head.className = 'sheet-sub'
+      head.textContent = it.group
+      out.push(head)
       continue
     }
     if (it.items) {
@@ -230,7 +266,27 @@ function buildSheet(getMenus: () => MenuDef[], closeSheet: () => void): HTMLElem
   body.className = 'sheet-body'
   body.id = 'sheet-body'
 
-  sheet.append(head, body)
+  // 分区目录条：面板把 7 个菜单全摊平，内容五千像素量级，没有它只能盲滑
+  const chips = document.createElement('div')
+  chips.className = 'sheet-chips'
+  chips.id = 'sheet-chips'
+
+  sheet.append(head, chips, body)
+
+  // 手动滑动时 chip 跟着亮。offsetTop 是相对 offsetParent（.sheet）算的，
+  // 必须减掉 body.offsetTop 才是"内容里的位置"，否则会整体偏出头部+chip 的高度。
+  body.addEventListener(
+    'scroll',
+    () => {
+      const top = body.scrollTop + 12
+      let cur: string | undefined
+      for (const sec of body.querySelectorAll<HTMLElement>('.sheet-section')) {
+        if (sec.offsetTop - body.offsetTop <= top) cur = sec.dataset.section
+      }
+      markChip(sheet, cur)
+    },
+    { passive: true },
+  )
 
   // 独立遮罩：不跟面板抢 z-index，避免 z-index:-1 的伪元素把面板内容一起压暗（实测过）
   const backdrop = document.createElement('div')
@@ -246,10 +302,42 @@ function buildSheet(getMenus: () => MenuDef[], closeSheet: () => void): HTMLElem
   return sheet
 }
 
+/**
+ * 高亮分区 chip。`id` 为空时全部熄灭（面板顶部而不是某个分区时）。
+ * chip 与分区同源于 menus，所以只按 id 对应，不碰文案。
+ */
+function markChip(sheet: HTMLElement, id: string | undefined): void {
+  for (const c of sheet.querySelectorAll<HTMLElement>('#sheet-chips .sheet-chip')) {
+    c.classList.toggle('on', !!id && c.dataset.jump === id)
+  }
+}
+
 function fillSheet(sheet: HTMLElement, menus: MenuDef[], onDone: () => void): void {
   const body = sheet.querySelector<HTMLElement>('#sheet-body')
   if (!body) return
   body.innerHTML = ''
+
+  // 目录 chip 与分区一一对应（同源于同一份 menus，切语言后一起重画）
+  const chips = sheet.querySelector<HTMLElement>('#sheet-chips')
+  if (chips) {
+    chips.innerHTML = ''
+    for (const menu of menus) {
+      const c = document.createElement('button')
+      c.type = 'button'
+      c.className = 'sheet-chip'
+      c.dataset.jump = menu.id
+      c.textContent = menu.label
+      c.addEventListener('click', () => {
+        const target = body.querySelector<HTMLElement>(`.sheet-section[data-section="${menu.id}"]`)
+        // 同 openSheet：offsetTop 相对 .sheet，必须减 body.offsetTop，
+        // 否则一点就多滚一个头部高度（实测 100px 出头）
+        if (target) body.scrollTo({ top: Math.max(0, target.offsetTop - body.offsetTop - 8), behavior: 'smooth' })
+        for (const x of chips.querySelectorAll('.sheet-chip')) x.classList.toggle('on', x === c)
+      })
+      chips.appendChild(c)
+    }
+  }
+
   for (const menu of menus) {
     const sec = document.createElement('section')
     sec.className = 'sheet-section'
@@ -329,8 +417,11 @@ export function initMobileShell(getMenus: () => MenuDef[], handlers: MobileHandl
       ? sheet.querySelector<HTMLElement>(`.sheet-section[data-section="${section}"]`)
       : null
     const body = sheet.querySelector<HTMLElement>('#sheet-body')
-    if (target && body) body.scrollTop = Math.max(0, target.offsetTop - 8)
+    // offsetTop 相对 .sheet，减 body.offsetTop 才落到"内容坐标系"里，
+    // 否则每次跳转都会多滚一个「标题 + chip 条」的高度
+    if (target && body) body.scrollTop = Math.max(0, target.offsetTop - body.offsetTop - 8)
     else if (body) body.scrollTop = 0
+    markChip(sheet, target ? section : getMenus()[0]?.id)
   }
 
   dockEl = buildDock(handlers, openSheet)

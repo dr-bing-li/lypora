@@ -21,10 +21,30 @@ export default {
     save: 'Speichern',
     discard: 'Nicht speichern',
   },
+  search: {
+    find: 'Suchen',
+    replace: 'Ersetzen',
+    next: 'weiter',
+    previous: 'zurück',
+    all: 'alle',
+    matchCase: 'Groß-/Kleinschreibung',
+    regexp: 'Regexp',
+    byWord: 'ganzes Wort',
+    replaceOne: 'ersetzen',
+    replaceAll: 'alle ersetzen',
+    close: 'schließen',
+    goToLine: 'Gehe zu Zeile',
+    go: 'los',
+    currentMatch: 'aktueller Treffer',
+    onLine: 'in Zeile',
+    replacedMatches: '$ Treffer ersetzt',
+    replacedOnLine: 'Treffer in Zeile $ ersetzt',
+  },
   tab: {
     new: 'Neuer Tab',
     close: 'Tab schließen',
     unsavedTip: 'Nicht gespeichert: {name}',
+    dropHint: 'Datei hierher ziehen zum Öffnen',
   },
 
   menu: {
@@ -92,9 +112,12 @@ export default {
     image: 'Bild',
     insertImage: 'Bild einfügen…',
     clear: 'Formatierung löschen',
+    more: 'Weitere Formatierung',
   },
 
   settings: {
+    groupUi: 'Oberfläche',
+    groupImage: 'Bilder',
     imageRef: 'Bildreferenz',
     imageRefFile: 'Dateien referenzieren (empfohlen)',
     imageRefEmbed: 'Als base64 einbetten',
@@ -330,6 +353,8 @@ export default {
     imported: 'Vorlage „{name}" importiert',
     removed: 'Vorlage gelöscht',
     deleteTpl: 'Löschen',
+    hidePrev: 'Vorschau ausblenden',
+    showPrev: 'Vorschau einblenden',
   },
 
   tpl: {

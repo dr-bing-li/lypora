@@ -196,7 +196,12 @@ for (const dev of DEVICES) {
       const body = document.getElementById('sheet-body')
       const sec = document.querySelector('.sheet-section[data-section="file"]')
       if (!body || !sec) return false
-      return Math.abs(body.scrollTop - Math.max(0, sec.offsetTop - 8)) < 4 || body.scrollTop === 0
+      // 判"这一节是否被滚到可视区顶部"，不去对齐某个具体公式：
+      // 早先这里写的是 `Math.abs(scrollTop - (sec.offsetTop - 8)) < 4`，
+      // 而 offsetTop 是相对 .sheet 的（含头部 + chip 条），
+      // 于是这条断言实际在要求"多滚一百多像素"，正好把 bug 当成正确行为。
+      const gap = sec.offsetTop - body.offsetTop - body.scrollTop
+      return gap >= 0 && gap <= 24
     })
     await page.locator('#menu-sheet .sheet-close').tap()
     await page.waitForTimeout(200)

@@ -197,18 +197,52 @@ export function createBeautifyPanel(deps: BeautifyDeps): BeautifyHandle {
       wrap.append(pick, code)
       row.appendChild(wrap)
     } else if (spec.kind === 'number') {
+      const min = spec.min ?? 0
+      const max = spec.max ?? 100
+      const step = spec.step ?? 1
+      // 单位并入标签（"左右留白 (px)"）：数值列只放数字才能右对齐成一列
+      if (spec.unit) label.textContent += ` (${spec.unit.trim()})`
+
       const wrap = el('div', 'ce-num')
       const range = el('input') as HTMLInputElement
       range.type = 'range'
-      range.min = String(spec.min ?? 0)
-      range.max = String(spec.max ?? 100)
-      range.step = String(spec.step ?? 1)
+      range.min = String(min)
+      range.max = String(max)
+      range.step = String(step)
       range.value = String(value)
-      const out = el('span', 'ce-num-val', `${value}${spec.unit ?? ''}`)
-      range.oninput = () => {
-        const v = Number(range.value)
-        out.textContent = `${v}${spec.unit ?? ''}`
+      range.setAttribute('aria-label', tl(spec.labelKey))
+
+      /* 数值可以直接输入（审计 LAYOUT-1）：滑块对不准"正好 40px"，
+         做系列模板时又要复用同一组数值。视觉上仍是行末的一列数字。 */
+      const out = el('input', 'ce-num-val') as HTMLInputElement
+      out.type = 'number'
+      out.inputMode = step < 1 ? 'decimal' : 'numeric'
+      out.min = String(min)
+      out.max = String(max)
+      out.step = String(step)
+      out.value = String(value)
+      out.setAttribute('aria-label', tl(spec.labelKey))
+
+      // 滑块与输入框共用一个提交函数：先 clamp 到 spec 的范围再落盘
+      const commit = (raw: number) => {
+        const v = Math.min(max, Math.max(min, Number.isFinite(raw) ? raw : Number(value)))
+        range.value = String(v)
+        out.value = String(v)
         void apply(v)
+      }
+      range.oninput = () => commit(Number(range.value))
+      // 打字过程中只在范围内跟随，越界留给失焦 —— 否则想打 "40" 时第一个 "4" 就被拉到 min
+      out.oninput = () => {
+        if (out.value === '' || out.value === '-') return
+        const v = Number(out.value)
+        if (Number.isFinite(v) && v >= min && v <= max) commit(v)
+      }
+      out.onblur = () => commit(Number(out.value))
+      out.onkeydown = (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault()
+          out.blur()
+        }
       }
       wrap.append(range, out)
       row.appendChild(wrap)
@@ -620,7 +654,17 @@ export function createBeautifyPanel(deps: BeautifyDeps): BeautifyHandle {
     const next = el('button', 'ce-arrow', '›')
     next.type = 'button'
     next.dataset.act = 'next'
-    pager.append(prev, pos, next)
+    // 收起预览：手机上预览固定吃 34vh，参数区只剩 49%（实测 389/800），
+    // 调个字号要滑好几屏；收起后参数区拿到 79%。桌面同样可用。
+    const fold = el('button', 'ce-prev-toggle', t('card.hidePrev'))
+    fold.type = 'button'
+    fold.setAttribute('aria-expanded', 'true')
+    fold.onclick = () => {
+      const off = box.classList.toggle('ce-prev-collapsed')
+      fold.textContent = t(off ? 'card.showPrev' : 'card.hidePrev')
+      fold.setAttribute('aria-expanded', String(!off))
+    }
+    pager.append(prev, pos, next, fold)
     preview.appendChild(pager)
     body.appendChild(preview)
 

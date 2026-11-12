@@ -474,6 +474,9 @@ function updateCounts(doc: string): void {
   st.textContent = t('status.words', { n: chars, value: fmtNum(chars) })
   st.title = t('status.wordsTip', { cjk: fmtNum(cjk), words: fmtNum(words), chars: fmtNum(chars) })
   $('st-lines').textContent = t('status.lines', { n: lines, value: fmtNum(lines) })
+  // 手机隐藏了状态栏，同一份字数在顶栏再挂一份（≤767px 才 display，桌面零成本）
+  const mb = document.getElementById('mb-words')
+  if (mb) mb.textContent = st.textContent
 }
 
 /* ------------------------------------------------------------------ *
@@ -984,14 +987,47 @@ async function doOpenWorkspace(): Promise<void> {
   toast(t('toast.folderLoaded', { n: ws.entries.length, root: ws.root }))
 }
 
+/**
+ * 侧栏空状态：一句说明 + 一个直接可点的入口。
+ * 原先只有两行弱色文字，用户看完还得自己记住去菜单里找（审计 SIDE-1）。
+ */
+function emptyState(
+  box: HTMLElement,
+  title: string,
+  sub: string,
+  actionLabel: string,
+  action: () => void,
+): void {
+  box.innerHTML = ''
+  const wrap = document.createElement('div')
+  wrap.className = 'empty-hint'
+  const t1 = document.createElement('span')
+  t1.textContent = title
+  wrap.appendChild(t1)
+  if (sub) {
+    const t2 = document.createElement('span')
+    t2.className = 'eh-sub'
+    t2.textContent = sub
+    wrap.appendChild(t2)
+  }
+  if (actionLabel) {
+    const b = document.createElement('button')
+    b.type = 'button'
+    b.className = 'eh-action'
+    b.textContent = actionLabel
+    b.addEventListener('click', action)
+    wrap.appendChild(b)
+  }
+  box.appendChild(wrap)
+}
+
 function renderWorkspace(root: string, entries: WorkspaceEntry[]): void {
   const box = $('filetree')
   box.innerHTML = ''
   if (!entries.length) {
-    const hint = document.createElement('div')
-    hint.className = 'empty-hint'
-    hint.textContent = t('sidebar.noMarkdown')
-    box.appendChild(hint)
+    emptyState(box, t('sidebar.noMarkdown'), t('sidebar.noFolderHint'), t('file.openFolder'), () =>
+      void doOpenWorkspace(),
+    )
     return
   }
   const head = document.createElement('div')
@@ -1029,10 +1065,7 @@ async function renderRecents(): Promise<void> {
   const box = $('recent-list')
   box.innerHTML = ''
   if (!docs.length) {
-    const hint = document.createElement('div')
-    hint.className = 'empty-hint'
-    hint.textContent = t('sidebar.noRecents')
-    box.appendChild(hint)
+    emptyState(box, t('sidebar.noRecents'), '', t('file.open'), () => void doOpen())
     return
   }
   for (const d of docs.slice(0, 30)) {
@@ -1100,6 +1133,16 @@ const beautify = createBeautifyPanel({
   getContent: () => app.view?.state.doc.toString() ?? '',
   getDocName: () => app.fileName,
 })
+
+/**
+ * 打开排版面板的统一入口。
+ * 面板铺满整个编辑区，而菜单是 fixed 浮层 —— 菜单开着时用快捷键开面板，
+ * 下拉菜单会浮在面板上盖住标题栏（审计 MENU-3）。所以先主动收起菜单。
+ */
+function openLayout(): void {
+  menubar?.close()
+  beautify.open()
+}
 
 /* ------------------------------------------------------------------ *
  * 侧边栏：大纲 / 文件树 / 最近（对齐参考实现的左侧栏视图切换）
@@ -1669,7 +1712,7 @@ function buildMenus(): MenuDef[] {
       id: 'layout',
       label: t('menu.layout'),
       items: [
-        { id: 'layout-open', label: t('layout.open'), shortcut: 'Ctrl+Shift+P', action: () => beautify.open() },
+        { id: 'layout-open', label: t('layout.open'), shortcut: 'Ctrl+Shift+P', action: () => openLayout() },
         { sep: true },
         {
           id: 'layout-size',
@@ -1704,6 +1747,9 @@ function buildMenus(): MenuDef[] {
       id: 'settings',
       label: t('menu.settings'),
       items: [
+        // 分两个可读的组：前两项是应用级偏好，后两项只管图片（审计 MENU-2）。
+        // 只有分隔线时，用户得点进去才知道是哪一类。
+        { group: t('settings.groupUi') },
         {
           // 多文档的呈现方式（v0.11.0）：仅标签 / 仅多窗口 / 两者并存。
           // 放在设置里而不是「显示」菜单：它改变的是"文档怎么组织"，不是"这一屏怎么画"。
@@ -1733,7 +1779,6 @@ function buildMenus(): MenuDef[] {
             },
           ],
         },
-        { sep: true },
         {
           // 语言从顶级降到这里（v0.10.0）：顶级菜单已经有 9 个，语言是低频设置项，
           // 和"图片怎么存"属于同一类"这台机器怎么工作"的偏好。
@@ -1756,7 +1801,7 @@ function buildMenus(): MenuDef[] {
             })),
           ],
         },
-        { sep: true },
+        { group: t('settings.groupImage') },
         { id: 'settings-image-ref', 
           label: t('settings.imageRef'),
           items: [
@@ -1894,6 +1939,11 @@ function bindUI(): void {
   })
   $('btn-collapse-sidebar').addEventListener('click', () => setSidebar(false))
   $('btn-outline').addEventListener('click', () => togglePane('outline'))
+
+  // 侧栏空状态里的两个入口（index.html 静态那一份；动态渲染走 emptyState()）。
+  // 空状态是新用户第一眼看到的东西，得能直接点进下一步（审计 SIDE-1）。
+  $('eh-open-folder').addEventListener('click', () => void doOpenWorkspace())
+  $('eh-open-file').addEventListener('click', () => void doOpen())
   document.getElementById('btn-files')?.addEventListener('click', () => togglePane('files'))
 
   $('btn-source').addEventListener('click', toggleSource)
@@ -1940,8 +1990,9 @@ function bindUI(): void {
   document.querySelectorAll<HTMLButtonElement>('#mobile-toolbar button').forEach((btn) => {
     btn.addEventListener('mousedown', (e) => e.preventDefault())
     btn.addEventListener('click', () => {
-      if (!app.view) return
       const c = btn.dataset.cmd
+      // 「更多」这类外壳按钮没有 data-cmd，交回 mobile.ts 处理；这里不要抢焦点
+      if (!c || !app.view) return
       const v = app.view
       switch (c) {
         case 'bold': cmd.bold(v); break
@@ -1970,7 +2021,7 @@ function bindUI(): void {
     open: () => void doOpen(),
     save: () => void doSave(false),
     toggleOutline: () => togglePane('outline'),
-    beautify: () => beautify.open(),
+    beautify: () => openLayout(),
   })
 
   // 全局快捷键（与菜单上标注的一致）
@@ -2018,8 +2069,9 @@ function bindUI(): void {
     }
     if (mod && !e.shiftKey && e.key.toLowerCase() === 'n') {
       e.preventDefault()
-      loadDocument(`# ${t('app.newDoc')}\n\n`, t('app.untitled'))
-      toast(t('toast.created'))
+      // 必须走 newDocument()：loadDocument() 命中"复用干净无路径标签"的规则，
+      // 连按 Ctrl+N 只会把当前标签换个名字，与菜单「新建」和帮助文档写的行为都相反（审计 TAB-1）
+      newDocument()
       return
     }
     if (mod && e.key === '/') {
@@ -2044,7 +2096,7 @@ function bindUI(): void {
     }
     if (mod && e.shiftKey && e.key.toLowerCase() === 'p') {
       e.preventDefault()
-      beautify.open()
+      openLayout()
       return
     }
     if (mod && e.shiftKey && (e.key === '=' || e.key === '+')) {

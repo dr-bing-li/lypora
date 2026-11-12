@@ -21,10 +21,30 @@ export default {
     save: '保存',
     discard: '保存しない',
   },
+  search: {
+    find: '検索',
+    replace: '置換',
+    next: '次へ',
+    previous: '前へ',
+    all: 'すべて',
+    matchCase: '大文字と小文字を区別',
+    regexp: '正規表現',
+    byWord: '単語単位',
+    replaceOne: '置換',
+    replaceAll: 'すべて置換',
+    close: '閉じる',
+    goToLine: '行へ移動',
+    go: '移動',
+    currentMatch: '現在の一致',
+    onLine: '行',
+    replacedMatches: '$ 件置換しました',
+    replacedOnLine: '$ 行目の一致を置換しました',
+  },
   tab: {
     new: '新しいタブ',
     close: 'タブを閉じる',
     unsavedTip: '未保存：{name}',
+    dropHint: 'ここにファイルをドロップして開く',
   },
 
   menu: {
@@ -92,9 +112,12 @@ export default {
     image: '画像',
     insertImage: '画像を挿入…',
     clear: '書式をクリア',
+    more: 'その他の書式',
   },
 
   settings: {
+    groupUi: '画面',
+    groupImage: '画像',
     imageRef: '画像の参照方法',
     imageRefFile: 'ファイルを参照（推奨）',
     imageRefEmbed: 'base64 で埋め込む',
@@ -330,6 +353,8 @@ export default {
     imported: '「{name}」を読み込みました',
     removed: 'テンプレートを削除しました',
     deleteTpl: '削除',
+    hidePrev: 'プレビューを隠す',
+    showPrev: 'プレビューを表示',
   },
 
   tpl: {

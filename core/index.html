@@ -24,6 +24,8 @@
         <div class="menubar-right">
           <span class="dirty-dot" id="dirty-dot" hidden>*</span>
           <span class="doc-title" id="doc-title">功能演示.md</span>
+          <!-- 手机上没有状态栏，字数挪到顶栏（≤767px 才显示，见 style.css） -->
+          <span class="mb-words" id="mb-words"></span>
           <span class="chip" id="chip-mode" data-i18n="chip.preview">实时预览</span>
         </div>
       </header>
@@ -58,12 +60,19 @@
             </div>
             <div class="pane" id="pane-files" hidden>
               <div class="filetree" id="filetree">
-                <div class="empty-hint"><span data-i18n="sidebar.noFolder">尚未打开文件夹</span><br /><span data-i18n="sidebar.noFolderHint">用「文件 → 打开文件夹」选择目录</span></div>
+                <div class="empty-hint">
+                  <span data-i18n="sidebar.noFolder">尚未打开文件夹</span>
+                  <span class="eh-sub" data-i18n="sidebar.noFolderHint">用「文件 → 打开文件夹」选择目录</span>
+                  <button type="button" class="eh-action" id="eh-open-folder" data-i18n="file.openFolder">打开文件夹…</button>
+                </div>
               </div>
             </div>
             <div class="pane" id="pane-recent" hidden>
               <div class="filetree" id="recent-list">
-                <div class="empty-hint" data-i18n="sidebar.noRecents">暂无最近文件</div>
+                <div class="empty-hint">
+                  <span data-i18n="sidebar.noRecents">暂无最近文件</span>
+                  <button type="button" class="eh-action" id="eh-open-file" data-i18n="file.open">打开…</button>
+                </div>
               </div>
             </div>
           </div>
@@ -81,16 +90,20 @@
           <div class="mobile-toolbar" id="mobile-toolbar">
             <button data-cmd="bold" data-i18n-title="format.bold" title="粗体"><b>B</b></button>
             <button data-cmd="italic" data-i18n-title="format.italic" title="斜体"><i>I</i></button>
-            <button data-cmd="strike" data-i18n-title="format.strike" title="删除线"><s>S</s></button>
+            <button data-cmd="strike" data-overflow data-i18n-title="format.strike" title="删除线"><s>S</s></button>
             <button data-cmd="code" data-i18n-title="format.code" title="行内代码"><code>&lt;&gt;</code></button>
             <button data-cmd="h1" data-i18n-title="paragraph.heading1" title="一级标题">H1</button>
             <button data-cmd="ul" data-i18n-title="paragraph.bullet" title="无序列表">•</button>
             <button data-cmd="task" data-i18n-title="paragraph.task" title="任务列表">☑</button>
-            <button data-cmd="quote" data-i18n-title="paragraph.quote" title="引用">❝</button>
-            <button data-cmd="table" data-i18n-title="paragraph.table" title="表格">▦</button>
-            <button data-cmd="math" data-i18n-title="paragraph.math" title="公式">∑</button>
-            <button data-cmd="link" data-i18n-title="format.link" title="链接">🔗</button>
-            <button data-cmd="image" data-i18n-title="format.image" title="图片">🖼</button>
+            <button data-cmd="quote" data-overflow data-i18n-title="paragraph.quote" title="引用">❝</button>
+            <button data-cmd="table" data-overflow data-i18n-title="paragraph.table" title="表格">▦</button>
+            <button data-cmd="math" data-overflow data-i18n-title="paragraph.math" title="公式">∑</button>
+            <button data-cmd="link" data-overflow data-i18n-title="format.link" title="链接">🔗</button>
+            <button data-cmd="image" data-overflow data-i18n-title="format.image" title="图片">🖼</button>
+            <!-- 带 data-overflow 的按钮在手机壳初始化时被搬进 .tb-more 弹出层：
+                 12 个按钮均分 390px 每格只剩 30px，不如给 6 个高频整格热区 -->
+            <button type="button" class="tb-more-btn" id="tb-more-btn" data-more="1" aria-expanded="false"
+              data-i18n-title="format.more" data-i18n-aria="format.more" title="更多格式" aria-label="更多格式">⋯</button>
           </div>
         </main>
       </div>

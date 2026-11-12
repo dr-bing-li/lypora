@@ -32,10 +32,30 @@ export default {
     save: '保存',
     discard: '不保存',
   },
+  search: {
+    find: '查找',
+    replace: '替换',
+    next: '下一个',
+    previous: '上一个',
+    all: '全部',
+    matchCase: '区分大小写',
+    regexp: '正则',
+    byWord: '全词',
+    replaceOne: '替换',
+    replaceAll: '全部替换',
+    close: '关闭',
+    goToLine: '跳转到行',
+    go: '跳转',
+    currentMatch: '当前匹配',
+    onLine: '行',
+    replacedMatches: '已替换 $ 处',
+    replacedOnLine: '已替换第 $ 行的匹配',
+  },
   tab: {
     new: '新建标签',
     close: '关闭标签',
     unsavedTip: '未保存：{name}',
+    dropHint: '拖文件到此处打开',
   },
 
   menu: {
@@ -103,9 +123,12 @@ export default {
     image: '图像',
     insertImage: '插入图片…',
     clear: '清除格式',
+    more: '更多格式',
   },
 
   settings: {
+    groupUi: '界面',
+    groupImage: '图片',
     imageRef: '图片引用方式',
     imageRefFile: '引用文件（推荐）',
     imageRefEmbed: '内嵌为 base64',
@@ -341,6 +364,8 @@ export default {
     imported: '已导入模板「{name}」',
     removed: '已删除该模板',
     deleteTpl: '删除',
+    hidePrev: '收起预览',
+    showPrev: '展开预览',
   },
 
   tpl: {

@@ -21,10 +21,30 @@ export default {
     save: 'Guardar',
     discard: 'No guardar',
   },
+  search: {
+    find: 'Buscar',
+    replace: 'Reemplazar',
+    next: 'siguiente',
+    previous: 'anterior',
+    all: 'todo',
+    matchCase: 'distinguir mayúsculas',
+    regexp: 'regexp',
+    byWord: 'palabra completa',
+    replaceOne: 'reemplazar',
+    replaceAll: 'reemplazar todo',
+    close: 'cerrar',
+    goToLine: 'Ir a la línea',
+    go: 'ir',
+    currentMatch: 'coincidencia actual',
+    onLine: 'en la línea',
+    replacedMatches: '$ coincidencias reemplazadas',
+    replacedOnLine: 'coincidencia en la línea $ reemplazada',
+  },
   tab: {
     new: 'Nueva pestaña',
     close: 'Cerrar pestaña',
     unsavedTip: 'Sin guardar: {name}',
+    dropHint: 'Suelta un archivo aquí para abrirlo',
   },
 
   menu: {
@@ -92,9 +112,12 @@ export default {
     image: 'Imagen',
     insertImage: 'Insertar imagen…',
     clear: 'Borrar formato',
+    more: 'Más formato',
   },
 
   settings: {
+    groupUi: 'Interfaz',
+    groupImage: 'Imágenes',
     imageRef: 'Referencia de imágenes',
     imageRefFile: 'Referenciar archivos (recomendado)',
     imageRefEmbed: 'Incrustar como base64',
@@ -330,6 +353,8 @@ export default {
     imported: 'Plantilla «{name}» importada',
     removed: 'Plantilla eliminada',
     deleteTpl: 'Eliminar',
+    hidePrev: 'Ocultar vista previa',
+    showPrev: 'Mostrar vista previa',
   },
 
   tpl: {

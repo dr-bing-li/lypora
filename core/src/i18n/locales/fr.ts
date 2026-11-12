@@ -21,10 +21,30 @@ export default {
     save: 'Enregistrer',
     discard: 'Ne pas enregistrer',
   },
+  search: {
+    find: 'Rechercher',
+    replace: 'Remplacer',
+    next: 'suivant',
+    previous: 'précédent',
+    all: 'tout',
+    matchCase: 'respecter la casse',
+    regexp: 'regexp',
+    byWord: 'mot entier',
+    replaceOne: 'remplacer',
+    replaceAll: 'tout remplacer',
+    close: 'fermer',
+    goToLine: 'Aller à la ligne',
+    go: 'aller',
+    currentMatch: 'correspondance actuelle',
+    onLine: 'à la ligne',
+    replacedMatches: '$ correspondances remplacées',
+    replacedOnLine: 'correspondance à la ligne $ remplacée',
+  },
   tab: {
     new: 'Nouvel onglet',
     close: 'Fermer l\u2019onglet',
     unsavedTip: 'Non enregistré : {name}',
+    dropHint: 'Déposez un fichier ici pour l\u2019ouvrir',
   },
 
   menu: {
@@ -92,9 +112,12 @@ export default {
     image: 'Image',
     insertImage: 'Insérer une image…',
     clear: 'Effacer la mise en forme',
+    more: 'Plus de mise en forme',
   },
 
   settings: {
+    groupUi: 'Interface',
+    groupImage: 'Images',
     imageRef: 'Référence des images',
     imageRefFile: 'Référencer les fichiers (recommandé)',
     imageRefEmbed: 'Intégrer en base64',
@@ -330,6 +353,8 @@ export default {
     imported: 'Modèle « {name} » importé',
     removed: 'Modèle supprimé',
     deleteTpl: 'Supprimer',
+    hidePrev: "Masquer l'aperçu",
+    showPrev: "Afficher l'aperçu",
   },
 
   tpl: {

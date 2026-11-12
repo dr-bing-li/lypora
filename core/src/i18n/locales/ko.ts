@@ -21,10 +21,30 @@ export default {
     save: '저장',
     discard: '저장 안 함',
   },
+  search: {
+    find: '찾기',
+    replace: '바꾸기',
+    next: '다음',
+    previous: '이전',
+    all: '모두',
+    matchCase: '대소문자 구분',
+    regexp: '정규식',
+    byWord: '단어 단위',
+    replaceOne: '바꾸기',
+    replaceAll: '모두 바꾸기',
+    close: '닫기',
+    goToLine: '줄로 이동',
+    go: '이동',
+    currentMatch: '현재 일치',
+    onLine: '줄',
+    replacedMatches: '$개 바꿈',
+    replacedOnLine: '$번째 줄 일치 바꿈',
+  },
   tab: {
     new: '새 탭',
     close: '탭 닫기',
     unsavedTip: '저장 안 됨: {name}',
+    dropHint: '여기로 파일을 끌어다 놓으면 열립니다',
   },
 
   menu: {
@@ -92,9 +112,12 @@ export default {
     image: '이미지',
     insertImage: '이미지 삽입…',
     clear: '서식 지우기',
+    more: '서식 더 보기',
   },
 
   settings: {
+    groupUi: '화면',
+    groupImage: '이미지',
     imageRef: '이미지 참조 방식',
     imageRefFile: '파일 참조(권장)',
     imageRefEmbed: 'base64로 포함',
@@ -330,6 +353,8 @@ export default {
     imported: '"{name}" 템플릿을 가져왔습니다',
     removed: '템플릿을 삭제했습니다',
     deleteTpl: '삭제',
+    hidePrev: '미리보기 숨기기',
+    showPrev: '미리보기 표시',
   },
 
   tpl: {

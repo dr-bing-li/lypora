@@ -10,7 +10,7 @@
   --bg-elev: #f6f8fa;
   --bg-side: #f6f8fa;
   --fg: #24292f;
-  --fg-muted: #6e7781;
+  --fg-muted: #57606a;   /* 6.4:1 on #fff（原 #6e7781 只有 4.55，刚过线） */
   --fg-faint: #afb8c1;
   --border: #d0d7de;
   --border-soft: #e6eaef;
@@ -34,7 +34,7 @@
   --bg-elev: #21252b;
   --bg-side: #21252b;
   --fg: #d7dae0;
-  --fg-muted: #868e96;
+  --fg-muted: #9aa4b0;   /* 5.5:1 on #282c34（原 #868e96 只有 4.22） */
   --fg-faint: #5c6370;
   --border: #3e4451;
   --border-soft: #353b45;
@@ -153,7 +153,7 @@
   --sidebar-w: 250px;
   --outline-w: 240px;
   --menubar-h: 40px;
-  --statusbar-h: 26px;
+  --statusbar-h: 28px; /* 26 -> 28：给状态栏开关留出 28px 热区 */
   --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
   /* 骨架文字：默认跟文档前景色走；导入主题时适配层会按各自的底色重算对比度
      （菜单栏/状态栏用 --fg-chrome*，侧栏用 --fg-side*，因为主题可能把侧栏做成深色） */
@@ -174,6 +174,21 @@
 
 * {
   box-sizing: border-box;
+}
+
+/* 键盘焦点环（v0.11.1 / 审计 GLB-3）：
+   浏览器默认的 1px 黑框在深色主题下几乎看不见，也和"蓝色 = 可交互"的语言不是一套。
+   用 :focus-visible 而不是 :focus —— 鼠标点击不该留框。 */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+/* 编辑器例外：光标本身就是焦点指示，外面再加一圈蓝线反而像报错 */
+.cm-editor:focus,
+.cm-editor:focus-visible,
+.cm-content:focus,
+.cm-content:focus-visible {
+  outline: none;
 }
 
 html,
@@ -236,7 +251,7 @@ button {
 .menu-root {
   font-size: 12.5px;
   color: var(--fg-chrome);
-  padding: 4px 9px;
+  padding: 6px 9px; /* 24 -> 28px 高：触屏与高分屏更好命中 */
   border-radius: 4px;
   white-space: nowrap;
   transition: background 0.1s var(--ease), color 0.1s var(--ease);
@@ -269,6 +284,18 @@ button {
   background: var(--bg);
   box-shadow: 0 10px 34px rgba(0, 0, 0, 0.16), 0 2px 8px rgba(0, 0, 0, 0.08);
 }
+/* 菜单里的分组小标题：不可点，只给层级（设置菜单用它把"界面"和"图片"分开） */
+.mi-group {
+  padding: 8px 8px 4px;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--fg-chrome-dim);
+  user-select: none;
+}
+.mi-group:first-child {
+  padding-top: 1px;
+}
 .menu-item {
   display: flex;
   align-items: center;
@@ -277,7 +304,7 @@ button {
   text-align: left;
   font-size: 12.5px;
   color: var(--fg);
-  padding: 5px 8px;
+  padding: 7px 8px; /* 26 -> 30px 高 */
   border-radius: 5px;
   white-space: nowrap;
 }
@@ -285,7 +312,8 @@ button {
   background: var(--accent);
   color: var(--on-accent);
 }
-.menu-item:hover:not(:disabled) .mi-shortcut {
+.menu-item:hover:not(:disabled) .mi-shortcut,
+.menu-item:hover:not(:disabled) .mi-arrow {
   color: color-mix(in srgb, var(--on-accent) 78%, transparent);
 }
 .menu-item:disabled {
@@ -309,7 +337,7 @@ button {
 .mi-shortcut {
   flex: 0 0 auto;
   font-size: 11px;
-  color: var(--fg-faint);
+  color: var(--fg-chrome-dim);
   margin-left: 18px;
   font-family: var(--font-mono);
 }
@@ -324,11 +352,19 @@ button {
   z-index: 210;
 }
 .mi-arrow {
-  flex: 0 0 auto;
+  flex: 0 0 12px;
+  width: 12px;
+  height: 12px;
   margin-left: 10px;
-  font-size: 13px;
-  line-height: 1;
-  color: var(--fg-faint);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--fg-chrome-dim);
+}
+.mi-arrow svg {
+  width: 12px;
+  height: 12px;
+  display: block;
 }
 .menu-item:hover:not(:disabled) .mi-arrow {
   color: var(--on-accent);
@@ -420,7 +456,7 @@ body.full-width .width-grip {
   align-items: flex-start;
   justify-content: center;
   padding-top: 22vh;
-  background: rgba(20, 22, 26, 0.28);
+  background: rgba(20, 22, 26, 0.45);
 }
 .modal {
   width: 300px;
@@ -439,9 +475,10 @@ body.full-width .width-grip {
 }
 .modal p {
   margin: 0 0 10px;
-  font-size: 11.5px;
+  /* 破坏性操作里最关键的一句，不能用弱色；字号并入 chrome 刻度 */
+  font-size: 12.5px;
   line-height: 1.6;
-  color: var(--fg-faint);
+  color: var(--fg);
 }
 .modal input {
   width: 100%;
@@ -477,12 +514,17 @@ body.full-width .width-grip {
 }
 
 .doc-title {
-  font-size: 13px;
+  font-size: 14px;
   color: var(--fg-chrome-dim);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 42vw;
+}
+
+/* 顶栏字数：桌面有状态栏，用不上；≤767px 状态栏隐藏后才显示（见手机断点） */
+.mb-words {
+  display: none;
 }
 
 .dirty-dot {
@@ -510,6 +552,7 @@ body.full-width .width-grip {
   align-items: center;
   justify-content: center;
   border-radius: 5px;
+  font-size: 12.5px; /* 不写会继承按钮默认的 13.3333px（非整值） */
   color: var(--fg-side-dim);
   transition: background 0.12s var(--ease), color 0.12s var(--ease);
 }
@@ -567,6 +610,9 @@ body.full-width .width-grip {
   align-items: center;
   justify-content: center;
   border-radius: 5px;
+  /* 不写就继承浏览器默认的按钮字号 13.3333px —— 非整值在高分屏上发虚，
+     也跳出了 11/12.5/14/16 这套刻度（审计 GLB-2） */
+  font-size: 12.5px;
   color: var(--fg-side-dim);
   transition: background 0.12s var(--ease), color 0.12s var(--ease);
 }
@@ -577,6 +623,19 @@ body.full-width .width-grip {
 .sidebar-tabs .tab.active {
   color: var(--accent-side);
   background: var(--accent-side-soft);
+  position: relative;
+}
+/* 选中指示条（SIDE-2）：三个页签只有图标，深色主题下光靠 accent-soft 底色
+   在 28px 的小方块里几乎看不出哪个是选中的，补一条 2px 实线 */
+.sidebar-tabs .tab.active::after {
+  content: '';
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  bottom: 2px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--accent-side);
 }
 
 .sidebar-body {
@@ -648,21 +707,47 @@ body.full-width .width-grip {
 }
 .filetree .node .sub {
   font-size: 10px;
-  color: var(--fg-side-faint);
+  color: var(--fg-side-dim);
   margin-left: auto;
   flex: 0 0 auto;
 }
 
 .empty-hint {
-  font-size: 12px;
-  color: var(--fg-side-faint);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  font-size: 12.5px;
+  color: var(--fg-side-dim);
   text-align: center;
-  padding: 24px 10px;
-  line-height: 1.8;
+  padding: 28px 12px;
+  line-height: 1.7;
   user-select: none;
 }
 .empty-hint span {
+  font-size: 12.5px;
+}
+/* 副标题（"用「文件 → 打开文件夹」选择目录"）比主标题低一档，但仍在刻度内 */
+.empty-hint .eh-sub {
   font-size: 11px;
+}
+/* 空状态里的直接入口：空状态不该只是说明，得能点进下一步 */
+.eh-action {
+  margin-top: 10px;
+  padding: 5px 13px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--fg-side);
+  font-size: 12.5px;
+  cursor: pointer;
+  transition:
+    border-color 0.12s var(--ease),
+    color 0.12s var(--ease);
+}
+.eh-action:hover {
+  border-color: var(--accent-side);
+  color: var(--accent-side);
 }
 
 /* ---------- 编辑区 ---------- */
@@ -683,9 +768,12 @@ body.full-width .width-grip {
 }
 
 .editor-host {
-  max-width: var(--content-width);
+  /* 正文宽度真源仍是 --content-width；左右另加一条呼吸区。
+     861–1160px 的窗口里 max-width 撑不满、padding 原本为 0，
+     字会正好压在侧栏分割线和窗口边上（v0.11.0 审计 DOC-1）。 */
+  max-width: calc(var(--content-width) + 2 * clamp(16px, 3vw, 32px));
   margin: 0 auto;
-  padding: 28px 0 45vh;
+  padding: 28px clamp(16px, 3vw, 32px) 45vh;
   transition: max-width 0.2s var(--ease);
 }
 /* 主题常写 #write{padding:…} 简写，会把滚动余量压没；这一条单独兜住 */
@@ -711,6 +799,8 @@ body.full-width .editor-host {
   display: block;
   width: 100%;
   text-align: left;
+  /* button 不会继承 .outline-body 的 12.5px，不显式写就吃 UA 默认的 13.3333px */
+  font-size: 12.5px;
   padding: 4px 8px;
   border-radius: 4px;
   color: var(--fg-side-dim);
@@ -734,19 +824,22 @@ body.full-width .editor-host {
   color: var(--fg-side);
   padding-left: 8px;
 }
+/* 每级 8px 而不是 12px：250px 宽的侧栏里，12px/级的深层标题只剩 190px 文字空间，
+   长标题一截就什么都看不出来（审计 SIDE-3） */
 .outline-item[data-lv='2'] {
-  padding-left: 20px;
+  padding-left: 16px;
 }
 .outline-item[data-lv='3'] {
-  padding-left: 32px;
+  padding-left: 24px;
 }
 .outline-item[data-lv='4'] {
-  padding-left: 44px;
+  padding-left: 32px;
 }
-.outline-item[data-lv='5'],
+.outline-item[data-lv='5'] {
+  padding-left: 40px;
+}
 .outline-item[data-lv='6'] {
-  padding-left: 56px;
-  font-size: 12px;
+  padding-left: 48px;
 }
 
 /* ---------- 状态栏 ---------- */
@@ -758,7 +851,7 @@ body.full-width .editor-host {
   justify-content: space-between;
   padding: 0 12px;
   border-top: 1px solid var(--border-soft);
-  font-size: 11.5px;
+  font-size: 12.5px;
   color: var(--fg-chrome-dim);
   background: var(--bg);
   user-select: none;
@@ -773,12 +866,12 @@ body.full-width .editor-host {
   white-space: nowrap;
 }
 .statusbar .sep {
-  color: var(--fg-chrome-faint);
+  color: var(--fg-chrome-dim);
 }
 .status-toggle {
-  font-size: 11.5px;
-  color: var(--fg-chrome-dim);
-  padding: 2px 6px;
+  font-size: 12.5px;
+  color: var(--fg-chrome);  /* 与只读值的 dim 区分开：可点的用正文色 */
+  padding: 5px 6px; /* 12.5px 字 + 上下 5px = 28px 热区，正好与栏高一致 */
   border-radius: 3px;
 }
 .status-toggle:hover {
@@ -786,6 +879,8 @@ body.full-width .editor-host {
   color: var(--fg-chrome);
 }
 .status-toggle.on {
+  /* 开启态除了变色再给一层底，光靠颜色在小字号下不够明显 */
+  background: color-mix(in srgb, var(--accent-text) 12%, transparent);
   color: var(--accent-text);
   font-weight: 600;
 }
@@ -1038,7 +1133,7 @@ body.full-width .editor-host {
 .cm-lang-label {
   font-family: var(--font-body);
   font-size: 10.5px;
-  color: var(--fg-faint);
+  color: var(--fg-muted);
   text-transform: uppercase;
   letter-spacing: 0.06em;
   user-select: none;
@@ -1153,6 +1248,11 @@ body.full-width .editor-host {
   line-height: 1.6;
 }
 /* 手动拖过列宽后固定布局：列宽严格按 col 的百分比走，内容再长也不会撑开列 */
+/* 表格默认拉满正文行宽：否则帮助文档里 642 宽的表坐在 686 宽的行里，右边短一截。
+   手动拖过列宽的表（.manual）保持用户设定，不抢管。 */
+.cm-table-stage:not(.manual) table {
+  width: 100%;
+}
 .cm-table-stage.manual table {
   table-layout: fixed;
 }
@@ -1411,7 +1511,9 @@ body.col-resizing * {
     box-shadow: none;
     display: flex;
     gap: 2px;
-    overflow-x: auto;
+    /* 7 个按钮均分屏宽（6 个高频 + 「更多」）：总宽恒等于容器宽，
+       任何机型都不会横向溢出，也就不需要横滑或渐隐遮罩 */
+    overflow-x: hidden;
     padding: 5px max(6px, env(safe-area-inset-left)) 4px;
     border-top: 1px solid var(--border-soft);
     background: var(--bg);
@@ -1423,10 +1525,16 @@ body.col-resizing * {
     display: none;
   }
   .mobile-toolbar button {
-    flex: 0 0 auto;
-    min-width: 38px;
+    flex: 1 1 0;
+    min-width: 0;
     height: 34px;
-    padding: 0 8px;
+    /* 7 个格子等宽（实测均 52px），字形靠 flex 居中 —— 靠默认基线对齐时
+       `•`/`☑` 这类符号会偏上偏左，一排看过去像没对齐 */
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    line-height: 1;
     border-radius: 6px;
     font-size: 13px;
     color: var(--fg);
@@ -1479,7 +1587,9 @@ body.col-resizing * {
 
 @media (max-width: 480px) {
   .editor-host {
-    padding: 14px 13px 50vh;
+    /* 左右留白与桌面同一条线（16px）：13px 在 390px 屏上量出来只有 13，
+       正文贴边到几乎蹭屏幕边缘，手机阅读时行首特别难找 */
+    padding: 14px 16px 50vh;
   }
   .menu-drop {
     min-width: 200px;
@@ -1548,6 +1658,38 @@ body.col-resizing * {
     color: var(--accent-text);
   }
 
+  /* 「更多格式」弹出层：格式条只留 6 个高频，其余 6 个摊成一行 6 格。
+     单行 46px —— 两行 3 列会把底部 chrome 顶到 160px 以上，正文区就没了。 */
+  .tb-more {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 6px;
+    padding: 6px max(8px, env(safe-area-inset-left)) 8px;
+    border-top: 1px solid var(--border-soft);
+    background: var(--bg-elev);
+    flex: 0 0 auto;
+    animation: pop 0.14s var(--ease);
+  }
+  .tb-more[hidden] {
+    display: none;
+  }
+  .tb-more button {
+    min-height: 46px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border-soft);
+    border-radius: 8px;
+    background: var(--bg);
+    color: var(--fg);
+    font-size: 14px;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .tb-more button:active {
+    background: var(--accent-soft);
+    color: var(--accent-text);
+  }
+
   /* 抽屉遮罩：点空白处收起侧栏，避免手机上侧栏把正文全盖住还退不出去 */
   .drawer-scrim {
     display: block;
@@ -1568,10 +1710,11 @@ body.col-resizing * {
   .sidebar {
     width: min(84vw, 320px);
   }
-  /* 触屏命中区：格式化按钮 40px 高 / 44px 宽。低于这个数在真机上很容易点错，
-     而 768–860 的平板同样是手指操作，所以规则挂在 860 断点而不是 767。 */
+  /* 触屏命中区：格式化按钮 40px 高。低于这个数在真机上很容易点错，
+     而 768–860 的平板同样是手指操作，所以规则挂在 860 断点而不是 767。
+     min-width 保持 0 —— 宽度由 flex 均分决定，写死 44px 会让 390px 屏溢出。 */
   .mobile-toolbar button {
-    min-width: 44px;
+    min-width: 0;
     height: 40px;
     font-size: 14px;
   }
@@ -1583,10 +1726,21 @@ body.col-resizing * {
     display: none;
   }
   .menubar {
+    /* 顶栏左边距与正文左对齐（16px）：原来是 0，标题直接顶到屏幕边缘；
+       状态栏在手机上被隐藏了，字数只能在这里露面 */
+    padding: 0 10px 0 16px;
     border-bottom: 1px solid var(--border-soft);
   }
+  .mb-words {
+    display: inline-flex;
+    align-items: center;
+    font-size: 11px;
+    color: var(--fg-chrome-dim);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
   .doc-title {
-    max-width: 62vw;
+    max-width: 52vw;
   }
   /* 状态栏的三组开关在「显示」菜单里都有，手机上让位给正文 */
   .statusbar {
@@ -1663,6 +1817,36 @@ body.col-resizing * {
 .sheet-close:active {
   background: var(--accent-soft);
 }
+/* 分区 chip：菜单面板是全量摊平（内容 5000px 量级），顶部给一条可横滑的目录，
+   点一下滚到该分区。没有它就只能盲滑，找一个「导出」要滑十几屏。 */
+.sheet-chips {
+  display: flex;
+  gap: 6px;
+  padding: 8px 12px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--border-soft);
+  flex: 0 0 auto;
+  scrollbar-width: none;
+}
+.sheet-chips::-webkit-scrollbar {
+  display: none;
+}
+.sheet-chip {
+  flex: 0 0 auto;
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border-soft);
+  background: var(--bg);
+  color: var(--fg-chrome-dim);
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+.sheet-chip.on {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
 .sheet-body {
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
@@ -1673,7 +1857,7 @@ body.col-resizing * {
   margin: 12px 8px 4px;
   font-size: 11px;
   font-weight: 600;
-  color: var(--fg-chrome-faint);
+  color: var(--fg-chrome-dim);
   text-transform: none;
   letter-spacing: 0.04em;
 }
@@ -1719,7 +1903,7 @@ body.col-resizing * {
 .sr-shortcut {
   flex: 0 0 auto;
   font-size: 11px;
-  color: var(--fg-chrome-faint);
+  color: var(--fg-chrome-dim);
 }
 .sheet-sep {
   height: 1px;
@@ -1729,7 +1913,7 @@ body.col-resizing * {
 .sheet-sub {
   margin: 8px 8px 2px;
   font-size: 11px;
-  color: var(--fg-chrome-faint);
+  color: var(--fg-chrome-dim);
 }
 
 /* --------------------------------------------------------------------------
@@ -1927,7 +2111,7 @@ body.col-resizing * {
   font-size: 11px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--fg-faint);
+  color: var(--fg-muted);
 }
 .ce-styles {
   display: grid;
@@ -1959,6 +2143,7 @@ body.col-resizing * {
   border: 1px solid rgba(128, 128, 128, 0.22);
 }
 .ce-style-name {
+  font-size: 11px; /* 10.5 太小：20 套模板主要靠名字辨认（审计 LAYOUT-3） */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2003,7 +2188,7 @@ body.col-resizing * {
 .ce-status {
   margin-right: auto;
   font-size: 11.5px;
-  color: var(--fg-faint);
+  color: var(--fg-muted);
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2107,6 +2292,38 @@ body.col-resizing * {
     flex: 0 0 38%;
   }
 }
+
+/* 收起/展开预览：手机上预览固定吃 34vh，参数区只剩 49%（实测 389/800），
+ * 调个字号要滑半天。开关放在页码行里，收起后参数区拿到 79%。
+ * 必须写在上面的 @media 之后 —— 选择器特异性与 .ce-wide .ce-preview 相同。 */
+.ce-prev-toggle {
+  min-height: 24px;
+  padding: 0 8px;
+  margin-left: 2px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--fg-chrome-dim);
+  font-size: 11.5px;
+  white-space: nowrap;
+}
+.ce-prev-toggle:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.ce-prev-collapsed .ce-stage {
+  display: none;
+}
+/* 特异性写到 .ce.ce-prev-collapsed：
+ * 文件末尾还有一条 @media (max-width:760px) 的 `.ce-preview, .ce-wide .ce-preview
+ * { flex: 0 0 42% }`，与 `.ce-wide .ce-preview` 同权且更靠后，光靠顺序压不住。 */
+.ce.ce-prev-collapsed .ce-preview {
+  flex: 0 0 auto;
+  height: auto;
+  min-height: 0;
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
 /* ---------- 美化输出：背景底纹选择 ---------- */
 .ce-bgs {
   display: grid;
@@ -2189,9 +2406,13 @@ body.col-resizing * {
   cursor: pointer;
 }
 .ce-hex {
+  /* 与 .ce-num-val 收在同一列右边界：两列不共线时右栏看起来是歪的（审计 LAYOUT-4） */
+  margin-left: auto;
+  flex: 0 0 58px;
+  text-align: right;
   font-family: var(--font-mono);
-  font-size: 10.5px;
-  color: var(--fg-faint);
+  font-size: 11px;
+  color: var(--fg-muted);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -2209,13 +2430,34 @@ body.col-resizing * {
   accent-color: var(--accent);
   height: 16px;
 }
+/* 数值改成可直接输入的框（审计 LAYOUT-1）：光靠拖滑块对不准"正好 40px"，
+   做系列模板时又需要复用同一组数值。视觉上仍像是"行末的一列数字"。 */
 .ce-num-val {
-  flex: 0 0 52px;
+  flex: 0 0 58px;
+  width: 58px;
+  padding: 1px 4px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
   text-align: right;
   font-family: var(--font-mono);
   font-size: 11px;
-  color: var(--fg-muted);
+  color: var(--fg);
   font-variant-numeric: tabular-nums;
+  transition: border-color 0.12s var(--ease);
+}
+.ce-num-val:hover {
+  border-color: var(--border);
+}
+.ce-num-val:focus {
+  border-color: var(--accent);
+  outline: none;
+}
+/* 数字输入框的上下箭头在这么窄的列里只会挡住数字 */
+.ce-num-val::-webkit-inner-spin-button,
+.ce-num-val::-webkit-outer-spin-button {
+  appearance: none;
+  margin: 0;
 }
 .ce-switch {
   position: relative;
@@ -2265,7 +2507,7 @@ body.col-resizing * {
   text-align: center;
   border-radius: 50%;
   font-size: 11px;
-  color: var(--fg-faint);
+  color: var(--fg-muted);
   background: var(--bg);
 }
 .ce-del:hover {
@@ -2350,13 +2592,13 @@ body.col-resizing * {
 }
 .tab-item .tb-close {
   flex: 0 0 auto;
-  width: 18px;
-  height: 18px;
+  width: 24px; /* WCAG 2.2 目标尺寸下限 */
+  height: 24px;
   padding: 0;
   border: 0;
   border-radius: 4px;
   background: transparent;
-  color: var(--fg-faint);
+  color: var(--fg-chrome-dim);
   font-size: 14px;
   line-height: 1;
   opacity: 0;
@@ -2382,6 +2624,19 @@ body.col-resizing * {
 .tb-new:hover {
   background: var(--bg);
   color: var(--fg);
+}
+
+/* 单标签时的空带提示（TAB-2）：把闲置横向空间变成"可拖放"的可发现性 */
+.tb-hint {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  padding: 0 14px;
+  font-size: 12.5px;
+  color: var(--fg-chrome-dim);
+  white-space: nowrap;
+  pointer-events: none;
+  user-select: none;
 }
 
 /* 未保存标记：从"小红点"换成 `*`（v0.11.0 起与标签、文件树保持同一种记法） */

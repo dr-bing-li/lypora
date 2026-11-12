@@ -104,6 +104,17 @@ export function createTabbar(host: HTMLElement, deps: TabbarDeps): TabbarHandle 
     add.addEventListener('click', () => deps.onNew())
     host.appendChild(add)
 
+    /* 单标签时右侧一大片空带，看着像没加载完。
+       不放"收起标签栏"（那会让多文档能力消失视觉入口），改成放一句拖放提示：
+       拖放打开本来就是支持的，正好把闲置空间变成可发现的能力（审计 TAB-2）。 */
+    if (items.length <= 1) {
+      const hint = document.createElement('span')
+      hint.className = 'tb-hint'
+      hint.setAttribute('aria-hidden', 'true')
+      hint.textContent = t('tab.dropHint')
+      host.appendChild(hint)
+    }
+
     // 切到靠后的标签时让它自己滑进可视区
     const active = host.querySelector<HTMLElement>('.tab-item.active')
     if (active && host.scrollWidth > host.clientWidth) {

@@ -27,14 +27,25 @@ export interface AskSaveOptions {
  */
 export function askSave(o: AskSaveOptions): Promise<SaveChoice> {
   return new Promise((resolve) => {
+    // 记下打开前的焦点：关闭后要还回去，否则键盘用户会掉到 body，
+    // 下一次 Tab 从菜单栏重新开始（审计 DLG-1）
+    const prevFocus = document.activeElement as HTMLElement | null
+
     const mask = document.createElement('div')
     mask.className = 'modal-mask'
     mask.dataset.role = 'save-confirm'
 
     const box = document.createElement('div')
     box.className = 'modal'
+    // 没有这套语义，读屏软件不会把下面的内容当成"暂时不可操作"，
+    // 也不会播报标题是哪一句
+    box.setAttribute('role', 'dialog')
+    box.setAttribute('aria-modal', 'true')
+    const titleId = 'lypora-confirm-title'
+    box.setAttribute('aria-labelledby', titleId)
 
     const h = document.createElement('h3')
+    h.id = titleId
     h.textContent = t('confirm.unsavedTitle', { name: o.name })
 
     const p = document.createElement('p')
@@ -71,18 +82,32 @@ export function askSave(o: AskSaveOptions): Promise<SaveChoice> {
     const finish = (v: SaveChoice) => {
       window.removeEventListener('keydown', onKey, true)
       mask.remove()
+      // 焦点还给打开前的元素（编辑器或标签），别让它掉到 body 上
+      if (prevFocus && document.contains(prevFocus)) prevFocus.focus()
       resolve(v)
     }
+    const btns = [cancel, discard, save]
     // 捕获阶段：编辑器在 document 上监听快捷键，Ctrl+S / Esc 不能漏到下面去
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.preventDefault()
         e.stopPropagation()
         finish('cancel')
+      } else if (e.key === 'Tab') {
+        // 焦点陷阱：只在三个按钮之间循环（首尾互跳）。
+        // 不做这一步，按一次 Tab 就跑到菜单栏去了，键盘用户会以为框已经关掉。
+        e.preventDefault()
+        e.stopPropagation()
+        const cur = btns.indexOf(document.activeElement as HTMLButtonElement)
+        const next = cur < 0 ? (e.shiftKey ? btns.length - 1 : 0) : (cur + (e.shiftKey ? -1 : 1) + btns.length) % btns.length
+        btns[next].focus()
       } else if (e.key === 'Enter') {
         e.preventDefault()
         e.stopPropagation()
-        finish('save')
+        // Enter 触发当前焦点所在的按钮；焦点不在按钮上时（比如点了正文）按默认走"保存"
+        const f = document.activeElement as HTMLButtonElement | null
+        const act = f && box.contains(f) ? (f.dataset.act as SaveChoice | undefined) : undefined
+        finish(act ?? 'save')
       }
     }
     window.addEventListener('keydown', onKey, true)

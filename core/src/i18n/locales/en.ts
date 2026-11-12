@@ -21,10 +21,30 @@ export default {
     save: 'Save',
     discard: 'Don\u2019t save',
   },
+  search: {
+    find: 'Find',
+    replace: 'Replace',
+    next: 'next',
+    previous: 'previous',
+    all: 'all',
+    matchCase: 'match case',
+    regexp: 'regexp',
+    byWord: 'by word',
+    replaceOne: 'replace',
+    replaceAll: 'replace all',
+    close: 'close',
+    goToLine: 'Go to line',
+    go: 'go',
+    currentMatch: 'current match',
+    onLine: 'on line',
+    replacedMatches: 'replaced $ matches',
+    replacedOnLine: 'replaced match on line $',
+  },
   tab: {
     new: 'New tab',
     close: 'Close tab',
     unsavedTip: 'Unsaved: {name}',
+    dropHint: 'Drop a file here to open',
   },
 
   menu: {
@@ -92,9 +112,12 @@ export default {
     image: 'Image',
     insertImage: 'Insert Image…',
     clear: 'Clear Formatting',
+    more: 'More formatting',
   },
 
   settings: {
+    groupUi: 'Interface',
+    groupImage: 'Images',
     imageRef: 'Image reference',
     imageRefFile: 'Reference files (recommended)',
     imageRefEmbed: 'Embed as base64',
@@ -330,6 +353,8 @@ export default {
     imported: 'Imported "{name}"',
     removed: 'Template deleted',
     deleteTpl: 'Delete',
+    hidePrev: 'Hide preview',
+    showPrev: 'Show preview',
   },
 
   tpl: {

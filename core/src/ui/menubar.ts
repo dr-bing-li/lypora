@@ -25,6 +25,11 @@ export interface MenuEntry {
   disabled?: boolean
   /** 分隔线 */
   sep?: true
+  /**
+   * 不可点的分组小标题（设置菜单里把"界面"和"图片"分开用）。
+   * 与 sep 的区别：sep 只是留白，group 还给出层级语义（审计 MENU-2）。
+   */
+  group?: string
   /** 子菜单：有值时该项变成二级菜单入口（点击不触发 action） */
   items?: MenuEntry[]
 }
@@ -38,6 +43,8 @@ export interface MenuDef {
 export interface MenubarHandle {
   /** 重新取菜单数据并重绘（切语言、菜单项状态变化时用） */
   redraw: () => void
+  /** 收起当前下拉层（整屏面板打开前调用） */
+  close: () => void
 }
 
 export function createMenubar(host: HTMLElement, getMenus: () => MenuDef[]): MenubarHandle {
@@ -70,6 +77,14 @@ export function createMenubar(host: HTMLElement, getMenus: () => MenuDef[]): Men
         el.appendChild(document.createElement('hr'))
         continue
       }
+      if (it.group) {
+        // 不可点的小标题：给出"这两项属于哪一类"的层级，比一条分隔线信息量大
+        const h = document.createElement('div')
+        h.className = 'mi-group'
+        h.textContent = it.group
+        el.appendChild(h)
+        continue
+      }
       const btn = document.createElement('button')
       btn.type = 'button'
       btn.className = 'menu-item'
@@ -94,7 +109,10 @@ export function createMenubar(host: HTMLElement, getMenus: () => MenuDef[]): Men
         btn.classList.add('has-sub')
         const arrow = document.createElement('span')
         arrow.className = 'mi-arrow'
-        arrow.textContent = '›'
+        // 用 12px chevron 而不是 `›` 字符：字符的实际盒宽只有 4px，
+        // 用户看不出这一项还能展开（v0.11.0 审计 MENU-1）。SVG 是常量串，不走模板注入。
+        arrow.innerHTML =
+          '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3.5 10.5 8 6 12.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>'
         btn.appendChild(arrow)
         btn.addEventListener('mouseenter', () => openSub(btn, it.items as MenuEntry[]))
         btn.addEventListener('click', () => {
@@ -210,5 +228,11 @@ export function createMenubar(host: HTMLElement, getMenus: () => MenuDef[]): Men
       close()
       draw()
     },
+    /**
+     * 主动收起下拉层。整屏面板打开前要调用：
+     * 菜单是 fixed 浮层，面板铺满时它会浮在面板标题栏上，看起来像渲染错乱（审计 MENU-3）。
+     * 靠调 z-index 解决不了这个场景 —— 面板里还有二级弹层要用更高的层。
+     */
+    close,
   }
 }
