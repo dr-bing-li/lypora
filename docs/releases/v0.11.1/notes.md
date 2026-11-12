@@ -31,14 +31,14 @@ showing English all along because CodeMirror's panel text comes from `EditorStat
 
 | 文件 / File | 平台 / Platform | 格式 / Format | 大小 / Size | SHA256 |
 |---|---|---|---|---|
-| `Lypora-0.11.1-win-x64.zip` | Windows 10/11 x64 | 便携版 ZIP（解压即用）<br>Portable ZIP — unzip and run | — | — |
-| `Lypora-0.11.1-android.apk` | Android 10+（API 29+） | APK（debug 签名，直接安装）<br>APK, debug-signed, sideload | — | — |
-| `Lypora-0.11.1-macos-arm64.tar.gz` | macOS 11+ / Apple Silicon | `.app` bundle（ad-hoc 签名） | — | — |
-| `Lypora-0.11.1-macos-x64.tar.gz` | macOS 11+ / Intel | `.app` bundle（ad-hoc 签名） | — | — |
-| `Lypora-0.11.1-linux-x64.tar.gz` | 任意 x86-64 发行版（glibc ≥ 2.31） | tar.gz + `install.sh`（per-user） | — | — |
-| `Lypora-0.11.1-linux-x64.AppImage` | 任意 x86-64 发行版 | 单文件，免安装 | — | — |
-| `lypora_0.11.1_amd64.deb` | Debian 11+ / Ubuntu 20.04+ / 深度 / 麒麟 | 系统包（`apt install`） | — | — |
-| `lypora-0.11.1-1.x86_64.rpm` | Fedora 32+ / RHEL 9+ / openSUSE | 系统包（`dnf install`） | — | — |
+| `Lypora-0.11.1-win-x64.zip` | Windows 10/11 x64 | 便携版 ZIP（解压即用）<br>Portable ZIP — unzip and run | 111.8 MiB | `32bd8fbaa1be383f3ef89d8b49034cd401cca10bf80ce47b0e986c88e0400027` |
+| `Lypora-0.11.1-android.apk` | Android 10+（API 29+） | APK（debug 签名，直接安装）<br>APK, debug-signed, sideload | 13.7 MiB | `e29152dada0d81fac5f4b1ae04974f3d80a3a8326527c08ff210d64f4118e648` |
+| `Lypora-0.11.1-macos-arm64.tar.gz` | macOS 11+ / Apple Silicon | `.app` bundle（ad-hoc 签名） | 98.5 MiB | `3316af1c0df2311c0dbe2032ded0c72a5a7898473c7ed2df509c04a5dd4f42e0` |
+| `Lypora-0.11.1-macos-x64.tar.gz` | macOS 11+ / Intel | `.app` bundle（ad-hoc 签名） | 102.9 MiB | `5fe513bc5d3aa4ea5010177fb4ca391c97b1d9c4404763bda58ee3e7ac760342` |
+| `Lypora-0.11.1-linux-x64.tar.gz` | 任意 x86-64 发行版（glibc ≥ 2.31） | tar.gz + `install.sh`（per-user） | 104.3 MiB | `39c0d1038d3eea59446bb404d825f672ecf1ede8f36f63cea6519d8d88d77bee` |
+| `Lypora-0.11.1-linux-x64.AppImage` | 任意 x86-64 发行版 | 单文件，免安装 | 96.8 MiB | `b28d556dfab03109f29d3c1b5bfb9baad93e337935396909faf419c8a65700b0` |
+| `lypora_0.11.1_amd64.deb` | Debian 11+ / Ubuntu 20.04+ / 深度 / 麒麟 | 系统包（`apt install`） | 80.9 MiB | `e7e8708aafb23eb336aa31e39330c4bac74b564528822e49a2d7b47c1b3cfcf1` |
+| `lypora-0.11.1-1.x86_64.rpm` | Fedora 32+ / RHEL 9+ / openSUSE | 系统包（`dnf install`） | 105.0 MiB | `2661fc483023c0f84ad32ee289617ff3916f96d64a3ffeda1fd07bf594925a56` |
 | `SHA256SUMS.txt` | 任意 / any | 全部产物的校验清单 | 发布时生成 / generated at publish | — |
 
 Windows 与 Android 在本机构建；macOS 两件由 `tools/pack-mac.py` 本地打；Linux 四件由 CI 在打 tag 时构建。
