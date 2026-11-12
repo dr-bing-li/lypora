@@ -65,6 +65,11 @@ interface DesktopBridge {
   }): Promise<PlaceImageResult>
   /** 剪贴板位图 → 已落盘的临时 PNG；无位图返回 null。位图本身没有磁盘路径 */
   readClipboardImage(opts?: { withData?: boolean }): Promise<ClipboardImage | null>
+  /**
+   * 新开一个窗口（v0.11.0 多窗口）。带 payload 时新窗口直接打开这篇文档；
+   * 主进程在窗口 did-finish-load 之后投递内容。
+   */
+  newWindow?(payload?: { name: string; path?: string; content: string }): Promise<boolean>
 }
 
 export interface ClipboardImage {
@@ -91,7 +96,7 @@ declare global {
   interface Window {
     lyporaDesktop?: DesktopBridge
     /** 关闭守卫：主进程关窗前询问渲染层的脏状态（见 desktop/main.js） */
-    __lyporaCloseState?: () => { dirty: boolean; name: string }
+    __lyporaCloseState?: () => { dirty: boolean; name: string; names?: string[] }
     /** 关闭守卫：主进程确认"保存并退出"后调用，返回 ok=false 表示保存被取消/失败 */
     __lyporaSaveAndClose?: () => Promise<{ ok: boolean; cancelled?: boolean; error?: string }>
   }

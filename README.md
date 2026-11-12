@@ -31,6 +31,28 @@ cd core && npm install && npm run build
 npm run preview        # http://127.0.0.1:4173
 ```
 
+### What changed in v0.11.0
+
+Four things, all of them about not losing work and not running out of room:
+
+- **Tabs.** A tab strip sits directly under the menu bar. Each tab keeps its own undo history, cursor and scroll
+  position — switching tabs is `view.setState()`, not "load the text into the same buffer", so nothing degrades
+  in the background. Every unsaved document is marked `*` in all four places that show it: window title, tab,
+  file tree, recent files. The mark is derived from the disk, not from a flag — undo your way back to the saved
+  text and the `*` disappears by itself.
+- **Three-key confirm.** Closing a tab or a window with unsaved content asks **Save / Don't save / Cancel**
+  (`Enter` saves, `Esc` cancels, clicking the backdrop cancels). Multi-tab windows list every dirty document in
+  one prompt instead of firing one per tab. Nothing is discarded unless you say so.
+- **Tabs, windows, or both.** *Settings → Display mode* has three states: tabs only, windows only (each file
+  opens in its own window — drop them on a second monitor), or both. Real windows are only available where a
+  desktop shell exists, so the two window states grey out in a browser tab and in the Android build.
+- **Full-screen layout panel, and help as documents.** The layout panel used to be a modal, which on a phone left
+  almost no room for the parameters. It now takes the whole editor area and keeps the menu bar as its header;
+  below 760px it splits into preview-on-top, parameters-below. Help stopped being two toast messages: **F1** or
+  the Help menu opens one of **eight read-only documents** (shortcuts, features, themes and compatibility, page
+  width, images, layout export, settings, about), shipped in Chinese and English, as ordinary tabs that cannot be
+  edited, do not count as unsaved, and never touch the recent-files list.
+
 ### Deployment
 
 **A. Browser / PWA (any static host)**
@@ -154,9 +176,10 @@ node verify.mjs            # 15 UI assertions + screenshots (needs `npm run prev
 node export-check.mjs      # export path: HTML / @media print / real PDF / print iframe
 node beautify-check.mjs    # layout panel: 20 templates, param re-pagination, backgrounds, template I/O
 
+node tabs-check.mjs        # tabs / multi-window / unsaved marks / help docs / full-screen layout
 node mobile-check.mjs      # touch shell: 5 viewports, tap targets, drawer, menu sheet
 node i18n-check.mjs        # i18n: 7 locales × key parity / placeholders / real DOM rendering
-node ../tools/closetest.mjs --exe        # window-close guard, four scenarios
+node ../tools/closetest.mjs --exe        # window-close guard, five scenarios (incl. multi-tab)
 node ../tools/interacttest.mjs           # real mouse events against the packaged build
 env -u ELECTRON_RUN_AS_NODE ./release/Lypora/Lypora.exe --selftest --shot=shot.png
 
@@ -346,7 +369,7 @@ v0.4.1 起，Lypora 也注册进了系统的**「打开方式」**列表（在�
 **验过什么、没验什么，分开说：**
 
 - **运行时证据覆盖 Windows、Android、macOS 与 Linux。** Windows 打包版跑过 `--selftest`（原生菜单 9 项、桥接 API 11 项、
-  Electron 33.4.11，退出码 0）、真实鼠标事件、关窗拦截四场景；APK 是构建后用 `aapt2` / `apksigner` 逐项核
+  Electron 33.4.11，退出码 0）、真实鼠标事件、关窗拦截五场景（含多标签同窗）；自检还会真的再开一个窗口，核对窗口数 1→2 与传入文件是否到达；APK 是构建后用 `aapt2` / `apksigner` 逐项核
   元数据，触屏布局在 Chromium 五档视口下逐条断言。构建机没接安卓真机，所以原生文件读写与系统分享面板**没有**在真实硬件上验证过；APK 的真机证据只有装包后
   看到的图标（H30），不是功能级验证。v0.8.1 的图片管线另有两层：38 条纯函数用例（`core/image-check.mjs`）
   加 24 条端到端断言（`tools/imgtest.mjs`，真启动 Electron、写真 PNG、断言 `naturalWidth > 0`，再走完六条
@@ -397,8 +420,11 @@ Lypora 是一个**小小的、刻意不做大的替代品**，用来临时顶一
 | 版式 | 9 个顶级菜单（含二级，多语言在「设置 → 语言」）、左侧栏大纲 / 文件树 / 最近、源代码模式、专注模式、打字机模式、全屏、页面宽度可调（620 / 860 / 1080 / 全宽 / 自定义，或拖右边缘把手） |
 | 多语言 | 7 种界面语言：简体中文 / English / 日本語 / 한국어 / Español / Français / Deutsch。可在**设置 → 语言**里运行时切换，或跟随系统语言；选择会被记住 |
 | 文件 | 打开 / 保存 / 另存、最近文件、工作区文件树、导出 Markdown / 单文件 HTML / PDF（KaTeX 的 CSS 与字体内联，离线打开公式也是对的） |
-| 排版 | **一级菜单「排版」**（`Ctrl+Shift+P`，手机底栏第 5 个按钮）：把 Markdown 重排成可直接发布的图文卡片。**20 套模板**（素纸 / 便签 / 杂志 / 暗夜 / 渐变海报 / 打字机 / 方格笔记 / 水墨 / 暖沙 / 极简黑白 / 钴蓝 / 林间 / 苹果备忘录 / Instagram 风格 / 线圈笔记本 / 波普艺术 / 艺术装饰 / 杂志跨栏 / 霓虹 / 手账），**19 项可调参数**（纸张与墨色、字号行高留白圆角、8 种纹理、4 个强调位、折角 / 胶带 / 印章、页眉页码）+ 4 种字体族；**背景**：6 种内置纸纹（牛皮纸 / 横线本 / 方格 / 点子 / 水彩 / 网线）+ 本地上传图片 + 浓度调节；**装订**：线圈 / 票夹 / 订书钉。模板可导出为 `.lyt.json` 再导入，可**自己命名**存为「我的模板」。**4 种画布尺寸**（竖版 3:4 / 方版 1:1 / 长竖 9:16 / A4）、**三种分页**（自动 / 按 `---` / 不分页）、可含封面页；产物为 PNG（多页打 ZIP）、PDF（一卡一页）、或复制当前页到剪贴板。改参数会**重新分页**（不是只换 CSS）；模板与界面主题互不影响；全流程**零网络请求**。详见 [docs/08](docs/08-美化输出与卡片模板.md) / [docs/09](docs/09-美化输出与模板引擎.md) |
-| 桌面 | 原生对话框、单实例、关窗前未保存拦截、文件关联 |
+| 排版 | **一级菜单「排版」**（`Ctrl+Shift+P`，手机底栏第 5 个按钮）：打开后**铺满整个编辑区**（菜单栏保留），窄屏自动改成"预览在上、参数在下"的分段布局。把 Markdown 重排成可直接发布的图文卡片。**20 套模板**（素纸 / 便签 / 杂志 / 暗夜 / 渐变海报 / 打字机 / 方格笔记 / 水墨 / 暖沙 / 极简黑白 / 钴蓝 / 林间 / 苹果备忘录 / Instagram 风格 / 线圈笔记本 / 波普艺术 / 艺术装饰 / 杂志跨栏 / 霓虹 / 手账），**19 项可调参数**（纸张与墨色、字号行高留白圆角、8 种纹理、4 个强调位、折角 / 胶带 / 印章、页眉页码）+ 4 种字体族；**背景**：6 种内置纸纹（牛皮纸 / 横线本 / 方格 / 点子 / 水彩 / 网线）+ 本地上传图片 + 浓度调节；**装订**：线圈 / 票夹 / 订书钉。模板可导出为 `.lyt.json` 再导入，可**自己命名**存为「我的模板」。**4 种画布尺寸**（竖版 3:4 / 方版 1:1 / 长竖 9:16 / A4）、**三种分页**（自动 / 按 `---` / 不分页）、可含封面页；产物为 PNG（多页打 ZIP）、PDF（一卡一页）、或复制当前页到剪贴板。改参数会**重新分页**（不是只换 CSS）；模板与界面主题互不影响；全流程**零网络请求**。详见 [docs/08](docs/08-美化输出与卡片模板.md) / [docs/09](docs/09-美化输出与模板引擎.md) |
+| 多文档 | 菜单栏下方**标签栏**：每标签独立撤销历史 / 光标 / 滚动位置；未保存用 `*` 标注（窗口标题、标签、文件树、最近文件四处同源）；关标签与关窗口都走「保存 / 不保存 / 取消」三键确认，且只在该丢内容时才问。`Ctrl+W` 关标签、`Ctrl+Shift+N` 新窗口 |
+| 显示模式 | **设置 → 显示模式**三态：仅标签页 / 仅多窗口 / 两者并存。仅多窗口时打开文件进新窗口，可拖到第二块屏各写各的；鼠标/手机壳里开不了真窗口，对应项自动置灰 |
+| 帮助 | `F1` 或「帮助」菜单打开 **8 篇只读文档**（快捷键 / 特色功能 / 主题与兼容性 / 页面宽度 / 图片引用 / 排版输出 / 设置项 / 关于），中英双语；只读标签不进最近文件、不参与未保存、不能编辑 |
+| 桌面 | 原生对话框、单实例（第二次启动把文件开成新窗口）、关窗前未保存拦截、文件关联 |
 | 平台 | Windows 便携版 `.exe` + ZIP、macOS `.app`（Apple Silicon 与 Intel）、Linux x64 的 `.deb` / `.rpm` / AppImage / tar.gz（都带 `.desktop` 集成）、Android APK、以及浏览器 / PWA 版——一个 TypeScript 核心，五套外壳 |
 | 发布 | `git push origin v0.8.2` 就够了：GitHub Actions 构建前端、摊一棵 FHS 树、封成 deb / rpm / AppImage / tar.gz、在干净容器里把 deb 和 rpm 真装一遍，然后把全部产物和合并后的 `SHA256SUMS.txt` 传上 Release |
 
@@ -525,9 +551,10 @@ node verify.mjs            # 15 步 UI 断言 + 截图（需先 npm run preview�
 node export-check.mjs      # 导出链路：HTML / @media print / 真 PDF / 打印 iframe
 node beautify-check.mjs    # 排版面板：20 套模板、参数重排、背景与装订、模板导入导出、零外部请求审计
 
+node tabs-check.mjs        # 标签页 / 多窗口 / 未保存标识 / 帮助文档 / 整屏排版
 node mobile-check.mjs      # 触屏外壳：5 种视口、点击区、抽屉、菜单面板
 node i18n-check.mjs        # 国际化：7 种语言 × 键齐备 / 占位符 / 真实 DOM 渲染
-node ../tools/closetest.mjs --exe        # 关窗拦截四场景
+node ../tools/closetest.mjs --exe        # 关窗拦截五场景（含多标签）
 node ../tools/interacttest.mjs           # 对打包版派发真实鼠标事件
 env -u ELECTRON_RUN_AS_NODE ./release/Lypora/Lypora.exe --selftest --shot=shot.png
 

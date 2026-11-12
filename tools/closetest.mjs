@@ -117,6 +117,21 @@ scenarios.push({
   })
 }
 
+// ⑤ 多标签都有修改：关窗要把两个文档一次报出来（v0.11.0）
+scenarios.push({
+  name: 'dirty-multi',
+  args: ['--closetest=multi', '--close-choice=discard'],
+  expectExit: 0,
+  check: (r) => {
+    const g = JSON.parse((r.out.match(/CLOSE_GUARD (\{.*\})/) || [])[1] || '{}')
+    return {
+      guard: !!g.choice,
+      two: Array.isArray(g.names) && g.names.length === 2,
+      names: (g.names || []).join('/'),
+    }
+  },
+})
+
 let failed = 0
 const results = []
 for (const s of scenarios) {

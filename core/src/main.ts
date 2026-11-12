@@ -1,4 +1,5 @@
 import './style.css'
+import type { EditorState } from '@codemirror/state'
 import { EditorView } from '@codemirror/view'
 import { undo, redo, selectAll } from '@codemirror/commands'
 import { openSearchPanel } from '@codemirror/search'
@@ -7,6 +8,9 @@ import { previewSettings, refreshPreview } from './editor/live-preview'
 import { cmd } from './editor/commands'
 import { extractOutline, renderOutline, highlightOutline, type OutlineItem } from './ui/outline'
 import { createMenubar, type MenuDef, type MenubarHandle } from './ui/menubar'
+import { createTabbar, type TabbarHandle, type TabbarItem } from './ui/tabbar'
+import { askSave } from './ui/confirm'
+import { HELP_DOCS, helpText, helpTitle, type HelpId } from './help'
 import {
   BUILTIN_THEMES,
   listCustomThemes,
@@ -57,6 +61,9 @@ const $ = <T extends HTMLElement = HTMLElement>(id: string): T => document.getEl
 /** 菜单栏句柄：切语言时要整块重绘 */
 let menubar: MenubarHandle | null = null
 
+/** 标签栏句柄（v0.11.0） */
+let tabbar: TabbarHandle | null = null
+
 /** 版本号由 vite.config.ts 的 define 从 package.json 注入，只此一个来源 */
 const VERSION = __APP_VERSION__
 
@@ -72,6 +79,82 @@ interface AppState {
   outline: OutlineItem[]
   docId: string
   fontSize: number
+  /** 打开着的标签（v0.11.0）。至少一个，关掉最后一个会补一个空文档 */
+  tabs: TabDoc[]
+  activeId: string
+}
+
+/**
+ * 一个标签 = 一份完整的编辑器状态。
+ *
+ * 关键点：`state` 是完整的 CM6 EditorState（自带撤销历史、选区、折叠），
+ * 切标签走 `view.setState(tab.state)`，所以来回切换不会丢撤销栈 —— 这也是不把
+ * 各标签内容塞进同一个 EditorState 用"切换文档"的方式实现的根本原因。
+ */
+interface TabDoc {
+  id: string
+  kind: 'doc' | 'help'
+  name: string
+  handle?: FileSystemFileHandle
+  path?: string
+  state: EditorState
+  /** 上次落盘（或刚打开）时的内容快照：`dirty = 当前内容 !== saved`，以磁盘为准 */
+  saved: string
+  dirty: boolean
+  /** 切走时记住滚动位置，切回来还原 */
+  scrollTop: number
+  docId: string
+  /** 帮助页：只读、不写 IndexedDB、不进最近文件 */
+  readonly: boolean
+  /** 帮助页的稳定 id（切界面语言时按它重取正文） */
+  helpId?: HelpId
+}
+
+/** 显示模式：仅标签 / 仅多窗口 / 两者并存（「设置」菜单里切） */
+export type DisplayMode = 'tabs' | 'windows' | 'both'
+
+const KEY_DISPLAY_MODE = 'displayMode'
+
+function displayMode(): DisplayMode {
+  const v = readSetting<DisplayMode>(KEY_DISPLAY_MODE, 'tabs')
+  return v === 'windows' || v === 'both' ? v : 'tabs'
+}
+
+function tabsEnabled(): boolean {
+  return displayMode() !== 'windows'
+}
+
+/** 只有桌面壳能开真窗口；浏览器/PWA 与手机壳里这一项不出现 */
+function canMultiWindow(): boolean {
+  return !!desktop()?.newWindow && displayMode() !== 'tabs'
+}
+
+/**
+ * 开一个新窗口。带 payload 时新窗口直接打开这篇文档（"仅多窗口"模式下点打开文件）。
+ * 主进程负责建窗并在 did-finish-load 后投递，这里不等结果 —— 窗口起来要几百毫秒，
+ * 卡住当前窗口没必要。
+ */
+function openNewWindow(payload?: { name: string; path?: string; content: string }): void {
+  const d = desktop()
+  if (!d?.newWindow) {
+    toast(t('toast.windowUnsupported'))
+    return
+  }
+  void d.newWindow(payload)
+}
+
+/**
+ * 切显示模式。
+ * 注意：切到「仅多窗口」只是把标签栏藏起来，已有标签**不销毁** —— 切回来还在，
+ * 这样用户来回改主意不会丢文档。
+ */
+function setDisplayMode(m: DisplayMode): void {
+  writeSetting(KEY_DISPLAY_MODE, m)
+  renderTabs()
+  menubar?.redraw()
+  const label =
+    m === 'tabs' ? t('settings.displayTabs') : m === 'windows' ? t('settings.displayWindows') : t('settings.displayBoth')
+  toast(t('toast.displayMode', { mode: label }))
 }
 
 // 更名前缀迁移必须早于任何 readSetting（下面的 app 初始化就会读 fontSize）
@@ -86,7 +169,204 @@ const app: AppState = {
   outline: [],
   docId: '',
   fontSize: readSetting('fontSize', 16),
+  tabs: [],
+  activeId: '',
 }
+
+/* ------------------------------------------------------------------ *
+ * 标签：创建 / 切换 / 关闭
+ * ------------------------------------------------------------------ */
+
+let tabSeq = 0
+const nextTabId = (): string => `tab-${++tabSeq}`
+
+/**
+ * 编辑器回调。所有标签共用同一套回调：只有"当前在 view 里那个 state"会触发它们，
+ * 而那时它一定就是活动标签，所以这里直接用 activeTab() 而不是把 tab 绑进闭包
+ * （绑进闭包反而会在切回来后指向旧对象）。
+ */
+function editorHooks() {
+  return {
+    onChange: (doc: string) => {
+      const tab = activeTab()
+      if (tab) {
+        tab.dirty = doc !== tab.saved
+        app.dirty = tab.dirty
+      }
+      if (tab?.readonly) return
+      $('dirty-dot').hidden = !app.dirty
+      updateTitle()
+      renderTabs()
+      refreshWorkspaceMarks()
+      updateCounts(doc)
+      scheduleOutline(doc)
+      scheduleAutosave()
+    },
+    onCursor: (_line: number, _col: number) => {
+      applyTypewriter()
+      highlightOutline($('outline-body'), app.view?.state.selection.main.head ?? 0, app.outline)
+    },
+    onSave: () => void doSave(false),
+    onSourceToggle: () => toggleSource(),
+  }
+}
+
+function makeTab(o: {
+  name: string
+  content: string
+  handle?: FileSystemFileHandle
+  path?: string
+  readonly?: boolean
+  kind?: 'doc' | 'help'
+  helpId?: HelpId
+  /** 初始光标位置（首屏示例文档停在标题行之后） */
+  selection?: number
+}): TabDoc {
+  const tab: TabDoc = {
+    id: nextTabId(),
+    kind: o.kind ?? 'doc',
+    name: o.name,
+    handle: o.handle,
+    path: o.path,
+    state: createEditorState(o.content, editorHooks(), o.selection ?? 0, { readonly: o.readonly }),
+    saved: o.content,
+    dirty: false,
+    scrollTop: 0,
+    docId: `doc:${o.path || o.name}`,
+    readonly: o.readonly ?? false,
+    helpId: o.helpId,
+  }
+  app.tabs.push(tab)
+  return tab
+}
+
+function activeTab(): TabDoc | undefined {
+  return app.tabs.find((x) => x.id === app.activeId)
+}
+
+/** 把当前 view 的状态与滚动位置存回活动标签（切走 / 关窗前调用） */
+function stashActive(): void {
+  const tab = activeTab()
+  if (!tab || !app.view) return
+  tab.state = app.view.state
+  tab.scrollTop = app.view.scrollDOM.scrollTop
+}
+
+/** 用标签里的状态重建视图（镜像字段一起同步） */
+function applyTab(tab: TabDoc, focus = true): void {
+  app.activeId = tab.id
+  app.fileName = tab.name
+  app.handle = tab.handle
+  app.path = tab.path
+  app.dirty = tab.dirty
+  app.docId = tab.docId
+  setCurrentDocPath(tab.path)
+  if (app.view) {
+    // setState 会把撤销历史、选区、折叠一起换过来
+    app.view.setState(tab.state)
+    app.view.scrollDOM.scrollTop = tab.scrollTop
+    // 相对路径图片的基准目录可能变了：空事务触发 ViewPlugin 重建装饰
+    app.view.dispatch({})
+    if (focus && !tab.readonly) app.view.focus()
+  }
+  $('dirty-dot').hidden = !tab.dirty
+  updateTitle()
+  updateCounts(tab.state.doc.toString())
+  refreshOutline(tab.state.doc.toString())
+  renderTabs()
+  refreshWorkspaceMarks()
+  syncReadonlyUi()
+}
+
+function activateTab(id: string): void {
+  if (id === app.activeId) return
+  stashActive()
+  const tab = app.tabs.find((x) => x.id === id)
+  if (!tab) return
+  applyTab(tab)
+}
+
+/** 只读标签（帮助）要藏掉"能改"的入口：源码模式、打字机；并保证不停在源码视图 */
+function syncReadonlyUi(): void {
+  const ro = activeTab()?.readonly ?? false
+  $('btn-source').hidden = ro
+  $('btn-typewriter').hidden = ro
+  document.body.classList.toggle('tab-readonly', ro)
+  if (ro && $('btn-source').classList.contains('on')) toggleSource()
+}
+
+function tabbarItems(): TabbarItem[] {
+  return app.tabs.map((x) => ({ id: x.id, title: x.name, dirty: x.dirty, kind: x.kind }))
+}
+
+function renderTabs(): void {
+  if (!tabbar) return
+  const show = tabsEnabled() && app.tabs.length > 0 && window.innerWidth > 860
+  tabbar.setVisible(show)
+  if (show) tabbar.render(tabbarItems(), app.activeId)
+}
+
+/**
+ * 关一个标签。未保存的走三键框：
+ *   保存 → 落盘（无路径的弹另存为，用户取消就整体中止）
+ *   不保存 → 丢弃，直接关
+ *   取消 → 什么都不做
+ * 关掉最后一个标签不退出应用，而是补一个空白文档 —— 窗口上空着比"整个窗口跟着消失"好懂。
+ */
+async function closeTab(id: string): Promise<boolean> {
+  const tab = app.tabs.find((x) => x.id === id)
+  if (!tab) return false
+  const wasActive = id === app.activeId
+  const prevId = app.activeId
+
+  /** 为了保存而临时切过去的，取消时要切回原来那篇 */
+  const backToPrev = (): void => {
+    if (wasActive) return
+    const p = app.tabs.find((x) => x.id === prevId)
+    if (p && app.activeId !== p.id) applyTab(p)
+  }
+
+  if (tab.dirty && !tab.readonly) {
+    stashActive()
+    if (!wasActive) applyTab(tab, false)
+    const choice = await askSave({ name: tab.name })
+    if (choice === 'cancel') {
+      backToPrev()
+      return false
+    }
+    if (choice === 'save') {
+      const ok = await doSave(false)
+      if (!ok) {
+        backToPrev()
+        return false
+      }
+    }
+  }
+
+  const i = app.tabs.indexOf(tab)
+  app.tabs.splice(i, 1)
+
+  if (!app.tabs.length) {
+    // 兜底：永远至少有一个标签
+    const blank = makeTab({ name: t('app.untitled'), content: '' })
+    app.activeId = ''
+    applyTab(blank)
+    return true
+  }
+
+  if (wasActive) {
+    const next = app.tabs[Math.min(i, app.tabs.length - 1)]
+    app.activeId = ''
+    applyTab(next)
+  } else if (app.activeId === tab.id) {
+    backToPrev()
+    renderTabs()
+  } else {
+    renderTabs()
+  }
+  return true
+}
+
 
 /* ------------------------------------------------------------------ *
  * 启动
@@ -99,29 +379,20 @@ function boot(): void {
   initPageWidth()
 
   const host = $('editor-host')
-  const state = createEditorState(SAMPLE_MD, {
-    onChange: (doc) => {
-      setDirty(true)
-      updateCounts(doc)
-      scheduleOutline(doc)
-      scheduleAutosave()
-    },
-    onCursor: (line, _col) => {
-      void line
-      applyTypewriter()
-      highlightOutline($('outline-body'), app.view?.state.selection.main.head ?? 0, app.outline)
-    },
-    onSave: () => void doSave(false),
-    onSourceToggle: () => toggleSource(),
-  }, SAMPLE_MD.indexOf('\n') + 1)
-
-  app.view = new EditorView({ state, parent: host })
-  app.view.focus()
-
-  // 首屏示例文档以实名呈现。docId 一并给定，否则首次编辑时自动保存会落到
+  // 首屏示例文档以实名呈现。docId 由 makeTab 一并给定，否则首次编辑时自动保存会落到
   // 空 id 上（最近文件里出现一条无名记录）。详见 sample.ts 的 SAMPLE_NAME 注释。
-  app.fileName = SAMPLE_NAME
-  app.docId = `doc:${SAMPLE_NAME}`
+  const first = makeTab({
+    name: SAMPLE_NAME,
+    content: SAMPLE_MD,
+    // 光标落在第一行内容之后（示例文档第一行是标题），比停在 0 更像个能直接写的文档
+    selection: SAMPLE_MD.indexOf('\n') + 1,
+  })
+
+  app.view = new EditorView({ state: first.state, parent: host })
+  app.activeId = first.id
+  app.fileName = first.name
+  app.docId = first.docId
+  app.view.focus()
 
   updateCounts(SAMPLE_MD)
   refreshOutline(SAMPLE_MD)
@@ -157,16 +428,40 @@ function boot(): void {
  * 标题 / 脏标记 / 统计
  * ------------------------------------------------------------------ */
 function setDirty(v: boolean): void {
-  if (app.dirty === v) return
+  const tab = activeTab()
+  // 只读标签（帮助）永远不脏
+  if (tab && !tab.readonly) tab.dirty = v
   app.dirty = v
   $('dirty-dot').hidden = !v
   updateTitle()
+  renderTabs()
+  refreshWorkspaceMarks()
+}
+
+/**
+ * 文件树 / 最近文件里的 `*` 标记。
+ * 只改文字前缀、不动节点结构：这两个列表会被整块重建（打开文件夹、刷新最近），
+ * 每次重建后由这里补一次标记即可，不需要额外的状态。
+ */
+function refreshWorkspaceMarks(): void {
+  const dirty = app.tabs.filter((x) => x.dirty && !x.readonly)
+  const isDirty = (name: string, path?: string): boolean =>
+    dirty.some((x) => (path && x.path ? x.path === path : x.name === name))
+  document.querySelectorAll<HTMLElement>('.filetree .node').forEach((node) => {
+    const nm = node.querySelector<HTMLElement>('.nm')
+    if (!nm) return
+    const base = node.dataset.base ?? (node.dataset.base = nm.textContent ?? '')
+    const mark = isDirty(base, node.dataset.path) ? '* ' : ''
+    const next = mark + base
+    if (nm.textContent !== next) nm.textContent = next
+  })
 }
 
 function updateTitle(): void {
   const name = app.fileName
   $('doc-title').textContent = name
-  document.title = `${app.dirty ? '● ' : ''}${name} — Lypora`
+  // `*` 前缀进窗口标题：任务栏/窗口切换器里也能看出没保存（与主流编辑器一致）
+  document.title = `${app.dirty ? '* ' : ''}${name} — Lypora`
 }
 
 function updateCounts(doc: string): void {
@@ -530,39 +825,102 @@ function applyTypewriter(): void {
 async function doOpen(): Promise<void> {
   const res = await openFile()
   if (!res) return
+  // 「仅多窗口」模式下打开文件进新窗口，当前窗口的文档原样留着
+  if (displayMode() === 'windows' && canMultiWindow()) {
+    openNewWindow({ name: res.name, path: res.path, content: res.content })
+    toast(t('toast.opened', { name: res.name }))
+    return
+  }
   loadDocument(res.content, res.name, res.handle, res.path)
   await persistCurrent()
   void renderRecents()
   toast(t('toast.opened', { name: res.name }))
 }
 
+/** 新建文档：永远开一个新标签（复用"空白"标签的规则只对"打开文件"生效） */
+function newDocument(): void {
+  stashActive()
+  const tab = makeTab({ name: t('app.untitled'), content: `# ${t('app.newDoc')}\n\n` })
+  applyTab(tab)
+  toast(t('toast.created'))
+}
+
+/**
+ * 打开帮助文档（只读标签）。
+ * 同一篇帮助只开一个标签：再点一次就切过去，不会越点越多 —— 帮助不是工作文档，
+ * 攒一排在标签栏里只会碍事。
+ */
+function openHelp(id: HelpId): void {
+  const exist = app.tabs.find((x) => x.kind === 'help' && x.helpId === id)
+  if (exist) {
+    activateTab(exist.id)
+    return
+  }
+  stashActive()
+  const tab = makeTab({
+    name: t(helpTitle(id)),
+    content: helpText(id),
+    readonly: true,
+    kind: 'help',
+    helpId: id,
+  })
+  app.activeId = ''
+  applyTab(tab)
+}
+
+/**
+ * 打开一篇文档到标签栏。
+ *  ① 同一个磁盘文件已经在标签里 → 切过去（内容若被外部改过则刷新，脏标记清掉）
+ *  ② 当前是"空白未命名且没改过"的标签 → 直接复用，别在旁边留一个空标签
+ *  ③ 其余情况 → 新开一个标签
+ * 传进来的内容就是磁盘内容，所以同时是 dirty 基准。
+ */
 function loadDocument(
   content: string,
   name: string,
   handle?: FileSystemFileHandle,
   path?: string,
 ): void {
-  app.fileName = name
-  app.handle = handle
-  app.path = path
-  // 相对路径图片的解析基准跟着文档走：切文档必须立刻同步，否则会按上一篇的目录去拼
-  setCurrentDocPath(path)
-  app.docId = `doc:${path || name}`
-  if (app.view) {
-    app.view.dispatch({
-      changes: { from: 0, to: app.view.state.doc.length, insert: content },
-      selection: { anchor: 0 },
-      scrollIntoView: false,
-    })
+  const existing = path ? app.tabs.find((x) => x.path === path) : undefined
+  stashActive()
+
+  if (existing) {
+    if (existing.state.doc.toString() !== content) {
+      existing.state = createEditorState(content, editorHooks(), 0)
+      existing.saved = content
+      existing.dirty = false
+    }
+    app.activeId = ''
+    applyTab(existing)
+    return
   }
-  setDirty(false)
-  updateTitle()
-  updateCounts(content)
-  refreshOutline(content)
+
+  const cur = activeTab()
+  // 当前是"没改过、也没落过盘"的标签（首屏示例 / 刚新建的空文档）→ 直接复用。
+  // 包括首屏示例：从菜单或命令行打开一篇文档时，没人希望它旁边还挂着一份功能演示。
+  const reusable = !!cur && cur.kind === 'doc' && !cur.dirty && !cur.path
+
+  if (reusable && cur) {
+    cur.name = name
+    cur.handle = handle
+    cur.path = path
+    cur.docId = `doc:${path || name}`
+    cur.saved = content
+    cur.dirty = false
+    cur.state = createEditorState(content, editorHooks(), 0)
+    app.activeId = ''
+    applyTab(cur)
+    return
+  }
+
+  const tab = makeTab({ name, content, handle, path })
+  app.activeId = ''
+  applyTab(tab)
 }
 
 async function doSave(forceAs: boolean): Promise<boolean> {
   if (!app.view) return false
+  const tab = activeTab()
   const content = app.view.state.doc.toString()
   const target = forceAs ? undefined : { handle: app.handle, path: app.path }
   const res = await saveFile(content, app.fileName, target)
@@ -571,12 +929,23 @@ async function doSave(forceAs: boolean): Promise<boolean> {
   if (res.handle) app.handle = res.handle
   if (res.path) app.path = res.path
   app.fileName = res.name
+  // 标签自身的字段也要跟着走，否则切走再切回来会退回旧的路径/名字
+  if (tab) {
+    tab.name = res.name
+    tab.handle = app.handle
+    tab.path = app.path
+    tab.docId = `doc:${app.path || res.name}`
+    tab.saved = content
+    tab.dirty = false
+    tab.state = app.view.state
+  }
   // 另存为之后基准目录变了，已渲染的图片必须按新目录重算一次。空事务即可触发
   // ViewPlugin.update（它靠 transactions.length > 0 判断要不要重建装饰）。
   setCurrentDocPath(app.path)
   if (pathBefore !== app.path) app.view?.dispatch({})
   setDirty(false)
   updateTitle()
+  renderTabs()
   await persistCurrent()
   void renderRecents()
   toast(
@@ -589,6 +958,8 @@ async function doSave(forceAs: boolean): Promise<boolean> {
 
 async function persistCurrent(): Promise<void> {
   if (!app.view) return
+  // 帮助文档是内置内容，不进最近文件
+  if (activeTab()?.readonly) return
   await putDoc({
     id: app.docId,
     name: app.fileName,
@@ -641,12 +1012,16 @@ function renderWorkspace(root: string, entries: WorkspaceEntry[]): void {
     node.addEventListener('click', async () => {
       const res = await e.open()
       if (!res) return toast(t('toast.readFailed'))
+      // 记住真实路径：文件树的 `*` 标记与"同文件已开则切过去"都靠它
+      if (res.path) node.dataset.path = res.path
       loadDocument(res.content, res.name, res.handle, res.path)
       document.querySelectorAll('.filetree .node').forEach((n) => n.classList.remove('active'))
       node.classList.add('active')
+      refreshWorkspaceMarks()
     })
     box.appendChild(node)
   }
+  refreshWorkspaceMarks()
 }
 
 async function renderRecents(): Promise<void> {
@@ -678,6 +1053,7 @@ async function renderRecents(): Promise<void> {
     })
     box.appendChild(node)
   }
+  refreshWorkspaceMarks()
 }
 
 function timeAgo(ts: number): string {
@@ -1004,11 +1380,19 @@ function buildMenus(): MenuDef[] {
           id: 'file-create',
           label: t('file.create'),
           shortcut: 'Ctrl+N',
-          action: () => {
-            loadDocument(`# ${t('app.newDoc')}\n\n`, t('app.untitled'))
-            toast(t('toast.created'))
-          },
+          action: () => newDocument(),
         },
+        // 「新建窗口」只在允许窗口的模式下出现（仅 tabs 模式给了也没用）
+        ...(canMultiWindow()
+          ? [
+              {
+                id: 'file-new-window',
+                label: t('file.newWindow'),
+                shortcut: 'Ctrl+Shift+N',
+                action: () => openNewWindow(),
+              },
+            ]
+          : []),
         { id: 'file-open', label: t('file.open'), shortcut: 'Ctrl+O', action: () => void doOpen() },
         {
           id: 'file-open-folder',
@@ -1321,6 +1705,36 @@ function buildMenus(): MenuDef[] {
       label: t('menu.settings'),
       items: [
         {
+          // 多文档的呈现方式（v0.11.0）：仅标签 / 仅多窗口 / 两者并存。
+          // 放在设置里而不是「显示」菜单：它改变的是"文档怎么组织"，不是"这一屏怎么画"。
+          id: 'settings-display',
+          label: t('settings.displayMode'),
+          items: [
+            {
+              id: 'settings-display-tabs',
+              label: t('settings.displayTabs'),
+              checked: displayMode() === 'tabs',
+              action: () => setDisplayMode('tabs'),
+            },
+            {
+              id: 'settings-display-windows',
+              label: t('settings.displayWindows'),
+              checked: displayMode() === 'windows',
+              // 浏览器 / 手机壳里开不了真窗口，置灰并说明原因
+              disabled: !desktop()?.newWindow,
+              action: () => setDisplayMode('windows'),
+            },
+            {
+              id: 'settings-display-both',
+              label: t('settings.displayBoth'),
+              checked: displayMode() === 'both',
+              disabled: !desktop()?.newWindow,
+              action: () => setDisplayMode('both'),
+            },
+          ],
+        },
+        { sep: true },
+        {
           // 语言从顶级降到这里（v0.10.0）：顶级菜单已经有 9 个，语言是低频设置项，
           // 和"图片怎么存"属于同一类"这台机器怎么工作"的偏好。
           // 各语言一律用母语名显示，不翻译（否则找不到自己那一项）。
@@ -1394,10 +1808,13 @@ function buildMenus(): MenuDef[] {
     {
       id: 'help',
       label: t('menu.help'),
-      items: [
-        { id: 'help-shortcuts', label: t('help.shortcuts'), shortcut: 'F1', action: showHelp },
-        { id: 'help-about', label: t('help.about'), action: () => toast(t('help.aboutText', { version: VERSION }), 3600) },
-      ],
+      items: HELP_DOCS.map((d) => ({
+        id: `help-${d.id}`,
+        label: t(d.titleKey),
+        // F1 直通快捷键那一篇（旧版 F1 弹的是一句提示）
+        shortcut: d.id === 'shortcuts' ? 'F1' : undefined,
+        action: () => openHelp(d.id),
+      })),
     },
   ]
 }
@@ -1428,6 +1845,29 @@ function refreshLocaleUi(): void {
   refreshOutline(doc)
   if (currentPane === 'recent') void renderRecents()
   syncStatusToggles()
+  refreshHelpTabs()
+}
+
+/**
+ * 切语言后把帮助标签的正文与标题换成新语种。
+ * 只重建帮助标签的 EditorState：它们是只读的、没有取舍成本，重建最省事；
+ * 普通文档绝不重建（会丢撤销历史）。
+ */
+function refreshHelpTabs(): void {
+  for (const tab of app.tabs) {
+    if (tab.kind !== 'help' || !tab.helpId) continue
+    tab.name = t(helpTitle(tab.helpId))
+    tab.saved = helpText(tab.helpId)
+    tab.state = createEditorState(tab.saved, editorHooks(), 0, { readonly: true })
+    if (tab.id === app.activeId) {
+      app.fileName = tab.name
+      app.view?.setState(tab.state)
+      updateTitle()
+      updateCounts(tab.saved)
+      refreshOutline(tab.saved)
+    }
+  }
+  renderTabs()
 }
 
 /* ------------------------------------------------------------------ *
@@ -1436,6 +1876,13 @@ function refreshLocaleUi(): void {
 function bindUI(): void {
   updateTitle()
   menubar = createMenubar($('menubar-items'), buildMenus)
+  // 标签栏：mousedown 激活、× / 中键关闭、+ 新建（新建走与"新建文档"菜单同一条路径）
+  tabbar = createTabbar($('tabbar'), {
+    onActivate: (id) => activateTab(id),
+    onClose: (id) => void closeTab(id),
+    onNew: () => void newDocument(),
+  })
+  renderTabs()
   initWheelZoom()
 
   // 侧栏页签：点已激活的页签 = 收起侧栏（与参考实现点开当前视图即收起一致）
@@ -1535,6 +1982,20 @@ function bindUI(): void {
       showHelp()
       return
     }
+    // Ctrl+Shift+N：新窗口（仅标签模式下不响应，菜单项也没给）
+    if (mod && e.shiftKey && e.key.toLowerCase() === 'n') {
+      if (canMultiWindow()) {
+        e.preventDefault()
+        openNewWindow()
+      }
+      return
+    }
+    // Ctrl+W：关当前标签（不直接关窗口 —— 关窗口仍走叉号/系统快捷键的守卫流程）
+    if (mod && !e.shiftKey && e.key.toLowerCase() === 'w' && tabsEnabled()) {
+      e.preventDefault()
+      void closeTab(app.activeId)
+      return
+    }
     if (mod && e.shiftKey && e.key.toLowerCase() === 's') {
       e.preventDefault()
       void doSave(true)
@@ -1626,18 +2087,27 @@ function bindUI(): void {
   window.addEventListener('beforeunload', (e) => {
     // 桌面版关窗由主进程统一处理（询问 → 保存 → 退出，见 desktop/main.js）：
     // 这里再 preventDefault 会被 Electron 静默拦下，表现就是"点叉号关不掉"。
-    if (desktop() || !app.dirty) return
+    if (desktop() || !app.tabs.some((x) => x.dirty && !x.readonly)) return
     e.preventDefault()
     e.returnValue = ''
   })
 
-  // 同一套关闭流程中，主进程需要知道"是否脏"并能触发保存
+  // 同一套关闭流程中，主进程需要知道"是否脏"并能触发保存（多标签下要报全部脏标签）
   if (desktop()) {
-    window.__lyporaCloseState = () => ({ dirty: app.dirty, name: app.fileName })
+    window.__lyporaCloseState = () => {
+      const dirty = app.tabs.filter((x) => x.dirty && !x.readonly)
+      return { dirty: dirty.length > 0, name: dirty[0]?.name ?? app.fileName, names: dirty.map((x) => x.name) }
+    }
     window.__lyporaSaveAndClose = async () => {
       try {
-        const ok = await doSave(false)
-        return ok ? { ok: true } : { ok: false, cancelled: true }
+        // 逐篇保存：切到该标签再走正常保存流程（未命名的会弹另存为，取消即整体中止）
+        for (const tab of app.tabs.filter((x) => x.dirty && !x.readonly)) {
+          stashActive()
+          if (app.activeId !== tab.id) applyTab(tab, false)
+          const ok = await doSave(false)
+          if (!ok) return { ok: false, cancelled: true }
+        }
+        return { ok: true }
       } catch (err) {
         return { ok: false, error: String(err) }
       }
@@ -1698,8 +2168,8 @@ async function toggleFullscreen(): Promise<void> {
 }
 
 function showHelp(): void {
-  // 帮助提示整句里嵌着 Ctrl+X，macOS 上要显示成 ⌘X（词表本身不按平台分叉）
-  toast(formatShortcutText(t('help.shortcutsTip')), 4200)
+  // v0.11.0 起帮助是只读文档，不再是 toast；F1 直接开「快捷键」那一篇
+  openHelp('shortcuts')
 }
 
 function registerServiceWorker(): void {

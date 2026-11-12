@@ -14,6 +14,18 @@ export default {
     cancel: 'Annuler',
     ok: 'Valider',
   },
+  confirm: {
+    unsavedTitle: 'Enregistrer les modifications de «\u00a0{name}\u00a0» ?',
+    unsavedMore: '{n} autres documents ne sont pas enregistrés : {names}',
+    unsavedDetail: 'Choisir «\u00a0Ne pas enregistrer\u00a0» annule ces modifications.',
+    save: 'Enregistrer',
+    discard: 'Ne pas enregistrer',
+  },
+  tab: {
+    new: 'Nouvel onglet',
+    close: 'Fermer l\u2019onglet',
+    unsavedTip: 'Non enregistré : {name}',
+  },
 
   menu: {
     file: 'Fichier',
@@ -44,6 +56,7 @@ export default {
     exportPdf: 'Exporter en PDF (impression)',
     exportPdfUnsupported: 'Exporter en PDF (indisponible sur mobile)',
     beautify: 'Embellir les cartes',
+    newWindow: 'Nouvelle fenêtre',
   },
 
   edit: {
@@ -86,6 +99,10 @@ export default {
     imageRefFile: 'Référencer les fichiers (recommandé)',
     imageRefEmbed: 'Intégrer en base64',
     imagePath: 'Gestion des chemins',
+    displayMode: 'Mode d\u2019affichage',
+    displayTabs: 'Onglets seulement',
+    displayWindows: 'Fenêtres seulement',
+    displayBoth: 'Onglets et fenêtres',
   },
 
   /** 状态栏三态开关与设置菜单共用的一套文案；*Short 是状态栏里的短标签 */
@@ -140,6 +157,12 @@ export default {
     shortcutsTip: 'Ctrl+B gras · Ctrl+K lien · Ctrl+1~6 titres · Ctrl+/ code · F8 concentration · F9 machine à écrire · Ctrl+S enregistrer',
     about: 'À propos de Lypora',
     aboutText: 'Lypora {version} · éditeur Markdown à aperçu instantané, implémentation originale · MIT',
+    features: 'Fonctionnalités',
+    themes: 'Thèmes et compatibilité',
+    width: 'Largeur de page',
+    images: 'Images',
+    layoutDoc: 'Sortie de mise en page',
+    settingsDoc: 'Réglages',
   },
 
   sidebar: {
@@ -246,6 +269,8 @@ export default {
     popupBlocked: 'Le navigateur a bloqué la fenêtre contextuelle — autorisez-la puis réessayez',
     columnEven: 'Colonnes égalisées',
     columnPx: 'Largeur de colonne {px} px (double-clic sur un séparateur pour égaliser)',
+    displayMode: 'Mode d\u2019affichage : {mode}',
+    windowUnsupported: 'Les fenêtres multiples ne sont pas disponibles ici',
   },
   size: {
     xhs: 'Portrait 3:4',

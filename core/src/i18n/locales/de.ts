@@ -14,6 +14,18 @@ export default {
     cancel: 'Abbrechen',
     ok: 'OK',
   },
+  confirm: {
+    unsavedTitle: 'Änderungen an „{name}“ speichern?',
+    unsavedMore: '{n} weitere Dokumente sind nicht gespeichert: {names}',
+    unsavedDetail: '„Nicht speichern“ verwirft diese Änderungen.',
+    save: 'Speichern',
+    discard: 'Nicht speichern',
+  },
+  tab: {
+    new: 'Neuer Tab',
+    close: 'Tab schließen',
+    unsavedTip: 'Nicht gespeichert: {name}',
+  },
 
   menu: {
     file: 'Datei',
@@ -44,6 +56,7 @@ export default {
     exportPdf: 'PDF exportieren (Drucken)',
     exportPdfUnsupported: 'PDF exportieren (auf Mobilgeräten nicht verfügbar)',
     beautify: 'Karten verschönern',
+    newWindow: 'Neues Fenster',
   },
 
   edit: {
@@ -86,6 +99,10 @@ export default {
     imageRefFile: 'Dateien referenzieren (empfohlen)',
     imageRefEmbed: 'Als base64 einbetten',
     imagePath: 'Bildpfad-Behandlung',
+    displayMode: 'Anzeigemodus',
+    displayTabs: 'Nur Tabs',
+    displayWindows: 'Nur Fenster',
+    displayBoth: 'Tabs und Fenster',
   },
 
   /** 状态栏三态开关与设置菜单共用的一套文案；*Short 是状态栏里的短标签 */
@@ -140,6 +157,12 @@ export default {
     shortcutsTip: 'Ctrl+B fett · Ctrl+K Link · Ctrl+1~6 Überschriften · Ctrl+/ Quelltext · F8 Fokus · F9 Schreibmaschine · Ctrl+S speichern',
     about: 'Über Lypora',
     aboutText: 'Lypora {version} · eigenständig implementierter Markdown-Editor mit Live-Vorschau · MIT',
+    features: 'Funktionen',
+    themes: 'Themes & Kompatibilität',
+    width: 'Seitenbreite',
+    images: 'Bilder',
+    layoutDoc: 'Layout-Ausgabe',
+    settingsDoc: 'Einstellungen',
   },
 
   sidebar: {
@@ -246,6 +269,8 @@ export default {
     popupBlocked: 'Der Browser hat das Popup blockiert — bitte erlauben und erneut versuchen',
     columnEven: 'Spalten ausgeglichen',
     columnPx: 'Spaltenbreite {px} px (Doppelklick auf einen Trenner gleicht aus)',
+    displayMode: 'Anzeigemodus: {mode}',
+    windowUnsupported: 'Mehrere Fenster sind hier nicht verfügbar',
   },
   size: {
     xhs: 'Hoch 3:4',

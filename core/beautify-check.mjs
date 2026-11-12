@@ -23,8 +23,10 @@ import { fileURLToPath } from 'node:url'
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const EDGE = 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe'
 const PAGE_URL = process.argv[2] || 'http://127.0.0.1:4173/index.html'
-const OUT = path.join(HERE, '..', 'artifacts', 'beautify')
-fs.rmSync(OUT, { recursive: true, force: true })
+// 不删目录、改用带时间戳的子目录：宿主的安全删除钩子对目录删除是 fail-closed，
+// 会一直卡到 spawnSync ETIMEDOUT（v0.10.0 踩到过 4–9 分钟），脚本里一律不删。
+const RUN = new Date().toISOString().replace(/[:.]/g, '-')
+const OUT = path.join(HERE, '..', 'artifacts', 'beautify', RUN)
 fs.mkdirSync(OUT, { recursive: true })
 
 const report = { steps: {}, errors: [], pass: false }

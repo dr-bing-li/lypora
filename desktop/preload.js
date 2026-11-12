@@ -43,6 +43,13 @@ contextBridge.exposeInMainWorld('lyporaDesktop', {
    */
   readClipboardImage: (opts) => ipcRenderer.invoke('clipboard:read-image', opts),
 
+  /**
+   * 新开一个窗口（v0.11.0）。
+   * 带 payload 时新窗口直接打开这篇文档 —— 「仅多窗口」模式下点「打开」就走这里，
+   * 当前窗口的文档原样留着。
+   */
+  newWindow: (payload) => ipcRenderer.invoke('window:new', payload),
+
   /** 主进程转发"用本应用打开文件"（双击 md 文件 / 命令行参数） */
   onOpenPath: (cb) => {
     ipcRenderer.on('app:open-path', (_e, payload) => cb(payload))

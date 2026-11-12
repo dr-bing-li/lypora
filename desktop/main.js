@@ -14,10 +14,16 @@ const CLOSE_TEST = closeTestArg ? closeTestArg.slice('--closetest='.length) : nu
 /** 测试用旁路：跳过系统弹窗，直接采用指定选择 */
 const closeChoiceArg = process.argv.find((a) => a.startsWith('--close-choice='))
 const FORCED_CHOICE = closeChoiceArg ? closeChoiceArg.slice('--close-choice='.length) : null
+/** 最近聚焦的窗口：给系统对话框当父窗口（多窗口下跟随焦点走） */
 let win = null
-/** 关窗守卫：true 表示已获准关闭，close 事件直接放行 */
-let allowClose = false
-let askingClose = false
+/** 所有打开着的窗口（v0.11.0 起支持多窗口，每窗一套标签） */
+const wins = new Set()
+/**
+ * 关窗守卫状态存在窗口对象上（w.__allowClose / w.__askingClose）。
+ * v0.10.x 用的是全局变量，多窗口时会互相覆盖：A 窗获准关闭后 B 窗的守卫被整段跳过，
+ * 未保存内容直接丢。
+ */
+let bootWin = null
 
 /**
  * macOS 冷启动待打开文件队列。
@@ -92,13 +98,13 @@ function resolveIcon() {
   return undefined
 }
 
-function createWindow() {
-  // 每次建窗都要复位：macOS 上关窗不退出应用，激活时重建窗口。
-  // 若沿用上一个窗口留下的 allowClose=true，新窗口的关窗守卫会被整段跳过（脏数据直接丢）。
-  allowClose = false
-  winReady = false
-
-  win = new BrowserWindow({
+/**
+ * 建一个窗口。
+ * @param payload 可选：窗口就绪后直接把这篇文档投递给渲染层（「仅多窗口」模式点打开文件、
+ *                以及第二实例带文件参数启动都走这条路）
+ */
+function createWindow(payload) {
+  const w = new BrowserWindow({
     width: 1240,
     height: 820,
     minWidth: 480,
@@ -118,16 +124,26 @@ function createWindow() {
     },
   })
 
-  win.once('ready-to-show', () => win.show())
+  // 每窗独立的守卫状态（见上方注释：全局变量在多窗口下会串）
+  w.__allowClose = false
+  w.__askingClose = false
+  wins.add(w)
+  win = w
+  if (!bootWin) bootWin = w
+
+  w.once('ready-to-show', () => w.show())
+  w.on('focus', () => {
+    win = w
+  })
 
   if (isDev) {
-    win.loadURL('http://127.0.0.1:5183/index.html')
+    w.loadURL('http://127.0.0.1:5183/index.html')
   } else {
-    win.loadFile(INDEX_HTML)
+    w.loadFile(INDEX_HTML)
   }
 
   // 外部链接用系统浏览器打开，不在应用内导航
-  win.webContents.setWindowOpenHandler(({ url }) => {
+  w.webContents.setWindowOpenHandler(({ url }) => {
     if (/^https?:/.test(url)) shell.openExternal(url)
     return { action: 'deny' }
   })
@@ -137,19 +153,20 @@ function createWindow() {
    * 用 capture + preventDefault 拦了一手，这里再兜底：只要 zoomFactor 被改动就复位。
    */
   try {
-    win.webContents.setVisualZoomLevelLimits(1, 1)
+    w.webContents.setVisualZoomLevelLimits(1, 1)
   } catch {
     /* 旧版 Electron 没有该方法 */
   }
   let zoomGuard = 0
-  win.webContents.on('zoom-changed', () => {
+  w.webContents.on('zoom-changed', () => {
     if (Date.now() < zoomGuard) return
     zoomGuard = Date.now() + 300
-    win.webContents.setZoomFactor(1)
+    w.webContents.setZoomFactor(1)
   })
 
-  win.on('closed', () => {
-    win = null
+  w.on('closed', () => {
+    wins.delete(w)
+    if (win === w) win = Array.from(wins).pop() || null
   })
 
   /* ---------------- 关窗守卫：点叉号必须能关，且先走"询问 → 保存" ----------------
@@ -157,40 +174,52 @@ function createWindow() {
    * preventDefault 是**静默取消**关窗（不像浏览器会弹原生对话框），用户看到的就是
    * "点叉号没反应"。现在改由主进程统一处理：
    *   close 事件 → 问渲染层是否脏 → 原生三按钮对话框 → 需要保存就调渲染层保存 → 放行
+   * 多标签后渲染层会报回全部未保存的标签名，对话框里一次列清（逐窗确认，不跨窗汇总）。
    */
-  win.on('close', (e) => {
-    if (allowClose) return
+  w.on('close', (e) => {
+    if (w.__allowClose) return
     e.preventDefault()
-    void closeGuard(win)
+    void closeGuard(w)
   })
 
   // 渲染层若仍挂着 beforeunload，在"已获准关闭"时放行，避免二次拦截
-  win.webContents.on('will-prevent-unload', (e) => {
-    if (allowClose) e.preventDefault()
+  w.webContents.on('will-prevent-unload', (e) => {
+    if (w.__allowClose) e.preventDefault()
   })
 
-  if (isSelfTest) runSelfTest(win)
-  if (CLOSE_TEST) runCloseTest(win, CLOSE_TEST)
+  if (isSelfTest) runSelfTest(w)
+  if (CLOSE_TEST) runCloseTest(w, CLOSE_TEST)
 
   // 首次启动带文件参数（Windows / Linux）：等渲染进程订阅好回调再投递。
   // macOS 双击文件不走命令行，走下面的 app.on('open-file')。
-  win.webContents.once('did-finish-load', () => {
+  w.webContents.once('did-finish-load', () => {
     // 400ms 是给渲染层挂 onOpenPath 回调的余量（与 v0.4.x 相同，实测够用）
     setTimeout(() => {
-      winReady = true
-      flushPendingOpen()
+      if (payload) {
+        try {
+          w.webContents.send('app:open-path', payload)
+        } catch {
+          /* 窗口已销毁 */
+        }
+      }
+      if (w === bootWin) {
+        winReady = true
+        flushPendingOpen()
+      }
     }, 400)
   })
+
+  return w
 }
 
 
 /* ---------------- 关闭流程 ---------------- */
 
 async function closeGuard(w) {
-  if (askingClose) return
-  askingClose = true
+  if (w.__askingClose) return
+  w.__askingClose = true
   try {
-    let state = { dirty: false, name: '' }
+    let state = { dirty: false, name: '', names: [] }
     try {
       state = await w.webContents.executeJavaScript(
         'window.__lyporaCloseState ? window.__lyporaCloseState() : { dirty: false, name: "" }',
@@ -200,26 +229,32 @@ async function closeGuard(w) {
     }
 
     if (!state || !state.dirty) {
-      allowClose = true
+      w.__allowClose = true
       w.close()
       return
     }
+
+    const names =
+      Array.isArray(state.names) && state.names.length ? state.names : [state.name || '当前文档']
+    const many = names.length > 1
 
     let choice = FORCED_CHOICE
     if (choice !== 'save' && choice !== 'discard' && choice !== 'cancel') {
       const r = await dialog.showMessageBox(w, {
         type: 'warning',
-        buttons: ['保存并退出', '不保存', '取消'],
+        buttons: ['保存并关闭', '不保存', '取消'],
         defaultId: 0,
         cancelId: 2,
         noLink: true,
         title: 'Lypora',
-        message: `是否保存对「${state.name || '当前文档'}」的更改？`,
-        detail: '选择「不保存」会丢弃本次修改。',
+        message: many
+          ? `有 ${names.length} 个文档未保存，是否保存后关闭窗口？`
+          : `是否保存对「${names[0]}」的更改？`,
+        detail: (many ? `未保存：${names.join('、')}\n` : '') + '选择「不保存」会丢弃这些修改。',
       })
       choice = ['save', 'discard', 'cancel'][r.response] || 'cancel'
     }
-    console.log('CLOSE_GUARD ' + JSON.stringify({ name: state.name, choice }))
+    console.log('CLOSE_GUARD ' + JSON.stringify({ name: names[0], names, choice }))
 
     if (choice === 'cancel') return
 
@@ -234,10 +269,10 @@ async function closeGuard(w) {
       }
     }
 
-    allowClose = true
+    w.__allowClose = true
     w.close()
   } finally {
-    askingClose = false
+    w.__askingClose = false
   }
 }
 
@@ -254,6 +289,20 @@ function runCloseTest(w, mode) {
         w.webContents.focus()
         await new Promise((r) => setTimeout(r, 250))
         w.webContents.insertText('\n\nCLOSETEST_EDIT')
+        await new Promise((r) => setTimeout(r, 500))
+      }
+      /* multi：再开一个标签也改一笔，验证关窗时把**两个**未保存文档一次报出来 */
+      if (mode === 'multi') {
+        await w.webContents.executeJavaScript(`(() => {
+          const root = document.querySelector('#menubar-items .menu-root[data-menu="file"]')
+          root.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }))
+          setTimeout(() => document.querySelector('.menu-drop .menu-item[data-mi="file-create"]')?.click(), 80)
+        })()`)
+        await new Promise((r) => setTimeout(r, 500))
+        w.focus()
+        w.webContents.focus()
+        await new Promise((r) => setTimeout(r, 200))
+        w.webContents.insertText('\nMULTI_EDIT_2')
         await new Promise((r) => setTimeout(r, 500))
       }
       report.dirty = await w.webContents
@@ -321,7 +370,30 @@ async function runSelfTest(w) {
         shot = shotPath
       }
 
-      const result = { ok: true, indexHtml: INDEX_HTML, metrics, appInfo: info, screenshot: shot, consoleErrors }
+      /* 多窗口自检（v0.11.0）：能再开一个窗口，且新窗口的渲染层认得投递的文档。
+       * "拖到第二块屏"没法自动化，但"第二个窗口真的起来、并且打开了 payload"可以。 */
+      const windows = { before: BrowserWindow.getAllWindows().length, after: null, delivered: null }
+      try {
+        await w.webContents.executeJavaScript(
+          'window.lyporaDesktop.newWindow({ name: "wintest.md", content: "# win test\\n\\nmulti window" })',
+        )
+        await new Promise((r) => setTimeout(r, 1800))
+        const all = BrowserWindow.getAllWindows()
+        windows.after = all.length
+        const extra = all.find((x) => x !== w)
+        if (extra) {
+          windows.delivered = await extra.webContents
+            .executeJavaScript('document.getElementById("doc-title")?.textContent || ""')
+            .catch(() => null)
+          windows.tabs = await extra.webContents
+            .executeJavaScript('document.querySelectorAll("#tabbar .tab-item").length')
+            .catch(() => null)
+        }
+      } catch (e) {
+        windows.error = String(e && e.message ? e.message : e)
+      }
+
+      const result = { ok: true, indexHtml: INDEX_HTML, metrics, appInfo: info, windows, screenshot: shot, consoleErrors }
       console.log('SELFTEST_RESULT ' + JSON.stringify(result))
       app.exit(consoleErrors.length ? 2 : 0)
     } catch (e) {
@@ -574,6 +646,21 @@ ipcMain.handle('app:info', () => ({
   electron: process.versions.electron,
 }))
 
+/* ---------------- 多窗口（v0.11.0） ----------------
+ * 渲染层点「新建窗口」或「仅多窗口」模式下打开文件时走这里。
+ * payload 有内容 → 新窗口起来后直接打开这篇文档；没有 → 空窗口。
+ */
+ipcMain.handle('window:new', (_e, payload) => {
+  try {
+    const p = payload && typeof payload.content === 'string' && payload.name ? payload : undefined
+    createWindow(p)
+    return true
+  } catch (e) {
+    console.log('WINDOW_NEW_FAIL ' + String((e && e.message) || e))
+    return false
+  }
+})
+
 /* ---------------- 应用生命周期 ---------------- */
 
 /**
@@ -629,16 +716,30 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
 })
 
-// 单实例：第二次打开文件时转发给已运行实例
+// 单实例：第二次启动不再"抢焦点"，而是把文件开到新窗口（多窗口 + 多显示器的基础）
 const gotLock = app.requestSingleInstanceLock()
 if (!gotLock) {
   app.quit()
 } else {
   app.on('second-instance', (_e, argv) => {
-    if (!win) return
+    const fileArg = argv.find((a) => MD_RE.test(a))
+    if (fileArg) {
+      fs.readFile(fileArg, 'utf8')
+        .then((content) => createWindow({ name: path.basename(fileArg), path: fileArg, content }))
+        .catch(() => {
+          // 读不到就把已有窗口提到前面，别让用户以为"点了没反应"
+          if (win) {
+            if (win.isMinimized()) win.restore()
+            win.focus()
+          }
+        })
+      return
+    }
+    if (!win) {
+      createWindow()
+      return
+    }
     if (win.isMinimized()) win.restore()
     win.focus()
-    const fileArg = argv.find((a) => MD_RE.test(a))
-    if (fileArg) queueOpenPath(fileArg)
   })
 }

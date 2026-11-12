@@ -22,11 +22,14 @@
       <header class="menubar">
         <div class="menubar-items" id="menubar-items"></div>
         <div class="menubar-right">
-          <span class="dirty-dot" id="dirty-dot" hidden></span>
+          <span class="dirty-dot" id="dirty-dot" hidden>*</span>
           <span class="doc-title" id="doc-title">功能演示.md</span>
           <span class="chip" id="chip-mode" data-i18n="chip.preview">实时预览</span>
         </div>
       </header>
+
+      <!-- ①b 标签栏（v0.11.0）：菜单栏下方通栏，溢出横滑；≤860px 与「仅多窗口」模式下隐藏 -->
+      <div class="tabbar" id="tabbar" role="tablist" hidden></div>
 
       <!-- ② 主区：左侧栏（大纲 / 文件树 / 最近） | 编辑区 -->
       <div class="workspace">

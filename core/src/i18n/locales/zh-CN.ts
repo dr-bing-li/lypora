@@ -25,6 +25,18 @@ export default {
     cancel: '取消',
     ok: '确定',
   },
+  confirm: {
+    unsavedTitle: '是否保存对「{name}」的更改？',
+    unsavedMore: '另有 {n} 个文档未保存：{names}',
+    unsavedDetail: '选择「不保存」会丢弃本次修改。',
+    save: '保存',
+    discard: '不保存',
+  },
+  tab: {
+    new: '新建标签',
+    close: '关闭标签',
+    unsavedTip: '未保存：{name}',
+  },
 
   menu: {
     file: '文件',
@@ -55,6 +67,7 @@ export default {
     exportPdf: '导出 PDF（打印）',
     exportPdfUnsupported: '导出 PDF（手机版不支持）',
     beautify: '美化输出',
+    newWindow: '新建窗口',
   },
 
   edit: {
@@ -97,6 +110,10 @@ export default {
     imageRefFile: '引用文件（推荐）',
     imageRefEmbed: '内嵌为 base64',
     imagePath: '图片路径处理',
+    displayMode: '显示模式',
+    displayTabs: '仅标签页',
+    displayWindows: '仅多窗口',
+    displayBoth: '标签页 + 多窗口',
   },
 
   /** 状态栏三态开关与设置菜单共用的一套文案；*Short 是状态栏里的短标签 */
@@ -151,6 +168,12 @@ export default {
     shortcutsTip: 'Ctrl+B 粗体 · Ctrl+K 链接 · Ctrl+1~6 标题 · Ctrl+/ 源码 · F8 专注 · F9 打字机 · Ctrl+S 保存',
     about: '关于 Lypora',
     aboutText: 'Lypora {version} · 独立实现的即时渲染 Markdown 编辑器 · MIT',
+    features: '特色功能',
+    themes: '主题与兼容性',
+    width: '页面宽度',
+    images: '图片引用',
+    layoutDoc: '排版输出',
+    settingsDoc: '设置项说明',
   },
 
   sidebar: {
@@ -257,6 +280,8 @@ export default {
     popupBlocked: '浏览器拦截了弹出窗口，请允许后重试',
     columnEven: '列宽已均分',
     columnPx: '列宽 {px} px（双击分隔线均分）',
+    displayMode: '显示模式：{mode}',
+    windowUnsupported: '当前环境不支持多窗口',
   },
   size: {
     xhs: '竖版 3:4',

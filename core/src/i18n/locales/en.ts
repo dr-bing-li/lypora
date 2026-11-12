@@ -14,6 +14,18 @@ export default {
     cancel: 'Cancel',
     ok: 'OK',
   },
+  confirm: {
+    unsavedTitle: 'Save changes to \u201c{name}\u201d?',
+    unsavedMore: '{n} more documents are unsaved: {names}',
+    unsavedDetail: 'Choosing \u201cDon\u2019t save\u201d discards these changes.',
+    save: 'Save',
+    discard: 'Don\u2019t save',
+  },
+  tab: {
+    new: 'New tab',
+    close: 'Close tab',
+    unsavedTip: 'Unsaved: {name}',
+  },
 
   menu: {
     file: 'File',
@@ -44,6 +56,7 @@ export default {
     exportPdf: 'Export PDF (print)',
     exportPdfUnsupported: 'Export PDF (not on mobile)',
     beautify: 'Beautify cards',
+    newWindow: 'New window',
   },
 
   edit: {
@@ -86,6 +99,10 @@ export default {
     imageRefFile: 'Reference files (recommended)',
     imageRefEmbed: 'Embed as base64',
     imagePath: 'Image path handling',
+    displayMode: 'Display mode',
+    displayTabs: 'Tabs only',
+    displayWindows: 'Windows only',
+    displayBoth: 'Tabs and windows',
   },
 
   /** 状态栏三态开关与设置菜单共用的一套文案；*Short 是状态栏里的短标签 */
@@ -140,6 +157,12 @@ export default {
     shortcutsTip: 'Ctrl+B bold · Ctrl+K link · Ctrl+1~6 headings · Ctrl+/ source · F8 focus · F9 typewriter · Ctrl+S save',
     about: 'About Lypora',
     aboutText: 'Lypora {version} · an independently implemented live-preview Markdown editor · MIT',
+    features: 'Features',
+    themes: 'Themes & compatibility',
+    width: 'Page width',
+    images: 'Images',
+    layoutDoc: 'Layout output',
+    settingsDoc: 'Settings',
   },
 
   sidebar: {
@@ -246,6 +269,8 @@ export default {
     popupBlocked: 'The browser blocked the popup window — allow it and retry',
     columnEven: 'Columns evened out',
     columnPx: 'Column width {px} px (double-click a divider to even out)',
+    displayMode: 'Display mode: {mode}',
+    windowUnsupported: 'Multiple windows are not available here',
   },
   size: {
     xhs: 'Portrait 3:4',

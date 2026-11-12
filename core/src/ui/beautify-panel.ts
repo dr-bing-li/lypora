@@ -788,6 +788,7 @@ export function createBeautifyPanel(deps: BeautifyDeps): BeautifyHandle {
     mask = null
     refs = null
     document.removeEventListener('keydown', onKey)
+    document.documentElement.style.removeProperty('--ce-top')
   }
 
   function onKey(e: KeyboardEvent): void {
@@ -797,9 +798,21 @@ export function createBeautifyPanel(deps: BeautifyDeps): BeautifyHandle {
     }
   }
 
+  /**
+   * 整屏铺开的顶边：菜单栏下沿 + 标签栏（显示时）的高度。
+   * 不用固定 40px：手机菜单栏是 44px，标签栏在不同模式下会显隐，写死必然错位。
+   */
+  function topOffset(): number {
+    const bar = document.querySelector<HTMLElement>('.menubar')?.getBoundingClientRect().bottom ?? 0
+    const tabs = document.querySelector<HTMLElement>('.tabbar')
+    const tabH = tabs && !tabs.hidden ? tabs.offsetHeight : 0
+    return Math.round(bar + tabH)
+  }
+
   function open(): void {
     close()
     state = { template: loadCurrent(), ...loadLayout(), index: 0 }
+    document.documentElement.style.setProperty('--ce-top', `${topOffset()}px`)
     mask = build()
     document.body.appendChild(mask)
     document.addEventListener('keydown', onKey)

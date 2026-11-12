@@ -14,6 +14,18 @@ export default {
     cancel: '취소',
     ok: '확인',
   },
+  confirm: {
+    unsavedTitle: '"{name}"의 변경 사항을 저장할까요?',
+    unsavedMore: '저장하지 않은 문서가 {n}개 더 있습니다: {names}',
+    unsavedDetail: '"저장 안 함"을 선택하면 이번 변경이 사라집니다.',
+    save: '저장',
+    discard: '저장 안 함',
+  },
+  tab: {
+    new: '새 탭',
+    close: '탭 닫기',
+    unsavedTip: '저장 안 됨: {name}',
+  },
 
   menu: {
     file: '파일',
@@ -44,6 +56,7 @@ export default {
     exportPdf: 'PDF 내보내기(인쇄)',
     exportPdfUnsupported: 'PDF 내보내기(모바일 미지원)',
     beautify: '카드 출력',
+    newWindow: '새 창',
   },
 
   edit: {
@@ -86,6 +99,10 @@ export default {
     imageRefFile: '파일 참조(권장)',
     imageRefEmbed: 'base64로 포함',
     imagePath: '이미지 경로 처리',
+    displayMode: '표시 모드',
+    displayTabs: '탭만',
+    displayWindows: '창만',
+    displayBoth: '탭 + 창',
   },
 
   /** 状态栏三态开关与设置菜单共用的一套文案；*Short 是状态栏里的短标签 */
@@ -140,6 +157,12 @@ export default {
     shortcutsTip: 'Ctrl+B 굵게 · Ctrl+K 링크 · Ctrl+1~6 제목 · Ctrl+/ 소스 · F8 집중 · F9 타자기 · Ctrl+S 저장',
     about: 'Lypora 정보',
     aboutText: 'Lypora {version} · 독자적으로 구현한 실시간 미리보기 Markdown 편집기 · MIT',
+    features: '주요 기능',
+    themes: '테마와 호환성',
+    width: '페이지 너비',
+    images: '이미지 참조',
+    layoutDoc: '레이아웃 출력',
+    settingsDoc: '설정 안내',
   },
 
   sidebar: {
@@ -246,6 +269,8 @@ export default {
     popupBlocked: '브라우저가 팝업을 차단했습니다. 허용한 뒤 다시 시도하세요',
     columnEven: '열 너비를 균등하게 맞췄습니다',
     columnPx: '열 너비 {px} px(구분선을 두 번 클릭하면 균등 분할)',
+    displayMode: '표시 모드: {mode}',
+    windowUnsupported: '이 환경에서는 다중 창을 쓸 수 없습니다',
   },
   size: {
     xhs: '세로 3:4',

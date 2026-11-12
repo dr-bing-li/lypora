@@ -2274,3 +2274,174 @@ body.col-resizing * {
 .ce-style {
   position: relative;
 }
+
+/* ================================================================== *
+ * v0.11.0：标签栏 / 未保存标记 / 只读帮助 / 排版整屏
+ * ================================================================== */
+
+/* ---------- 标签栏 ---------- */
+/* 放在菜单栏与工作区之间（index.html 里 .tabbar 是 .app 的第二个子节点）。 */
+.tabbar {
+  display: flex;
+  align-items: stretch;
+  flex: 0 0 auto;
+  height: 34px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  background: var(--bg-elev);
+  border-bottom: 1px solid var(--border);
+  scrollbar-width: none;
+}
+.tabbar::-webkit-scrollbar {
+  height: 0;
+}
+/* hidden 属性必须配 !important：ID/类选择器的 display 会压过属性的 display:none（项目约定 V11） */
+.tabbar[hidden] {
+  display: none !important;
+}
+.tab-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  max-width: 220px;
+  padding: 0 6px 0 12px;
+  border-right: 1px solid var(--border);
+  font-size: 12.5px;
+  color: var(--fg-muted);
+  cursor: default;
+  user-select: none;
+  position: relative;
+}
+.tab-item:hover {
+  background: var(--bg);
+  color: var(--fg);
+}
+.tab-item.active {
+  background: var(--bg);
+  color: var(--fg);
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+.tab-item .tb-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* `*` 固定宽度占位：不保存时也不让相邻标签的标题左右跳 */
+.tab-item .tb-dirty {
+  flex: 0 0 8px;
+  width: 8px;
+  font-weight: 700;
+  line-height: 1;
+  color: #d97706;
+}
+.tab-item .tb-icon {
+  flex: 0 0 auto;
+  width: 14px;
+  height: 14px;
+  line-height: 14px;
+  text-align: center;
+  border-radius: 50%;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--on-accent, #fff);
+  background: var(--accent);
+  opacity: 0.85;
+}
+.tab-item .tb-close {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--fg-faint);
+  font-size: 14px;
+  line-height: 1;
+  opacity: 0;
+}
+.tab-item:hover .tb-close,
+.tab-item.active .tb-close {
+  opacity: 1;
+}
+.tab-item .tb-close:hover {
+  background: var(--border-soft, rgba(0, 0, 0, 0.08));
+  color: var(--fg);
+}
+.tb-new {
+  flex: 0 0 auto;
+  width: 30px;
+  border: 0;
+  border-right: 1px solid var(--border);
+  background: transparent;
+  color: var(--fg-muted);
+  font-size: 16px;
+  line-height: 1;
+}
+.tb-new:hover {
+  background: var(--bg);
+  color: var(--fg);
+}
+
+/* 未保存标记：从"小红点"换成 `*`（v0.11.0 起与标签、文件树保持同一种记法） */
+.dirty-dot {
+  width: auto;
+  height: auto;
+  border-radius: 0;
+  background: none;
+  color: #d97706;
+  font-weight: 700;
+  font-size: 14px;
+  line-height: 1;
+  flex: 0 0 auto;
+}
+
+/* 只读标签（帮助文档）：正文给一点点纸感底色，提示"这不是在改你的文件" */
+body.tab-readonly .editor-scroll {
+  cursor: default;
+}
+
+/* ---------- 排版：整界面（v0.11.0 由弹窗改为铺满） ----------
+ * top 由 JS 写 --ce-top（菜单栏 + 标签栏的实际高度），所以标签栏出现/消失都对得上；
+ * 不走 100vh：手机上 100vh 含地址栏，底部按钮会被顶出去。
+ */
+.ce-mask {
+  inset: var(--ce-top, 0px) 0 0 0;
+  align-items: stretch;
+  justify-content: stretch;
+  padding: 0;
+  background: var(--bg);
+  backdrop-filter: none;
+}
+.ce {
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+/* 窄屏：预览在上、参数在下，两段按可用高度分，而不是固定的 34vh ——
+ * 全屏之后 34vh 会把参数区压到只剩一条缝。
+ */
+@media (max-width: 760px) {
+  .ce-body {
+    flex-direction: column;
+  }
+  .ce-preview,
+  .ce-wide .ce-preview {
+    flex: 0 0 42%;
+    height: auto;
+    min-height: 0;
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .ce-settings {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+  }
+}

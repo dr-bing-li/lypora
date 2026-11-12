@@ -23,6 +23,14 @@ export interface EditorHooks {
  */
 export const placeholderComp = new Compartment()
 
+/**
+ * 只读开关单独一个 Compartment：帮助文档这类"只让看"的标签要能编辑态与只读态共存于
+ * 同一个 EditorView（切标签只是 view.setState），把只读做成构造期扩展就没法复用了。
+ *   EditorState.readOnly —— 拦住所有事务里的 doc 改动（含粘贴、命令）
+ *   EditorView.editable —— 去掉 caret 与输入法，视觉上也不再像输入框
+ */
+export const readOnlyComp = new Compartment()
+
 /** 切语言后调用：只重配占位符，文档、历史、选区都不动 */
 export function setEditorPlaceholder(view: EditorView): void {
   view.dispatch({ effects: placeholderComp.reconfigure(placeholder(t('editor.placeholder'))) })
@@ -132,11 +140,24 @@ export function buildExtensions(hooks: EditorHooks) {
 
 // Prec 已在顶部从 state 包导入
 
-export function createEditorState(doc: string, hooks: EditorHooks, selection?: number) {
+export function createEditorState(
+  doc: string,
+  hooks: EditorHooks,
+  selection?: number,
+  opts?: { readonly?: boolean },
+) {
   const pos = Math.max(0, Math.min(selection ?? 0, doc.length))
   return EditorState.create({
     doc,
     selection: { anchor: pos },
-    extensions: buildExtensions(hooks),
+    extensions: [
+      // 只读态：帮助文档等"只看不改"的标签。
+      // 同一个 Compartment 只能 of() 一次，所以它只能出现在这里，不能同时放进
+      // buildExtensions —— 否则会抛 "Duplicate use of compartment in extensions"。
+      readOnlyComp.of(
+        opts?.readonly ? [EditorState.readOnly.of(true), EditorView.editable.of(false)] : [],
+      ),
+      ...buildExtensions(hooks),
+    ],
   })
 }

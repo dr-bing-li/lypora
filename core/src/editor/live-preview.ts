@@ -73,7 +73,17 @@ interface Span {
  * 选区谓词（StateField 与 ViewPlugin 共用同一套判定，保证两态一致）
  * ================================================================== */
 
+/**
+ * 只读文档（帮助页）没有"活动行"这回事。
+ * 平时把光标所在行的语法标记显形是为了让人改；只读页里光标是点出来的，
+ * 一进帮助就看到标题上挂着 `#`、表格露出管道符，只会像 bug。
+ */
+function isReadOnlyDoc(state: EditorState): boolean {
+  return state.facet(EditorState.readOnly)
+}
+
 function selectionLineSpans(state: EditorState): Span[] {
+  if (isReadOnlyDoc(state)) return []
   return state.selection.ranges.map((r) => {
     const a = state.doc.lineAt(r.from)
     const b = state.doc.lineAt(r.to)
@@ -93,6 +103,7 @@ function isRangeActive(state: EditorState, from: number, to: number, spans?: Spa
 }
 
 function isTouched(state: EditorState, from: number, to: number): boolean {
+  if (isReadOnlyDoc(state)) return false
   for (const r of state.selection.ranges) {
     if (r.empty) {
       if (r.from >= from && r.from <= to) return true

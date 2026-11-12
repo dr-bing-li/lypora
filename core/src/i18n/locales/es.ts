@@ -14,6 +14,18 @@ export default {
     cancel: 'Cancelar',
     ok: 'Aceptar',
   },
+  confirm: {
+    unsavedTitle: '¿Guardar los cambios en «{name}»?',
+    unsavedMore: 'Hay {n} documentos más sin guardar: {names}',
+    unsavedDetail: 'Elegir «No guardar» descarta estos cambios.',
+    save: 'Guardar',
+    discard: 'No guardar',
+  },
+  tab: {
+    new: 'Nueva pestaña',
+    close: 'Cerrar pestaña',
+    unsavedTip: 'Sin guardar: {name}',
+  },
 
   menu: {
     file: 'Archivo',
@@ -44,6 +56,7 @@ export default {
     exportPdf: 'Exportar PDF (imprimir)',
     exportPdfUnsupported: 'Exportar PDF (no disponible en móvil)',
     beautify: 'Embellecer tarjetas',
+    newWindow: 'Nueva ventana',
   },
 
   edit: {
@@ -86,6 +99,10 @@ export default {
     imageRefFile: 'Referenciar archivos (recomendado)',
     imageRefEmbed: 'Incrustar como base64',
     imagePath: 'Tratamiento de rutas',
+    displayMode: 'Modo de visualización',
+    displayTabs: 'Solo pestañas',
+    displayWindows: 'Solo ventanas',
+    displayBoth: 'Pestañas y ventanas',
   },
 
   /** 状态栏三态开关与设置菜单共用的一套文案；*Short 是状态栏里的短标签 */
@@ -140,6 +157,12 @@ export default {
     shortcutsTip: 'Ctrl+B negrita · Ctrl+K enlace · Ctrl+1~6 títulos · Ctrl+/ código · F8 concentración · F9 máquina de escribir · Ctrl+S guardar',
     about: 'Acerca de Lypora',
     aboutText: 'Lypora {version} · editor Markdown con vista previa en vivo de implementación propia · MIT',
+    features: 'Funciones',
+    themes: 'Temas y compatibilidad',
+    width: 'Ancho de página',
+    images: 'Imágenes',
+    layoutDoc: 'Salida de maquetación',
+    settingsDoc: 'Ajustes',
   },
 
   sidebar: {
@@ -246,6 +269,8 @@ export default {
     popupBlocked: 'El navegador bloqueó la ventana emergente; permítala y reintente',
     columnEven: 'Columnas igualadas',
     columnPx: 'Ancho de columna {px} px (doble clic en un separador para igualar)',
+    displayMode: 'Modo de visualización: {mode}',
+    windowUnsupported: 'Las ventanas múltiples no están disponibles aquí',
   },
   size: {
     xhs: 'Vertical 3:4',

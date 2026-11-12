@@ -14,6 +14,18 @@ export default {
     cancel: 'キャンセル',
     ok: 'OK',
   },
+  confirm: {
+    unsavedTitle: '「{name}」の変更を保存しますか？',
+    unsavedMore: '他に {n} 件の未保存の文書があります：{names}',
+    unsavedDetail: '「保存しない」を選ぶと今回の変更は破棄されます。',
+    save: '保存',
+    discard: '保存しない',
+  },
+  tab: {
+    new: '新しいタブ',
+    close: 'タブを閉じる',
+    unsavedTip: '未保存：{name}',
+  },
 
   menu: {
     file: 'ファイル',
@@ -44,6 +56,7 @@ export default {
     exportPdf: 'PDF を書き出す（印刷）',
     exportPdfUnsupported: 'PDF を書き出す（モバイル非対応）',
     beautify: 'カード出力',
+    newWindow: '新しいウィンドウ',
   },
 
   edit: {
@@ -86,6 +99,10 @@ export default {
     imageRefFile: 'ファイルを参照（推奨）',
     imageRefEmbed: 'base64 で埋め込む',
     imagePath: '画像パスの扱い',
+    displayMode: '表示モード',
+    displayTabs: 'タブのみ',
+    displayWindows: 'ウィンドウのみ',
+    displayBoth: 'タブ＋ウィンドウ',
   },
 
   /** 状态栏三态开关与设置菜单共用的一套文案；*Short 是状态栏里的短标签 */
@@ -140,6 +157,12 @@ export default {
     shortcutsTip: 'Ctrl+B 太字 · Ctrl+K リンク · Ctrl+1〜6 見出し · Ctrl+/ ソース · F8 集中 · F9 タイプライター · Ctrl+S 保存',
     about: 'Lypora について',
     aboutText: 'Lypora {version} · 独自実装のライブプレビュー Markdown エディター · MIT',
+    features: '特長',
+    themes: 'テーマと互換性',
+    width: 'ページ幅',
+    images: '画像の参照',
+    layoutDoc: 'レイアウト出力',
+    settingsDoc: '設定項目',
   },
 
   sidebar: {
@@ -246,6 +269,8 @@ export default {
     popupBlocked: 'ブラウザーがポップアップをブロックしました。許可して再試行してください',
     columnEven: '列幅を均等にしました',
     columnPx: '列幅 {px} px（区切りをダブルクリックで均等化）',
+    displayMode: '表示モード：{mode}',
+    windowUnsupported: 'この環境ではマルチウィンドウを利用できません',
   },
   size: {
     xhs: '縦 3:4',
