@@ -8,20 +8,21 @@
 
 ![Lypora 界面 / Lypora screenshot](docs/images/lypora.png)
 
-> **v0.11.0** — Nothing is lost, nothing is squeezed. A **tab strip** sits under the menu bar; every tab keeps
-> its own undo history, cursor and scroll position (switching tabs is `view.setState()`, not "load the text into
-> the same buffer"). Unsaved work is marked `*` in the four places that show it — window title, tab, file tree,
-> recent files — and closing a tab or a window asks **Save / Don't save / Cancel**, but only when something would
-> actually be lost. **Multiple windows** are real `BrowserWindow`s (drop them on a second monitor); *Settings →
-> Display mode* switches between tabs, windows, or both. The **layout panel** stopped being a modal and now fills
-> the editor area below the menu bar — on a phone it splits into preview on top, parameters below. **Help** is no
-> longer two toast messages: `F1` opens one of **eight read-only documents** (shortcuts, features, themes, page
-> width, images, layout, settings, about), in Chinese and English.
-> Android 10+: [`apk`](https://github.com/dr-bing-li/lypora/releases/download/v0.11.0/Lypora-0.11.0-android.apk) ·
-> Windows x64: [`zip`](https://github.com/dr-bing-li/lypora/releases/download/v0.11.0/Lypora-0.11.0-win-x64.zip) ·
-> macOS: [`arm64`](https://github.com/dr-bing-li/lypora/releases/download/v0.11.0/Lypora-0.11.0-macos-arm64.tar.gz) / [`x64`](https://github.com/dr-bing-li/lypora/releases/download/v0.11.0/Lypora-0.11.0-macos-x64.tar.gz) ·
-> Linux: [`deb`](https://github.com/dr-bing-li/lypora/releases/download/v0.11.0/lypora_0.11.0_amd64.deb) / [`rpm`](https://github.com/dr-bing-li/lypora/releases/download/v0.11.0/lypora-0.11.0-1.x86_64.rpm) /
-> [`AppImage`](https://github.com/dr-bing-li/lypora/releases/download/v0.11.0/Lypora-0.11.0-linux-x64.AppImage) / [`tar.gz`](https://github.com/dr-bing-li/lypora/releases/download/v0.11.0/Lypora-0.11.0-linux-x64.tar.gz) ·
+> **v0.11.1** — Same features, better finish. A pure interface overhaul, driven by an audit that now ships as
+> **66 executable assertions** (`core/ui-check.mjs`, 7 groups, exit code 0/1). Contrast meets **WCAG AA**
+> everywhere — body text held at 7:1, secondary text moved per context (`--fg-side-dim` in the sidebar,
+> `--fg-chrome-dim` in chrome, `--fg-muted` inside panels, so third-party themes still adapt). The chrome type
+> scale is four steps (11 / 12.5 / 14 / 16) instead of the UA default that made every unset `button` render at
+> 13.3333px; hit targets are 24px or 44px by purpose. On a phone the **bottom chrome drops from 153px to
+> 103px** — the format bar collapses twelve buttons into **6 + "More"** and never overflows — the menu sheet
+> gains **nine section jumps**, and the layout preview collapses so parameters get **80%** of the panel.
+> Also in: a `:focus-visible` ring, real `role="dialog"` with a focus trap and focus restore, `Ctrl+N` that
+> actually opens a new tab, and a search panel that finally follows the interface language.
+> Android 10+: [`apk`](https://github.com/dr-bing-li/lypora/releases/download/v0.11.1/Lypora-0.11.1-android.apk) ·
+> Windows x64: [`zip`](https://github.com/dr-bing-li/lypora/releases/download/v0.11.1/Lypora-0.11.1-win-x64.zip) ·
+> macOS: [`arm64`](https://github.com/dr-bing-li/lypora/releases/download/v0.11.1/Lypora-0.11.1-macos-arm64.tar.gz) / [`x64`](https://github.com/dr-bing-li/lypora/releases/download/v0.11.1/Lypora-0.11.1-macos-x64.tar.gz) ·
+> Linux: [`deb`](https://github.com/dr-bing-li/lypora/releases/download/v0.11.1/lypora_0.11.1_amd64.deb) / [`rpm`](https://github.com/dr-bing-li/lypora/releases/download/v0.11.1/lypora-0.11.1-1.x86_64.rpm) /
+> [`AppImage`](https://github.com/dr-bing-li/lypora/releases/download/v0.11.1/Lypora-0.11.1-linux-x64.AppImage) / [`tar.gz`](https://github.com/dr-bing-li/lypora/releases/download/v0.11.1/Lypora-0.11.1-linux-x64.tar.gz) ·
 > [all releases](https://github.com/dr-bing-li/lypora/releases)
 
 ```bash
@@ -32,28 +33,28 @@ cd core && npm install && npm run build
 npm run preview        # http://127.0.0.1:4173
 ```
 
-### What changed in v0.11.0
+### What changed in v0.11.1
 
-Four things, all of them about not losing work and not running out of room:
+Nothing new to learn. Everything below is the same feature set, made to look and feel deliberate.
 
-- **Tabs.** A tab strip sits directly under the menu bar. Each tab keeps its own undo history, cursor and scroll
-  position — switching tabs is `view.setState()`, not "load the text into the same buffer", so nothing degrades
-  in the background. Every unsaved document is marked `*` in all four places that show it: window title, tab,
-  file tree, recent files. The mark is derived from the disk, not from a flag — undo your way back to the saved
-  text and the `*` disappears by itself.
-- **Three-key confirm.** Closing a tab or a window with unsaved content asks **Save / Don't save / Cancel**
-  (`Enter` saves, `Esc` cancels, clicking the backdrop cancels). Multi-tab windows list every dirty document in
-  one prompt instead of firing one per tab. Nothing is discarded unless you say so.
-- **Tabs, windows, or both.** *Settings → Display mode* has three states: tabs only, windows only (each file
-  opens in its own window — drop them on a second monitor), or both. Real windows are only available where a
-  desktop shell exists, so the two window states grey out in a browser tab and in the Android build.
-- **Full-screen layout panel, and help as documents.** The layout panel used to be a modal, which on a phone left
-  almost no room for the parameters. It now takes the whole editor area and keeps the menu bar as its header;
-  below 760px it splits into preview-on-top, parameters-below. Help stopped being two toast messages: **F1** or
-  the Help menu opens one of **eight read-only documents** (shortcuts, features, themes and compatibility, page
-  width, images, layout export, settings, about), shipped in Chinese and English, as ordinary tabs that cannot be
-  edited, do not count as unsaved, and never touch the recent-files list.
+- **The audit became a script.** `node core/ui-check.mjs` runs 66 assertions in 7 groups — contrast (WCAG
+  relative luminance, walking up to the first opaque ancestor rather than assuming a white page), type scale,
+  geometry and hit targets, interaction (focus trap, dialog semantics, `Ctrl+N`, search-panel language), numeric
+  input alignment, the phone shell at 390×844, plus five regression guards for things already right. It prints
+  "measured vs threshold" for every line and exits 0 or 1. Baseline was 64 assertions with 40 failing.
+- **Contrast, per context.** Secondary text was inheriting whichever ancestor was weakest. Fixed by dispatching
+  on context instead of blanket-swapping one token — imported Typora themes define the three dim tokens
+  separately, so collapsing them breaks theme adaptation. Body text stays at 14.65:1.
+- **Phone chrome: 153 → 103px.** The format bar keeps six frequent commands and moves the rest into a *More*
+  popover (`flex: 1 1 0`, measured 52px per cell, no horizontal overflow at any width from 390 to 767). Top bar
+  gets 16px padding and a live word count; body gutter 13 → 16px; the menu sheet gets nine section chips.
+- **Layout panel.** On a phone the preview could be collapsed — parameters go from 49% to 80% of the panel —
+  and numeric parameters are real `<input type="number">` fields instead of read-only spans.
+- **Keyboard and semantics.** Global focus ring, dialog with `aria-modal` and focus restore, and the 17
+  CodeMirror search-panel strings wired through `EditorState.phrases` (they were hard-coded English because
+  they never went through `t()`).
 
+See [`docs/releases/v0.11.1/notes.md`](docs/releases/v0.11.1/notes.md) for the full bilingual changelog.
 ### Deployment
 
 **A. Browser / PWA (any static host)**
@@ -72,7 +73,7 @@ backend required. Serving it over HTTPS gives you installable PWA behaviour and 
 ```bash
 node tools/pack-win.mjs --zip
 # -> release/Lypora/Lypora.exe           double-click to run
-# -> release/Lypora-0.11.0-win-x64.zip    ready to hand out
+# -> release/Lypora-0.11.1-win-x64.zip    ready to hand out
 ```
 
 Requires `desktop/node_modules/electron/dist` (`npm install` inside `desktop/` downloads it). The packer also
@@ -85,8 +86,8 @@ stamps the icon and version metadata into the executable.
 curl -LO https://github.com/electron/electron/releases/download/v33.4.11/electron-v33.4.11-darwin-arm64.zip
 python tools/pack-mac.py --zip electron-v33.4.11-darwin-arm64.zip --arch arm64
 python tools/pack-mac.py --zip electron-v33.4.11-darwin-x64.zip   --arch x64
-# -> release/Lypora-0.11.0-macos-arm64.tar.gz
-# -> release/Lypora-0.11.0-macos-x64.tar.gz
+# -> release/Lypora-0.11.1-macos-arm64.tar.gz
+# -> release/Lypora-0.11.1-macos-x64.tar.gz
 ```
 
 The packer rebuilds Electron's prebuilt zip into a real `Lypora.app` bundle — rewritten `Info.plist`
@@ -100,7 +101,7 @@ The result is **ad-hoc signed, not notarised** — there is no Developer ID cert
 launch will be stopped by Gatekeeper; either **right-click → Open → Open** once, or use the bundled helper:
 
 ```bash
-tar xzf Lypora-0.11.0-macos-arm64.tar.gz && cd Lypora-0.11.0-macos-arm64
+tar xzf Lypora-0.11.1-macos-arm64.tar.gz && cd Lypora-0.11.1-macos-arm64
 sh mac-finalize.command     # strip quarantine, ad-hoc re-sign, verify
 ```
 
@@ -112,11 +113,11 @@ and under Rosetta.
 ```bash
 curl -LO https://github.com/electron/electron/releases/download/v33.4.11/electron-v33.4.11-linux-x64.zip
 python tools/pack-linux.py --zip electron-v33.4.11-linux-x64.zip
-# -> release/Lypora-0.11.0-linux-x64.tar.gz
+# -> release/Lypora-0.11.1-linux-x64.tar.gz
 ```
 
 ```bash
-tar xzf Lypora-0.11.0-linux-x64.tar.gz && cd Lypora
+tar xzf Lypora-0.11.1-linux-x64.tar.gz && cd Lypora
 ./install.sh          # per-user: ~/.local/share/lypora, .desktop entry, hicolor icons
 ./lypora.sh           # ...or just run it in place
 ```
@@ -134,12 +135,12 @@ everything it added. Target **x86-64, glibc ≥ 2.31** (Ubuntu 20.04+, Debian 11
 python tools/linux-stage.py --zip electron-v33.4.11-linux-x64.zip --stage build/stage --deb
 
 # 2) the three wrappers need Linux binaries (dpkg-deb / rpmbuild / appimagetool)
-dpkg-deb --build --root-owner-group build/stage release/lypora_0.11.0_amd64.deb
-rpmbuild -bb --define "_version 0.11.0" --define "_stage_root $PWD/build/stage" \
+dpkg-deb --build --root-owner-group build/stage release/lypora_0.11.1_amd64.deb
+rpmbuild -bb --define "_version 0.11.1" --define "_stage_root $PWD/build/stage" \
          --define "_topdir $PWD/build/rpm" packaging/lypora.spec
 python tools/linux-stage.py --stage build/stage --appdir build/AppDir
 ARCH=x86_64 ./appimagetool --appimage-extract-and-run --no-appstream build/AppDir \
-         release/Lypora-0.11.0-linux-x64.AppImage
+         release/Lypora-0.11.1-linux-x64.AppImage
 ```
 
 You do not normally run that by hand: **pushing a `v*` tag** triggers
@@ -152,7 +153,7 @@ and a troubleshooting list are in
 
 ```bash
 node tools/build-android.mjs
-# -> release/Lypora-0.11.0-android.apk    install with: adb install -r <file>
+# -> release/Lypora-0.11.1-android.apk    install with: adb install -r <file>
 ```
 
 Needs **JDK 21** and an **Android SDK** with platform 35 + build-tools 35 — the script locates `ANDROID_HOME`
@@ -180,6 +181,7 @@ node beautify-check.mjs    # layout panel: 20 templates, param re-pagination, ba
 node tabs-check.mjs        # tabs / multi-window / unsaved marks / help docs / full-screen layout
 node mobile-check.mjs      # touch shell: 5 viewports, tap targets, drawer, menu sheet
 node i18n-check.mjs        # i18n: 7 locales × key parity / placeholders / real DOM rendering
+node ui-check.mjs          # UI consistency/a11y: 66 assertions (contrast, geometry, focus, mobile shell)
 node ../tools/closetest.mjs --exe        # window-close guard, five scenarios (incl. multi-tab)
 node ../tools/interacttest.mjs           # real mouse events against the packaged build
 env -u ELECTRON_RUN_AS_NODE ./release/Lypora/Lypora.exe --selftest --shot=shot.png
@@ -307,20 +309,20 @@ Lypora 是一个即时渲染的 Markdown 编辑器。你在编辑区里写 Markd
 
 ### 下载
 
-最新版本：**[v0.11.0](https://github.com/dr-bing-li/lypora/releases/tag/v0.11.0)** · 全部构建见
+最新版本：**[v0.11.1](https://github.com/dr-bing-li/lypora/releases/tag/v0.11.1)** · 全部构建见
 [Releases 页面](https://github.com/dr-bing-li/lypora/releases)。
 
 | 文件 | 平台 | 格式 | 大小 | SHA256 |
 |---|---|---|---|---|
-| [`lypora_0.11.0_amd64.deb`](https://github.com/dr-bing-li/lypora/releases/download/v0.11.0/lypora_0.11.0_amd64.deb) | Debian 11+ / Ubuntu 20.04+ / 深度 / 麒麟 | 系统包，`sudo apt install ./…deb` | 80.9 MiB | c2ca8339…d59884 |
-| [`lypora-0.11.0-1.x86_64.rpm`](https://github.com/dr-bing-li/lypora/releases/download/v0.11.0/lypora-0.11.0-1.x86_64.rpm) | Fedora 32+ / RHEL 9+ / openSUSE | 系统包，`sudo dnf install ./…rpm` | 104.9 MiB | 8c338e27…2ebcb |
-| [`Lypora-0.11.0-linux-x64.AppImage`](https://github.com/dr-bing-li/lypora/releases/download/v0.11.0/Lypora-0.11.0-linux-x64.AppImage) | 任意 x86-64 发行版 | 单文件，`chmod +x` 后直接跑 | 96.8 MiB | 0f7d68f1…efccf |
-| [`Lypora-0.11.0-linux-x64.tar.gz`](https://github.com/dr-bing-li/lypora/releases/download/v0.11.0/Lypora-0.11.0-linux-x64.tar.gz) | 任意 x86-64 发行版（glibc ≥ 2.31） | tar.gz + `install.sh`（per-user，不要 root） | 104.3 MiB | 830d0afd…5af44 |
-| [`Lypora-0.11.0-win-x64.zip`](https://github.com/dr-bing-li/lypora/releases/download/v0.11.0/Lypora-0.11.0-win-x64.zip) | Windows 10/11 x64 | 便携版 ZIP，解压即用 | 111.8 MiB | 7e5cce67…ea6e7 |
-| [`Lypora-0.11.0-macos-arm64.tar.gz`](https://github.com/dr-bing-li/lypora/releases/download/v0.11.0/Lypora-0.11.0-macos-arm64.tar.gz) | macOS 11+（Apple Silicon） | `.app` bundle，ad-hoc 签名 | 98.5 MiB | 4bf783be…a1ade |
-| [`Lypora-0.11.0-macos-x64.tar.gz`](https://github.com/dr-bing-li/lypora/releases/download/v0.11.0/Lypora-0.11.0-macos-x64.tar.gz) | macOS 11+（Intel） | `.app` bundle，ad-hoc 签名 | 102.9 MiB | 636aacc9…25ba39 |
-| [`Lypora-0.11.0-android.apk`](https://github.com/dr-bing-li/lypora/releases/download/v0.11.0/Lypora-0.11.0-android.apk) | Android 10+（API 29+） | APK，debug 签名，直接侧载 | 13.7 MiB | 911172c0…218d00 |
-| [`SHA256SUMS.txt`](https://github.com/dr-bing-li/lypora/releases/download/v0.11.0/SHA256SUMS.txt) | 任意 | 全部产物的校验清单（8 条） | 见文件 | — |
+| [`lypora_0.11.1_amd64.deb`](https://github.com/dr-bing-li/lypora/releases/download/v0.11.1/lypora_0.11.1_amd64.deb) | Debian 11+ / Ubuntu 20.04+ / 深度 / 麒麟 | 系统包，`sudo apt install ./…deb` | 80.9 MiB | c2ca8339…d59884 |
+| [`lypora-0.11.1-1.x86_64.rpm`](https://github.com/dr-bing-li/lypora/releases/download/v0.11.1/lypora-0.11.1-1.x86_64.rpm) | Fedora 32+ / RHEL 9+ / openSUSE | 系统包，`sudo dnf install ./…rpm` | 104.9 MiB | 8c338e27…2ebcb |
+| [`Lypora-0.11.1-linux-x64.AppImage`](https://github.com/dr-bing-li/lypora/releases/download/v0.11.1/Lypora-0.11.1-linux-x64.AppImage) | 任意 x86-64 发行版 | 单文件，`chmod +x` 后直接跑 | 96.8 MiB | 0f7d68f1…efccf |
+| [`Lypora-0.11.1-linux-x64.tar.gz`](https://github.com/dr-bing-li/lypora/releases/download/v0.11.1/Lypora-0.11.1-linux-x64.tar.gz) | 任意 x86-64 发行版（glibc ≥ 2.31） | tar.gz + `install.sh`（per-user，不要 root） | 104.3 MiB | 830d0afd…5af44 |
+| [`Lypora-0.11.1-win-x64.zip`](https://github.com/dr-bing-li/lypora/releases/download/v0.11.1/Lypora-0.11.1-win-x64.zip) | Windows 10/11 x64 | 便携版 ZIP，解压即用 | 111.8 MiB | 7e5cce67…ea6e7 |
+| [`Lypora-0.11.1-macos-arm64.tar.gz`](https://github.com/dr-bing-li/lypora/releases/download/v0.11.1/Lypora-0.11.1-macos-arm64.tar.gz) | macOS 11+（Apple Silicon） | `.app` bundle，ad-hoc 签名 | 98.5 MiB | 4bf783be…a1ade |
+| [`Lypora-0.11.1-macos-x64.tar.gz`](https://github.com/dr-bing-li/lypora/releases/download/v0.11.1/Lypora-0.11.1-macos-x64.tar.gz) | macOS 11+（Intel） | `.app` bundle，ad-hoc 签名 | 102.9 MiB | 636aacc9…25ba39 |
+| [`Lypora-0.11.1-android.apk`](https://github.com/dr-bing-li/lypora/releases/download/v0.11.1/Lypora-0.11.1-android.apk) | Android 10+（API 29+） | APK，debug 签名，直接侧载 | 13.7 MiB | 911172c0…218d00 |
+| [`SHA256SUMS.txt`](https://github.com/dr-bing-li/lypora/releases/download/v0.11.1/SHA256SUMS.txt) | 任意 | 全部产物的校验清单（8 条） | 见文件 | — |
 
 deb / rpm 会装进 `/opt/lypora`，附带 `/usr/bin/lypora` 命令、应用菜单项和 8 档图标，`apt remove` /
 `dnf remove` 删得干净。AppImage 和 tar.gz 完全不需要 root。
@@ -329,12 +331,12 @@ deb / rpm 会装进 `/opt/lypora`，附带 `/usr/bin/lypora` 命令、应用菜�
 员权限、没有自动更新——升级就是下载新版 ZIP 覆盖上去。**exe 未做代码签名**，所以 SmartScreen 会拦一次：
 「更多信息」→「仍要运行」。
 
-**macOS：** 解压得到 `Lypora-0.11.0-macos-<arch>/`，里面是 `Lypora.app`。**这是 ad-hoc 签名，没有 Apple
+**macOS：** 解压得到 `Lypora-0.11.1-macos-<arch>/`，里面是 `Lypora.app`。**这是 ad-hoc 签名，没有 Apple
 Developer ID，也没有公证**，所以首次打开会被 Gatekeeper 拦下。两个办法任选：右键 `Lypora.app` →「打开」→
 再点「打开」；或者先用包里的脚本处理一遍：
 
 ```bash
-tar xzf Lypora-0.11.0-macos-arm64.tar.gz && cd Lypora-0.11.0-macos-arm64
+tar xzf Lypora-0.11.1-macos-arm64.tar.gz && cd Lypora-0.11.1-macos-arm64
 sh mac-finalize.command        # 去 quarantine + ad-hoc 重签 + 校验
 open Lypora.app
 ```
@@ -346,10 +348,10 @@ Apple Silicon 请下载 arm64 包，Intel 下载 x64（x64 也能在 Apple Silic
 **Linux：** 四条路，按你平时怎么管软件选一条。
 
 ```bash
-sudo apt install ./lypora_0.11.0_amd64.deb          # Debian / Ubuntu / 深度 / 麒麟
-sudo dnf install ./lypora-0.11.0-1.x86_64.rpm       # Fedora / RHEL 9+（openSUSE 用 zypper install ./…rpm）
-chmod +x Lypora-0.11.0-linux-x64.AppImage && ./Lypora-0.11.0-linux-x64.AppImage   # 不安装、不要 root
-tar xzf Lypora-0.11.0-linux-x64.tar.gz && cd Lypora && ./install.sh              # 装进 ~/.local，不要 root
+sudo apt install ./lypora_0.11.1_amd64.deb          # Debian / Ubuntu / 深度 / 麒麟
+sudo dnf install ./lypora-0.11.1-1.x86_64.rpm       # Fedora / RHEL 9+（openSUSE 用 zypper install ./…rpm）
+chmod +x Lypora-0.11.1-linux-x64.AppImage && ./Lypora-0.11.1-linux-x64.AppImage   # 不安装、不要 root
+tar xzf Lypora-0.11.1-linux-x64.tar.gz && cd Lypora && ./install.sh              # 装进 ~/.local，不要 root
 ```
 
 deb / rpm 由包管理器负责装卸：文件进 `/opt/lypora` 和 `/usr/share`，同时得到 `/usr/bin/lypora` 命令、
@@ -360,7 +362,7 @@ deb / rpm 由包管理器负责装卸：文件进 `/opt/lypora` 和 `/usr/share`
 **AppImage 里没有 root**，SUID 沙箱必然不可用，所以它的 `AppRun` 一律带 `--no-sandbox`。这是 Electron 打
 AppImage 的固有代价，不是配置错误。目前只有 x86-64 包，没有 arm64。
 
-**Android：** 把 APK 传到手机点开安装（或 `adb install -r Lypora-0.11.0-android.apk`）。系统会提示「允许安装
+**Android：** 把 APK 传到手机点开安装（或 `adb install -r Lypora-0.11.1-android.apk`）。系统会提示「允许安装
 未知来源应用」，这是侧载的正常提示。触屏版是另一套外壳（底部操作栏、菜单收进底部面板、侧栏变抽屉），
 导出 PDF、打开文件夹、导入第三方主题在手机上是置灰的。文档存在应用专属目录
 `Android/data/app.lypora.editor/files/Documents/Lypora/`，要交出去请用**导出 → 系统分享面板**。
@@ -391,8 +393,8 @@ v0.4.1 起，Lypora 也注册进了系统的**「打开方式」**列表（在�
 运行前先校验：
 
 ```bat
-certutil -hashfile Lypora-0.11.0-win-x64.zip SHA256
-certutil -hashfile Lypora-0.11.0-android.apk SHA256
+certutil -hashfile Lypora-0.11.1-win-x64.zip SHA256
+certutil -hashfile Lypora-0.11.1-android.apk SHA256
 ```
 ```bash
 shasum -a 256 -c SHA256SUMS.txt      # macOS / Linux 通用
@@ -427,7 +429,7 @@ Lypora 是一个**小小的、刻意不做大的替代品**，用来临时顶一
 | 帮助 | `F1` 或「帮助」菜单打开 **8 篇只读文档**（快捷键 / 特色功能 / 主题与兼容性 / 页面宽度 / 图片引用 / 排版输出 / 设置项 / 关于），中英双语；只读标签不进最近文件、不参与未保存、不能编辑 |
 | 桌面 | 原生对话框、单实例（第二次启动把文件开成新窗口）、关窗前未保存拦截、文件关联 |
 | 平台 | Windows 便携版 `.exe` + ZIP、macOS `.app`（Apple Silicon 与 Intel）、Linux x64 的 `.deb` / `.rpm` / AppImage / tar.gz（都带 `.desktop` 集成）、Android APK、以及浏览器 / PWA 版——一个 TypeScript 核心，五套外壳 |
-| 发布 | `git push origin v0.11.0` 就够了：GitHub Actions 构建前端、摊一棵 FHS 树、封成 deb / rpm / AppImage / tar.gz、在干净容器里把 deb 和 rpm 真装一遍，然后把全部产物和合并后的 `SHA256SUMS.txt` 传上 Release |
+| 发布 | `git push origin v0.11.1` 就够了：GitHub Actions 构建前端、摊一棵 FHS 树、封成 deb / rpm / AppImage / tar.gz、在干净容器里把 deb 和 rpm 真装一遍，然后把全部产物和合并后的 `SHA256SUMS.txt` 传上 Release |
 
 ### 快速开始
 
@@ -462,7 +464,7 @@ cd core && npm run build
 ```bash
 node tools/pack-win.mjs --zip
 # -> release/Lypora/Lypora.exe           双击即用
-# -> release/Lypora-0.11.0-win-x64.zip    可直接分发
+# -> release/Lypora-0.11.1-win-x64.zip    可直接分发
 ```
 
 依赖 `desktop/node_modules/electron/dist`（在 `desktop/` 里 `npm install` 会下载）。打包脚本会把图标和
@@ -475,8 +477,8 @@ node tools/pack-win.mjs --zip
 curl -LO https://github.com/electron/electron/releases/download/v33.4.11/electron-v33.4.11-darwin-arm64.zip
 python tools/pack-mac.py --zip electron-v33.4.11-darwin-arm64.zip --arch arm64
 python tools/pack-mac.py --zip electron-v33.4.11-darwin-x64.zip   --arch x64
-# -> release/Lypora-0.11.0-macos-arm64.tar.gz
-# -> release/Lypora-0.11.0-macos-x64.tar.gz
+# -> release/Lypora-0.11.1-macos-arm64.tar.gz
+# -> release/Lypora-0.11.1-macos-x64.tar.gz
 ```
 
 打包脚本把 Electron 的预编译 zip 重建成一个真正的 `Lypora.app`——重写 `Info.plist`（bundle id、
@@ -496,7 +498,7 @@ Windows 版同一份 `Resources/app` 前端——最后输出 tar.gz。
 ```bash
 curl -LO https://github.com/electron/electron/releases/download/v33.4.11/electron-v33.4.11-linux-x64.zip
 python tools/pack-linux.py --zip electron-v33.4.11-linux-x64.zip
-# -> release/Lypora-0.11.0-linux-x64.tar.gz
+# -> release/Lypora-0.11.1-linux-x64.tar.gz
 ```
 
 包内结构是 `Lypora/` 目录 + `lypora.sh`（启动器）+ `install.sh` / `uninstall.sh`（安装、卸载）+
@@ -511,12 +513,12 @@ python tools/pack-linux.py --zip electron-v33.4.11-linux-x64.zip
 python tools/linux-stage.py --zip electron-v33.4.11-linux-x64.zip --stage build/stage --deb
 
 # 2) 三种封装需要 Linux 工具链（dpkg-deb / rpmbuild / appimagetool）
-dpkg-deb --build --root-owner-group build/stage release/lypora_0.11.0_amd64.deb
-rpmbuild -bb --define "_version 0.11.0" --define "_stage_root $PWD/build/stage" \
+dpkg-deb --build --root-owner-group build/stage release/lypora_0.11.1_amd64.deb
+rpmbuild -bb --define "_version 0.11.1" --define "_stage_root $PWD/build/stage" \
          --define "_topdir $PWD/build/rpm" packaging/lypora.spec
 python tools/linux-stage.py --stage build/stage --appdir build/AppDir
 ARCH=x86_64 ./appimagetool --appimage-extract-and-run --no-appstream build/AppDir \
-         release/Lypora-0.11.0-linux-x64.AppImage
+         release/Lypora-0.11.1-linux-x64.AppImage
 ```
 
 正常不需要手敲：**推一个 `v*` 标签**就会触发
@@ -528,7 +530,7 @@ ARCH=x86_64 ./appimagetool --appimage-extract-and-run --no-appstream build/AppDi
 
 ```bash
 node tools/build-android.mjs
-# -> release/Lypora-0.11.0-android.apk    安装：adb install -r <文件>
+# -> release/Lypora-0.11.1-android.apk    安装：adb install -r <文件>
 ```
 
 需要 **JDK 21** 与 **Android SDK**（platform 35 + build-tools 35）。脚本会自己找 `ANDROID_HOME` 和 JDK，缺什么
@@ -555,6 +557,7 @@ node beautify-check.mjs    # 排版面板：20 套模板、参数重排、背景
 node tabs-check.mjs        # 标签页 / 多窗口 / 未保存标识 / 帮助文档 / 整屏排版
 node mobile-check.mjs      # 触屏外壳：5 种视口、点击区、抽屉、菜单面板
 node i18n-check.mjs        # 国际化：7 种语言 × 键齐备 / 占位符 / 真实 DOM 渲染
+node ui-check.mjs          # UI 一致性与无障碍：66 条断言（对比度 / 几何热区 / 焦点与语义 / 手机外壳）
 node ../tools/closetest.mjs --exe        # 关窗拦截五场景（含多标签）
 node ../tools/interacttest.mjs           # 对打包版派发真实鼠标事件
 env -u ELECTRON_RUN_AS_NODE ./release/Lypora/Lypora.exe --selftest --shot=shot.png
