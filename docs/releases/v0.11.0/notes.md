@@ -26,14 +26,14 @@ in Chinese and English, opened with `F1`.
 
 | 文件 / File | 平台 / Platform | 格式 / Format | 大小 / Size | SHA256 |
 |---|---|---|---|---|
-| `Lypora-0.11.0-win-x64.zip` | Windows 10/11 x64 | 便携版 ZIP（解压即用）<br>Portable ZIP — unzip and run | — | — |
-| `Lypora-0.11.0-android.apk` | Android 10+（API 29+） | APK（debug 签名，直接安装）<br>APK, debug-signed, sideload | — | — |
-| `Lypora-0.11.0-macos-arm64.tar.gz` | macOS 11+ / Apple Silicon | `.app` bundle（ad-hoc 签名） | — | — |
-| `Lypora-0.11.0-macos-x64.tar.gz` | macOS 11+ / Intel | `.app` bundle（ad-hoc 签名） | — | — |
-| `Lypora-0.11.0-linux-x64.tar.gz` | 任意 x86-64 发行版（glibc ≥ 2.31） | tar.gz + `install.sh`（per-user） | — | — |
-| `Lypora-0.11.0-linux-x64.AppImage` | 任意 x86-64 发行版 | 单文件，免安装 | — | — |
-| `lypora_0.11.0_amd64.deb` | Debian 11+ / Ubuntu 20.04+ / 深度 / 麒麟 | 系统包（`apt install`） | — | — |
-| `lypora-0.11.0-1.x86_64.rpm` | Fedora 32+ / RHEL 9+ / openSUSE | 系统包（`dnf install`） | — | — |
+| `Lypora-0.11.0-win-x64.zip` | Windows 10/11 x64 | 便携版 ZIP（解压即用）<br>Portable ZIP — unzip and run | 111.8 MiB | `7e5cce678ffa87f0ac4f94ec9ffbacae5aa974c0c2003303e908bebe190ea6e7` |
+| `Lypora-0.11.0-android.apk` | Android 10+（API 29+） | APK（debug 签名，直接安装）<br>APK, debug-signed, sideload | 13.7 MiB | `911172c0b0a69b5979abe4faf0bfb08bd58037b2cf4b481c77f0f9282a218d00` |
+| `Lypora-0.11.0-macos-arm64.tar.gz` | macOS 11+ / Apple Silicon | `.app` bundle（ad-hoc 签名） | 98.5 MiB | `4bf783be981dd8f9a7bce2cc2acd7b06ab2ef86f3c4a463916e7be9dbf5a1ade` |
+| `Lypora-0.11.0-macos-x64.tar.gz` | macOS 11+ / Intel | `.app` bundle（ad-hoc 签名） | 102.9 MiB | `636aacc9791d94b2d270d2cc4053b8f847f6806218655feeeb95d1f6fc25ba39` |
+| `Lypora-0.11.0-linux-x64.tar.gz` | 任意 x86-64 发行版（glibc ≥ 2.31） | tar.gz + `install.sh`（per-user） | 104.3 MiB | `830d0afd3477ea2794a2aa87750e06c18248d4abd1404fd78e12d23dfec5af44` |
+| `Lypora-0.11.0-linux-x64.AppImage` | 任意 x86-64 发行版 | 单文件，免安装 | 96.8 MiB | `0f7d68f1a6fb3290be5951302ef9e3fc89e7ae406e088e634e81741ae64efccf` |
+| `lypora_0.11.0_amd64.deb` | Debian 11+ / Ubuntu 20.04+ / 深度 / 麒麟 | 系统包（`apt install`） | 80.9 MiB | `c2ca8339044e4c0deb352502b72016a0846f6cf350d41d82a00753c693d59884` |
+| `lypora-0.11.0-1.x86_64.rpm` | Fedora 32+ / RHEL 9+ / openSUSE | 系统包（`dnf install`） | 104.9 MiB | `8c338e27c6d076db56c1da51b430d185cbba949d954b0fd89b807f4d2792ebcb` |
 | `SHA256SUMS.txt` | 任意 / any | 全部产物的校验清单 | 发布时生成 / generated at publish | — |
 
 Windows 与 Android 在本机构建；macOS 两件由 `tools/pack-mac.py` 本地打；Linux 四件由 CI 在打 tag 时构建。
@@ -165,9 +165,10 @@ tabs-check         pass = true, errors = []   标签栏 34px@y40 / 四处 `*` / 
 verify             pass = true, errors = []   编辑器主链路、设置迁移、移动端工具栏（无回归）
 beautify-check     pass = true, errors = []   20 套模板出图 / 参数重排 / 模板进出 / 外部请求 0
 mobile-check       pass = true, errors = []   5 种视口；底栏 7 个按钮、9 分区 84 行
-i18n-check         pass = true, errors = []   287 键 × 7 语言；运行时切语言后 reload 仍是该语言
+i18n-check         pass = true, errors = []   308 键 × 7 语言；运行时切语言后 reload 仍是该语言
 export-check       pass = true, errors = []   Markdown / HTML / PDF 导出无回归
-theme-check        pass = true, errors = []   6 套内置主题 + 第三方主题适配层
+theme-check        skipped（本机 .tmp-themes 里没有第三方 .css）
+                                              适配层本次未改；内置 6 套换肤由 verify 覆盖
 closetest          五场景全 PASS              含 dirty-multi：关闭时报出 names: ["功能演示.md","未命名.md"]
 --selftest         ok = true                 版本 0.11.0、windows 1→2（真的开了第二个窗口，传入文件到达）、
                                               bridgeApi 含 newWindow、consoleErrors []
@@ -304,9 +305,10 @@ tabs-check         pass, errors []   34px strip at y=40 / `*` in all four places
 verify             pass, errors []   editor core path, settings migration, mobile toolbar (no regression)
 beautify-check     pass, errors []   20 templates render / re-pagination / template I/O / zero external requests
 mobile-check       pass, errors []   5 viewports; 7 dock buttons, 9 sections / 84 rows
-i18n-check         pass, errors []   287 keys × 7 locales; runtime switch survives reload
+i18n-check         pass, errors []   308 keys × 7 locales; runtime switch survives reload
 export-check       pass, errors []   Markdown / HTML / PDF export unchanged
-theme-check        pass, errors []   6 built-in themes + third-party adapter
+theme-check        skipped (no third-party .css on this machine)
+                                     unchanged this release; the 6 built-ins are covered by verify
 closetest          5/5 PASS          incl. dirty-multi: names ["功能演示.md","未命名.md"] in one prompt
 --selftest         ok               version 0.11.0, windows 1→2 (a second window really opened and received
                                      the file), bridgeApi has newWindow, consoleErrors []
