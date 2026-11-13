@@ -28,14 +28,14 @@ catches it; the bar's height alone looked perfect.
 
 | 文件 / File | 平台 / Platform | 格式 / Format | 大小 / Size | SHA256 |
 |---|---|---|---|---|
-| `Lypora-0.11.2-win-x64.zip` | Windows 10/11 x64 | 便携版 ZIP（解压即用）<br>Portable ZIP — unzip and run | 0.0 MiB | `{{WIN_SHA}}` |
-| `Lypora-0.11.2-android.apk` | Android 10+（API 29+） | APK（debug 签名，直接安装）<br>APK, debug-signed, sideload | 0.0 MiB | `{{APK_SHA}}` |
-| `Lypora-0.11.2-macos-arm64.tar.gz` | macOS 11+ / Apple Silicon | `.app` bundle（ad-hoc 签名） | 0.0 MiB | `{{MACARM_SHA}}` |
-| `Lypora-0.11.2-macos-x64.tar.gz` | macOS 11+ / Intel | `.app` bundle（ad-hoc 签名） | 0.0 MiB | `{{MACX64_SHA}}` |
-| `Lypora-0.11.2-linux-x64.tar.gz` | 任意 x86-64 发行版（glibc ≥ 2.31） | tar.gz + `install.sh`（per-user） | 0.0 MiB | `{{LINTAR_SHA}}` |
-| `Lypora-0.11.2-linux-x64.AppImage` | 任意 x86-64 发行版 | 单文件，免安装 | 0.0 MiB | `{{APPIMAGE_SHA}}` |
-| `lypora_0.11.2_amd64.deb` | Debian 11+ / Ubuntu 20.04+ / 深度 / 麒麟 | 系统包（`apt install`） | 0.0 MiB | `{{DEB_SHA}}` |
-| `lypora-0.11.2-1.x86_64.rpm` | Fedora 32+ / RHEL 9+ / openSUSE | 系统包（`dnf install`） | 0.0 MiB | `{{RPM_SHA}}` |
+| `Lypora-0.11.2-win-x64.zip` | Windows 10/11 x64 | 便携版 ZIP（解压即用）<br>Portable ZIP — unzip and run | 111.8 MiB | `797fa7813a6ee1c6d2e9effefaa99bedf7b71bf32184cb8bbca413107bb547de` |
+| `Lypora-0.11.2-android.apk` | Android 10+（API 29+） | APK（debug 签名，直接安装）<br>APK, debug-signed, sideload | 13.7 MiB | `4d7cdef073c924d05bce819d1df6664cde1d4f89e41a3dca5090b058ffa30a66` |
+| `Lypora-0.11.2-macos-arm64.tar.gz` | macOS 11+ / Apple Silicon | `.app` bundle（ad-hoc 签名） | 98.5 MiB | `9893bc8705aa921cb4c2318e87163ac9716aa936be935fecba2f78ea88b84e48` |
+| `Lypora-0.11.2-macos-x64.tar.gz` | macOS 11+ / Intel | `.app` bundle（ad-hoc 签名） | 102.9 MiB | `35f9e225d134343d770c40545f2d90eb8eba63552c6a531dd36199b7fd3fa938` |
+| `Lypora-0.11.2-linux-x64.tar.gz` | 任意 x86-64 发行版（glibc ≥ 2.31） | tar.gz + `install.sh`（per-user） | 104.3 MiB | `339557645f66d4d51d03b2fd87b9a9150a3af85beaccba6f696f77b7f45bc4fd` |
+| `Lypora-0.11.2-linux-x64.AppImage` | 任意 x86-64 发行版 | 单文件，免安装 | 96.8 MiB | `57f0a4ffc1b16b199c97ffa97877a97ffea65a02e394719bc4ec04a895865c9b` |
+| `lypora_0.11.2_amd64.deb` | Debian 11+ / Ubuntu 20.04+ / 深度 / 麒麟 | 系统包（`apt install`） | 80.9 MiB | `49de39d24d0f4874d2b45c783cb735b2b6254653f5633f9090a0679a2098bee9` |
+| `lypora-0.11.2-1.x86_64.rpm` | Fedora 32+ / RHEL 9+ / openSUSE | 系统包（`dnf install`） | 105.0 MiB | `7c5c088d18a8c5ee7d64c6ac8970a91533c590cdfeb9303b2b8afc1b522a2c49` |
 | `SHA256SUMS.txt` | 任意 / any | 全部产物的校验清单 | 发布时生成 / generated at publish | — |
 
 Windows 与 Android 在本机构建；macOS 两件由 `tools/pack-mac.py` 本地打；Linux 四件由 CI 在打 tag 时构建。
