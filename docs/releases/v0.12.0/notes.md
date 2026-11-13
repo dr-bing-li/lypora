@@ -136,6 +136,14 @@ defaults, so a schema-3 template simply opens with the new decorations at their 
 
 ## 下载 / Downloads
 
-<!-- DOWNLOADS -->
-
-| `SHA256SUMS.txt` | 任意 / any | 全部产物的校验清单 / checksums for all assets | 发布时生成 / generated at publish | — |
+| 文件 / File | 平台 / Platform | 格式 / Format | 大小 / Size | SHA256 |
+|---|---|---|---|---|
+| `Lypora-0.12.0-android.apk` | Android 10+（API 29+） | APK（debug 签名，直接安装）<br>APK, debug-signed, sideload | 14.4 MiB | `1d64a7fb007da8eccfce4c48cac0852f7c65af5e24451eb0d2acf84cfe650cfe` |
+| `Lypora-0.12.0-linux-x64.AppImage` | 任意 x86-64 发行版 | 单文件，免安装<br>Single file, no install | 96.8 MiB | `7b522f3b07cf17e96c99519d05063616e6ec50b7b1fcedbc2eb9fedd6958d99e` |
+| `Lypora-0.12.0-linux-x64.tar.gz` | 任意 x86-64 发行版（glibc ≥ 2.31） | tar.gz + `install.sh`（per-user） | 104.3 MiB | `05800162542f8622cb3adab7b484140c0f9c29347bc5834bff881855fc711bde` |
+| `Lypora-0.12.0-macos-arm64.tar.gz` | macOS 11+ / Apple Silicon | `.app` bundle（ad-hoc 签名） | 98.6 MiB | `db46b197ef2e19b2a60721d13de2d9094c82ab6a00c24aaa68c2d160865d6809` |
+| `Lypora-0.12.0-macos-x64.tar.gz` | macOS 11+ / Intel | `.app` bundle（ad-hoc 签名） | 103.0 MiB | `34f8135e7ce677d29c9c0d29fcdb8bda8965c8e9079f5a0d40694777b11602d9` |
+| `Lypora-0.12.0-win-x64.zip` | Windows 10/11 x64 | 便携版 ZIP（解压即用）<br>Portable ZIP — unzip and run | 111.8 MiB | `5cbf93555620c0a57965231665e8431bd705fb6637152236a23b04c396b60268` |
+| `lypora-0.12.0-1.x86_64.rpm` | Fedora 32+ / RHEL 9+ / openSUSE | 系统包（`dnf install`） | 105.0 MiB | `2461fbd8af9ba786dc02de285aec2e3cffb1fdbffb12840e867621f6a2c8e08c` |
+| `lypora_0.12.0_amd64.deb` | Debian 11+ / Ubuntu 20.04+ / 深度 / 麒麟 | 系统包（`apt install`） | 80.9 MiB | `1a86d09b60a1923d03f3664579a6da4e14c1d9ac19e8a1124e39dccb6c742e58` |
+| `SHA256SUMS.txt` | 任意 / any | 全部产物的校验清单（8 条）/ checksums for all 8 assets | 759 B | — |

@@ -4,7 +4,7 @@
 
 | 路线 | 产物 | 谁适合 |
 |---|---|---|
-| **A. APK（Capacitor）** | `release/Lypora-0.11.2-android.apk`（13.7 MiB） | 想在手机上像正常应用一样打开 `.md`、离线写作 |
+| **A. APK（Capacitor）** | `release/Lypora-0.12.0-android.apk`（14.4 MiB） | 想在手机上像正常应用一样打开 `.md`、离线写作 |
 | **B. PWA** | `core/dist` 静态托管 | 不想装包、手机浏览器直接用 |
 
 工程位置：**Capacitor 工程在 `core/android/`**，配置是 `core/capacitor.config.json`，触屏界面在
@@ -24,7 +24,7 @@ node tools/build-android.mjs
 # [android] 已清空 assets/public（旧 hash 文件不清会残留上一版样式）
 # [android] 资源比对通过（63 个文件，逐字节一致）
 # [android] gradle assembleDebug …
-# [android] 产物 release/Lypora-0.11.2-android.apk  13.7 MiB
+# [android] 产物 release/Lypora-0.12.0-android.apk  14.4 MiB
 # [android] sha256 4d7cdef0…
 ```
 
@@ -51,7 +51,7 @@ node tools/build-android.mjs
 | 项 | 值 |
 |---|---|
 | 包名 | `app.lypora.editor` |
-| 版本 | `versionName 0.11.2` / `versionCode 17` |
+| 版本 | `versionName 0.12.0` / `versionCode 18` |
 | minSdk / targetSdk | **29（Android 10）/ 35** |
 | 权限 | 仅 `INTERNET`（应用专属目录不需要存储权限） |
 | 签名 | Android Debug（`CN=Android Debug`），可直接安装，**不能上架 Google Play** |
@@ -85,7 +85,7 @@ python tools/gen-icons.py     # 需要 Pillow；同时刷新 Web / Windows / mac
 ### 安装到手机
 
 ```bash
-adb install -r release/Lypora-0.11.2-android.apk
+adb install -r release/Lypora-0.12.0-android.apk
 ```
 
 或者把 APK 传到手机（微信/网盘/数据线），点开安装，首次需要允许「安装未知来源应用」。
