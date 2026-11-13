@@ -95,8 +95,9 @@ node ui-check.mjs --quiet      # 只打失败项与汇总
 - [x] **B7｜TAB-2（低）单标签时标签栏整条空着**
   - 改法：不收起（收起会破坏 tabs-check 的"标签栏恒可见"契约），
     在空白区放 `.tb-hint`「拖文件到此处打开」（`aria-hidden`，多标签时自动隐藏）
-  - 断言：无硬断言，靠 `regression/tabbar-height` 兜住标签栏几何
-  - **实测**：标签栏仍恒在、高 34px；单标签时提示条可见，加第二个标签即消失
+  - 断言：无硬断言，靠 `regression/tab-item-height` 兜住标签几何
+  - **实测**：标签栏仍恒在；单标签时提示条可见，加第二个标签即消失
+    （v0.11.2 起标签条并进菜单行，该项改量单个标签高 **39px**）
 
 - [x] **B8｜MOB-4（低）手机正文左右只有 13px**
   - 改法：`@media (max-width:480px)` 的 `.editor-host` 横向 padding 13 → 16px
@@ -247,10 +248,26 @@ node ui-check.mjs --quiet      # 只打失败项与汇总
 
 ---
 
+## 批次 G：菜单与标签并排（v0.11.2 追加需求）
+
+- [x] **G1｜桌面顶栏两行改一行**
+  - 位置：`index.html` 的 `<header class="menubar">`、`src/style.css` 的 `.tabbar` / `.menubar-items`
+  - 基线：菜单栏 40px + 标签栏 34px = 74px，正文区从 y=74 开始
+  - 改法：`#tabbar` 移入 `.menubar`（菜单项与右侧信息之间），`flex: 1 1 0` 吃满剩余宽度、
+    `align-self: stretch` 撑满行高；菜单与右侧信息 `flex: 0 0 auto` 永不收缩；
+    多标签时隐藏顶栏右侧重复的「文件名 + `*`」（`body.tabs-on`）
+  - 断言：`geometry/menu-tabs-one-row`（内嵌 + 单行 ≤48px + 间距 ≥4px + 菜单溢出 ≤0）
+  - **实测**：顶栏 40px 单行，正文区 y=40（省下 34px）；标签内嵌、中线差 0px、菜单溢出 0px；
+    1440 / 1100 / 900 三个宽度均无重叠，900px 时标签条内部横滑（宽 408px）
+  - 手机端：`.tabbar` 恒 `hidden`（`innerWidth > 860` 才显示），顶栏仍 44px、
+    `doc-title` 与字数照旧 —— 实测零变化
+
+---
+
 ## 完成定义
 
-- [x] `node ui-check.mjs` **66 条全过**，退出码 **0**
-  （contrast 17 · type 3 · geometry 19 · interactive 10 · layout 2 · mobile 10 · regression 5）
+- [x] `node ui-check.mjs` **67 条全过**，退出码 **0**
+  （contrast 17 · type 3 · geometry 20 · interactive 10 · layout 2 · mobile 10 · regression 5）
 - [x] 七套既有验收无回归：`verify` / `tabs-check` / `export-check` / `mobile-check` / `beautify-check` / `i18n-check` / `closetest`
   - **实测**：七套全部 `pass: true` / 退出码 0；`i18n-check` 键数 **331**（v0.11.0 是 308，净增 23：
     `search.*` 17 + `tab.dropHint` 1 + `settings.groupUi/groupImage` 2 + `format.more` 1 + `card.hidePrev/showPrev` 2）

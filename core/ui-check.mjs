@@ -556,6 +556,38 @@ async function runGeometry(browser) {
   })
   check('geometry', 'sidebar-tab-indicator', !!sideTab && sideTab.exists && sideTab.h >= 2, sideTab ? `选中页签指示条 ${sideTab.h}px，${sideTab.tabs} 个页签，色 ${sideTab.bg}（需 ≥2px）` : '找不到选中的侧栏页签')
 
+  /* --- 顶栏只有一行：菜单与标签并排（v0.11.2） --- */
+  const row = await page.evaluate(() => {
+    const mb = document.querySelector('.menubar')
+    const tb = document.getElementById('tabbar')
+    if (!mb || !tb || tb.hidden) return null
+    const R = (e) => e.getBoundingClientRect()
+    const m = R(mb)
+    const t = R(tb)
+    const items = R(document.querySelector('.menubar-items'))
+    const fm = document.querySelector('#menubar-items .menu-root')
+    const ft = tb.querySelector('.tab-item')
+    const cy = (e) => (e.top + e.bottom) / 2
+    return {
+      nested: tb.closest('.menubar') === mb,
+      mbH: Math.round(m.height),
+      // 菜单盒子右沿与标签条左沿的水平关系。负数 = 标签条被顶到菜单底下去了
+      gapLeft: Math.round(t.left - items.right),
+      // 菜单文字与标签的中线是否在同一条水平线上
+      centerDiff: fm && ft ? Math.round(Math.abs(cy(R(fm)) - cy(R(ft)))) : 99,
+      // 菜单内容是否已经溢出自己的盒子、压在标签上（900px 那次的真实故障）
+      menuOverflow: Math.floor(document.querySelector('.menubar-items').scrollWidth - items.width),
+    }
+  })
+  check(
+    'geometry',
+    'menu-tabs-one-row',
+    !!row && row.nested && row.mbH <= 48 && row.gapLeft >= 4 && row.centerDiff <= 4 && row.menuOverflow <= 0,
+    row
+      ? `顶栏 ${row.mbH}px 单行、标签内嵌=${row.nested}；菜单右沿到标签 ${row.gapLeft}px（需 ≥4）、中线差 ${row.centerDiff}px（需 ≤4）、菜单溢出 ${row.menuOverflow}px（需 ≤0）`
+      : '标签栏此时不可见，无法量合并后的顶栏',
+  )
+
   /* --- 状态栏：热区 + 只读值与开关的区分 --- */
   const stat = await page.evaluate(() => {
     const btn = document.querySelector('#btn-source')
@@ -864,18 +896,20 @@ async function runRegression(browser) {
     // 取 .cm-content 而不是第一条 .cm-line —— 首行是 H1（2em = 32px / 行高 43.2），量出来会误判
     const content = document.querySelector('.cm-content')
     const cs = content ? getComputedStyle(content) : null
-    const bar = document.getElementById('tabbar')
+    // v0.11.2 起标签条并进菜单行，量标签条自身的高度没意义了（它撑满 40px 的顶栏），
+    // 真正要看的是"单个标签的可点高度"是否还是个舒服的目标。
+    const item = document.querySelector('#tabbar .tab-item')
     const dot = document.querySelector('.tb-dirty')
     return {
       bodyFs: cs ? parseFloat(cs.fontSize) : 0,
       lineLh: cs ? parseFloat(cs.lineHeight) : 0,
-      tabbarH: bar ? Math.round(bar.getBoundingClientRect().height) : 0,
+      tabItemH: item ? Math.round(item.getBoundingClientRect().height) : 0,
       dotW: dot ? Math.round(dot.getBoundingClientRect().width) : 0,
     }
   })
   check('regression', 'body-font', reg.bodyFs >= 16 && reg.bodyFs <= 17, `正文字号 ${reg.bodyFs}px`)
   check('regression', 'body-leading', reg.lineLh >= 26 && reg.lineLh <= 32, `正文行高 ${reg.lineLh}px`)
-  check('regression', 'tabbar-height', reg.tabbarH >= 30 && reg.tabbarH <= 38, `标签栏高 ${reg.tabbarH}px`)
+  check('regression', 'tab-item-height', reg.tabItemH >= 30 && reg.tabItemH <= 46, `单个标签高 ${reg.tabItemH}px（合并到菜单行后按标签自身量，需 ≥30）`)
   check('regression', 'dirty-slot', reg.dotW >= 6 && reg.dotW <= 12, `脏标记占位 ${reg.dotW}px（固定占位，防止标签抖动）`)
 
   // 只读帮助：不能漏出 # 与管道符

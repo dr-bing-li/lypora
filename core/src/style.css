@@ -247,6 +247,9 @@ button {
   align-items: center;
   gap: 1px;
   min-width: 0;
+  /* 不许被标签条挤压：它一旦缩到内容宽度以下，菜单文字会溢出自己的盒子、
+     直接画到标签上面（900px 实测：设置/帮助 压在第一个标签上）。 */
+  flex: 0 0 auto;
 }
 .menu-root {
   font-size: 12.5px;
@@ -268,7 +271,7 @@ button {
   align-items: center;
   gap: 7px;
   min-width: 0;
-  flex: 0 1 auto;
+  flex: 0 0 auto; /* 右侧状态胶囊也不许被标签挤没 */
 }
 
 /* 菜单下拉层（fixed 定位，避免被任何 overflow 裁切） */
@@ -2521,17 +2524,25 @@ body.col-resizing * {
  * v0.11.0：标签栏 / 未保存标记 / 只读帮助 / 排版整屏
  * ================================================================== */
 
-/* ---------- 标签栏 ---------- */
-/* 放在菜单栏与工作区之间（index.html 里 .tabbar 是 .app 的第二个子节点）。 */
+/* ---------- 标签栏（v0.11.2：与菜单栏并排，同一行） ---------- */
+/* 原来是独立一行 34px，桌面多标签时白白吃掉一条纵向空间，且"当前在看哪个文档"
+   与菜单隔了一层。现在它作为 .menubar 的第二个子节点，吃掉菜单项与右侧信息之间
+   的剩余宽度，整条顶栏仍是一行（--menubar-h）。
+   ≤860px 时 .tabbar 恒为 hidden（见 main.ts renderTabs 的窗口宽度判定），
+   所以手机/平板的外壳完全不受这次改动影响。 */
 .tabbar {
   display: flex;
   align-items: stretch;
-  flex: 0 0 auto;
-  height: 34px;
+  flex: 1 1 0; /* basis 0：宽度恒等于"菜单与右侧信息之外剩下的那点"，绝不撑破顶栏；
+                  基准取内容宽度（auto）会在 900px 这类窄窗口下把菜单挤到标签底下 */
+  min-width: 0;
+  align-self: stretch; /* 撑满菜单行高，active 的 2px 指示条正好压在顶栏下边框上 */
+  height: auto;
+  margin-left: 9px;
+  border-left: 1px solid var(--border);
   overflow-x: auto;
   overflow-y: hidden;
-  background: var(--bg-elev);
-  border-bottom: 1px solid var(--border);
+  background: transparent;
   scrollbar-width: none;
 }
 .tabbar::-webkit-scrollbar {
@@ -2540,6 +2551,12 @@ body.col-resizing * {
 /* hidden 属性必须配 !important：ID/类选择器的 display 会压过属性的 display:none（项目约定 V11） */
 .tabbar[hidden] {
   display: none !important;
+}
+/* 多标签时，顶栏右侧的"文件名 + 未保存星号"与当前标签重复，让位给标签条。
+   只在标签栏真的可见时才隐藏——单窗口模式/手机端仍要靠这两个提示。 */
+body.tabs-on .doc-title,
+body.tabs-on .dirty-dot {
+  display: none;
 }
 .tab-item {
   display: flex;
@@ -2556,11 +2573,11 @@ body.col-resizing * {
   position: relative;
 }
 .tab-item:hover {
-  background: var(--bg);
+  background: var(--bg-elev); /* 标签条现在是透明的，hover 底色要改用它才看得见 */
   color: var(--fg);
 }
 .tab-item.active {
-  background: var(--bg);
+  background: var(--bg-elev);
   color: var(--fg);
   box-shadow: inset 0 -2px 0 var(--accent);
 }
@@ -2622,7 +2639,7 @@ body.col-resizing * {
   line-height: 1;
 }
 .tb-new:hover {
-  background: var(--bg);
+  background: var(--bg-elev);
   color: var(--fg);
 }
 

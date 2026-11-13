@@ -303,6 +303,9 @@ function renderTabs(): void {
   if (!tabbar) return
   const show = tabsEnabled() && app.tabs.length > 0 && window.innerWidth > 860
   tabbar.setVisible(show)
+  // 标签栏与菜单栏同处一行（v0.11.2）：显示时顶栏右侧的"文件名 + *"与当前标签重复，
+  // 用这个类把它们让给标签条；隐藏时（手机 / 单窗口模式）两个提示照常显示。
+  document.body.classList.toggle('tabs-on', show)
   if (show) tabbar.render(tabbarItems(), app.activeId)
 }
 

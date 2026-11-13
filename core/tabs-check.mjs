@@ -204,16 +204,16 @@ try {
   await page.locator('.menu-drop .menu-item[data-mi="layout-open"]').click()
   await page.waitForTimeout(1200)
   const geo = await page.evaluate(() => {
-    const menubar = document.querySelector('.menubar').getBoundingClientRect()
     const tb = document.getElementById('tabbar')
-    const tabH = tb && !tb.hidden ? tb.getBoundingClientRect().height : 0
     const ce = document.querySelector('.ce')?.getBoundingClientRect()
     const mask = document.querySelector('.ce-mask')?.getBoundingClientRect()
     return {
       winW: window.innerWidth,
       winH: window.innerHeight,
-      // 面板应从「菜单栏 + 标签栏」的下沿开始（标签栏显示时确实占 34px）
-      chromeBottom: Math.round(menubar.bottom + tabH),
+      // 面板应从顶栏的下沿开始。v0.11.2 起标签栏并进了菜单栏同一行，
+      // 再写「菜单栏底 + 标签栏高」就多算一层，所以直接量内容区上沿。
+      chromeBottom: Math.round(document.querySelector('.workspace').getBoundingClientRect().top),
+      tabbarNested: !!tb && !!tb.closest('.menubar'),
       mask: mask && { top: Math.round(mask.top), left: Math.round(mask.left), w: Math.round(mask.width), h: Math.round(mask.height) },
       ce: ce && { w: Math.round(ce.width), h: Math.round(ce.height), radius: getComputedStyle(document.querySelector('.ce')).borderRadius },
     }

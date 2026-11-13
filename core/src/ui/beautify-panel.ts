@@ -847,10 +847,12 @@ export function createBeautifyPanel(deps: BeautifyDeps): BeautifyHandle {
    * 不用固定 40px：手机菜单栏是 44px，标签栏在不同模式下会显隐，写死必然错位。
    */
   function topOffset(): number {
-    const bar = document.querySelector<HTMLElement>('.menubar')?.getBoundingClientRect().bottom ?? 0
-    const tabs = document.querySelector<HTMLElement>('.tabbar')
-    const tabH = tabs && !tabs.hidden ? tabs.offsetHeight : 0
-    return Math.round(bar + tabH)
+    // 顶栏从 v0.11.2 起只有一行（菜单与标签并排），"菜单栏高度 + 标签栏高度"这种
+    // 逐项累加的写法已经不对了。直接量正文区的上沿：无论顶栏里有几层，
+    // 面板永远从"内容区开始的地方"铺下来，手机上同理。
+    const ws = document.querySelector<HTMLElement>('.workspace')?.getBoundingClientRect().top
+    if (ws !== undefined) return Math.round(ws)
+    return 0
   }
 
   function open(): void {
