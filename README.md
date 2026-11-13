@@ -8,14 +8,18 @@
 
 ![Lypora 界面 / Lypora screenshot](docs/images/lypora.png)
 
-> **v0.14.0** — The heading stops being text and becomes a **shape**. Four more md2card styles land as
-> built-in templates — *Art Deco*, *Amber Capsule*, *Cyan Flow*, *Cream Typewriter* — and they forced six new
-> heading fields (**alternate radius**, **block shadow**, **weight**, **tracking**, **leading mark**, **mark
-> colour**) plus a full-width **top bar**. **33 templates**, **46 parameters**, style packages at **schema 6**.
+> **v0.14.0** — The heading stops being text and becomes a **shape**. Four new templates follow an idea taken
+> from the free themes of [md2card](https://md2card.cn/zh/editor) — *Art Deco*, *Amber Capsule*, *Cyan Flow*,
+> *Cream Typewriter* — and they forced six new heading fields (**alternate radius**, **block shadow**,
+> **weight**, **tracking**, **leading mark**, **mark colour**) plus a full-width **top bar**.
+> **33 templates**, **46 parameters**, style packages at **schema 6**.
 > Every new field defaults to drawing nothing, so the 29 older templates stay pixel-identical — that claim is
 > asserted, not assumed. One acceptance assertion used to pass by luck: a 1px rule is a 680px-wide "colour band"
 > too, so the capsule measured 84.9% against an 85% threshold while actually occupying 32%; bands are now grouped
 > by row contiguity before width is taken.
+> The direction itself is md2card's work, and for card design it remains the better tool — more themes, finer
+> control. **If a well-made card is the goal, use [md2card](https://md2card.cn/zh/editor) directly**; these
+> templates exist so that wanting one quick card doesn't push you out of the editor.
 > Android 10+: [`apk`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.0/Lypora-0.14.0-android.apk) ·
 > Windows x64: [`zip`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.0/Lypora-0.14.0-win-x64.zip) ·
 > macOS: [`arm64`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.0/Lypora-0.14.0-macos-arm64.tar.gz) / [`x64`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.0/Lypora-0.14.0-macos-x64.tar.gz) ·
@@ -291,6 +295,11 @@ third-party source or stylesheet is copied into the repo, no scraping/extraction
 live in a gitignored local `build/`), and every new template depends only on our own schema — see
 [`docs/10`](docs/10-艺术主题分析与实现方案.md) §11.6 and §12.6 for the tables.
 
+**Credit where it is due, and a straight recommendation.** The new templates exist because md2card made the case
+for card typography before we did — and for that job it is still the better tool: more themes, finer control, a
+product built around exactly this one thing. If a well-designed card is what you need, **go and use
+[md2card](https://md2card.cn/zh/editor) directly**. Ours only spare you from leaving the editor for one image.
+
 ### Feedback
 
 Bug reports, feature requests and blunt criticism are all welcome — especially "this is worse than Typora
@@ -334,13 +343,16 @@ Lypora 是一个即时渲染的 Markdown 编辑器。你在编辑区里写 Markd
 最新版本：**[v0.14.0](https://github.com/dr-bing-li/lypora/releases/tag/v0.14.0)** · 全部构建见
 [Releases 页面](https://github.com/dr-bing-li/lypora/releases)。
 
-> **v0.14.0 改了什么：** 标题不再只是字，而是一块**图形**。md2card 剩下四套免费样式进了内置模板库——
-> 黑金菱纹、橙光胶囊、青蓝流线、米纸铅字，模板 **29 → 33 套**。它们逼出六个新标题字段：**对角圆角**、
+> **v0.14.0 改了什么：** 标题不再只是字，而是一块**图形**。四套新模板的**灵感来自
+> [md2card](https://md2card.cn/zh/editor) 的免费样式**——黑金菱纹、橙光胶囊、青蓝流线、米纸铅字，
+> 模板 **29 → 33 套**。它们逼出六个新标题字段：**对角圆角**、
 > **块投影**（无/轻/光晕）、**字重**、**字距**、**前置标记**（竖条/菱形）与**标记色**，外加一条**顶部通栏
 > 色条**。参数 **44 → 46 项**（每级标题 12 → 18 项，面板 107 → 118 个控件），样式包升到 **schema 6**。
 > 所有新字段默认"不画"，29 套老模板逐像素不变——这条有断言守着。验收里还揪出一个**险过**的假通过：
 > 一条 1px 的浅色分隔线也是"有色横带"，胶囊因此被量成卡宽的 84.9%（阈值 85%）而实际只占 32%；
-> 现在先按"连续行拼块"再取最宽行。完整双语说明见
+> 现在先按"连续行拼块"再取最宽行。灵感归灵感、实现归实现：这四套是用我们自己的 schema 重新画的。
+> 不过做卡片这件事，**md2card 比我们专业得多**（主题更多、版式控制更细）—— 真要做好看的卡片，
+> **建议直接去用它**；这里的模板只是让你写东西时顺手能出一张，不替代它。完整双语说明见
 > [`docs/releases/v0.14.0/notes.md`](docs/releases/v0.14.0/notes.md)。
 
 | 文件 | 平台 | 格式 | 大小 | SHA256 |
@@ -665,6 +677,11 @@ Lypora 想做的是，把那种写作方式搬到 Typora 自己跑不了的地�
 一条 CSS 规则、选择器、类名、自定义属性、素材或一行 JavaScript：每套模板都从我们自己的 schema
 （`core/src/export/template/`）编译成我们自己的选择器与 CSS 变量。`docs/` 下的分析笔记记录的是**观察到的
 参数与测量值**，不是源码原文。产品名此处仅作描述性指称，归各自权利人所有。
+
+**功劳归人家，外加一句实话。** 这些模板能成形，是因为 md2card 先把"卡片排版"这件事做出来了；而做这件事
+它依然比我们强 —— 主题更多、控制更细，整个产品就是围着这一件事设计的。**真要一张排得好的卡片，请直接
+去用 [md2card](https://md2card.cn/zh/editor)**。我们这里只解决"为了一张图不必切出编辑器"，不解决"最好的
+卡片设计"。
 
 ### 反馈
 

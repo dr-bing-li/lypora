@@ -327,7 +327,7 @@ const DECOR_CSS = `
 
 /* ---- 有序序号形态（schema 5）----
  * 用 counter(list-item)：它是 CSS 内置的计数器，会跟随 ol 的 start 属性与 li 的 value 属性，
- * 所以渲染器一行都不用改（md2card 是给每个 li 写 data-index，等于多一处隐式契约）。
+ * 所以渲染器一行都不用改（另一类做法是给每个 li 写 data-index，等于多一处隐式契约）。
  * 注意：本文件的注释会被内联进 SVG 的 style 里，**不能出现裸的小于号**
  * （写成「ol 的 start 属性」而不是尖括号形式），否则 XML 解析器会当标签开头。 */
 .ly-card[data-listno="circle"] .ly-body ol,
@@ -896,7 +896,7 @@ function panelVars(t: CardTemplate, p: CardTemplate['decor']['panel']): string {
 
 /**
  * 面板投影：只有三档预设，不收自由字符串。
- * "贴纸感"的本质是**模糊半径为 0 的硬影**（md2card 是 `10px 10px 0`），
+ * "贴纸感"的本质是**模糊半径为 0 的硬影**（这里定成 `10px 10px 0`），
  * 一旦允许用户写 `0 0 40px red`，那种硬边就没了 —— 而且任意 CSS 会绕过 normalize 的夹取。
  */
 function panelShadow(kind: string, ink: string): string {
@@ -949,7 +949,7 @@ function isPlainHead(h: HeadSpec): boolean {
 /**
  * 逐级标题形态。
  *
- * 为什么必须逐级：md2card 的波普三级标题是三种完全不同的东西 ——
+ * 为什么必须逐级：波普艺术那种排法里，三级标题是三种完全不同的东西 ——
  * h1 红色重影 + 斜纹下划线、h2 青底旋转 −2°、h3 珊瑚圆角块。
  * schema 4 的 `decor.title` 是对 h1/h2 同时生效的单一形态，表达不了这种"三级三样"。
  *

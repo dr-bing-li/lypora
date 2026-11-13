@@ -579,7 +579,7 @@ export const BUILTIN_TEMPLATES: CardTemplate[] = [
       '#252a34', // 分隔线
       '#252a34', // 代码底
       '#ffffff',
-      'rgba(255, 46, 99, 0.10)', // 引用底（md2card 那条 rgba 变量没声明，实际没渲染）
+      'rgba(255, 46, 99, 0.10)', // 引用底（参照的那版里这个色值实际没生效，这里补上）
       '#ff2e63',
       '#ffe066',
       'none',

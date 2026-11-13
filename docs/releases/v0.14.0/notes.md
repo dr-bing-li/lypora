@@ -1,5 +1,7 @@
-0.14.0 把 md2card 剩下的四套免费样式**全部搬进内置模板库**：黑金菱纹（Art Deco）、橙光胶囊（Amber
-Capsule）、青蓝流线（Cyan Flow）、米纸铅字（Cream Typewriter）。模板 **29 → 33 套**。
+0.14.0 新增四套内置模板 —— 黑金菱纹（Art Deco）、橙光胶囊（Amber Capsule）、青蓝流线（Cyan Flow）、
+米纸铅字（Cream Typewriter），模板 **29 → 33 套**。**这个方向的灵感来自 [md2card](https://md2card.cn/zh/editor)
+的免费样式**：它先把"卡片标题可以是一块图形"这件事做出来给我们看到，我们再用自己的模板 schema
+把这种思路重新画了一遍。
 一句话概括这一版的价值：**上一版证明了"卡片可以叠成两层"，这一版证明了"标题可以不是字，而是一块图形"。**
 
 **为什么这件事值得单独发一版。** 上一版（0.13.0）的 h2 已经是色块了，但只有波普一种长法：满行宽、
@@ -35,8 +37,10 @@ Capsule）、青蓝流线（Cyan Flow）、米纸铅字（Cream Typewriter）。
 （色块里压着白字，逐行连续色段会被字切碎，69px 高的胶囊会被量成 18 行）。这类"量的是一个真实存在
 但不相干的东西"的断言，比断言缺失更危险。
 
-0.14.0 brings the remaining four free md2card styles into the built-in template library: *Art Deco*,
-*Amber Capsule*, *Cyan Flow* and *Cream Typewriter*. Templates go **29 → 33**. The value in one line:
+Four new built-in templates this release — *Art Deco*, *Amber Capsule*, *Cyan Flow* and *Cream Typewriter* —
+taking templates **29 → 33**. **The direction is borrowed from the free themes of
+[md2card](https://md2card.cn/zh/editor)**, which showed us that a card heading can be a shape rather than a line
+of text; the four templates here are a re-drawing of that idea on our own template schema. The value in one line:
 **the previous release proved a card can be two layers deep; this one proves a heading can stop being text
 and become a shape.**
 
@@ -149,6 +153,20 @@ Template `schema` goes 5 → 6. Every new field defaults to "draw nothing" and `
 fully default level, so schema-5 templates, old `.zip` packages and saved user templates open
 pixel-identical to 0.13.0. No id changed and nothing needs migrating. Locale keys go 454 → 480 across all
 seven languages.
+
+---
+
+## 致谢与推荐 / Credit, and a recommendation
+
+这四个方向的功劳不在我们这儿：是 md2card 先把它们做出来的。它的主题库比这里丰富得多，版式控制也细
+得多，做卡片这件事它比我们专业 —— **如果你要的就是好看的卡片排版本身，请直接去用
+[md2card](https://md2card.cn/zh/editor)**。Lypora 里的模板只有一个用处：你在写东西的地方想顺手出一张
+卡，不必为了配图切出去。它不是、也没打算成为 md2card 的替代品。
+
+The credit belongs elsewhere: md2card did these four directions first. Its theme library is far richer than
+ours and its typographic control far finer — **if what you want is a well-designed card, go and use
+[md2card](https://md2card.cn/zh/editor) directly.** The templates here have exactly one job: letting you make
+a card without leaving the place you were writing in. This is not, and does not aim to be, a replacement.
 
 ---
 
