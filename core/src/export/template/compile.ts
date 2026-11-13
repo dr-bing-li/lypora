@@ -14,7 +14,7 @@
  * 于是"新增一套模板"= 加一条 JSON 常量，0 行 CSS；"用户调参数"= 改变量值重新编译。
  */
 
-import { MONO_STACK, type CardTemplate } from './types'
+import { MONO_STACK, HEAD_LEVELS, type CardTemplate, type HeadSpec } from './types'
 import { BG_PREVIEW, BG_PREVIEW_SIZE } from './params'
 
 /** 纹理 / 强调位 / 折角：全局唯一实现，靠 data 属性命中 */
@@ -232,6 +232,120 @@ const DECOR_CSS = `
   transform: translateX(-50%) rotate(-6deg);
   filter: drop-shadow(0.8px 1.6px 1.2px rgba(0, 0, 0, 0.28));
 }
+
+/* ---- 角饰贴纸（schema 5）----
+ * 用真实元素 + 内联 SVG，不用 ::before/::after —— 那两个名额已经被纹理和强调条占了，
+ * 而且一张卡要能贴多枚（星标 + 徽标），伪元素根本不够用。
+ * 位置与出血都走变量，四个角各一条规则（不靠 inset 简写，因为它无法表达"负值出血"）。 */
+.ly-card .ly-orn {
+  position: absolute;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--o-size, 64px);
+  height: var(--o-size, 64px);
+  transform: rotate(var(--o-rot, 0deg));
+  pointer-events: none;
+}
+.ly-card .ly-orn[data-pos="tl"] { top: calc(var(--o-bleed, 0px) * -1); left: calc(var(--o-bleed, 0px) * -1); }
+.ly-card .ly-orn[data-pos="tr"] { top: calc(var(--o-bleed, 0px) * -1); right: calc(var(--o-bleed, 0px) * -1); }
+.ly-card .ly-orn[data-pos="bl"] { bottom: calc(var(--o-bleed, 0px) * -1); left: calc(var(--o-bleed, 0px) * -1); }
+.ly-card .ly-orn[data-pos="br"] { bottom: calc(var(--o-bleed, 0px) * -1); right: calc(var(--o-bleed, 0px) * -1); }
+.ly-card .ly-orn svg { display: block; width: 100%; height: 100%; overflow: visible; }
+/* 徽标上的字：字号跟着贴纸大小走，写死 px 在 40px 的小徽标上会溢出 */
+.ly-card .ly-orn b {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(var(--o-size, 64px) * 0.25);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.01em;
+  color: var(--o-text, #ffffff);
+  transform: rotate(var(--o-text-rot, 0deg));
+}
+
+/* ---- 支撑面三态（schema 5）----
+ * 只调"包裹感"，不改字号与行高 —— 后者属于 metrics，混在一起会让分页算不准。 */
+.ly-card[data-tbl="boxed"] .ly-body table { border: 1.5px solid var(--c-ink); }
+.ly-card[data-tbl="boxed"] .ly-body th,
+.ly-card[data-tbl="boxed"] .ly-body td { border-color: var(--c-ink); }
+.ly-card[data-tbl="pop"] .ly-body table {
+  border: 2px solid var(--c-ink);
+  box-shadow: 4px 4px 0 var(--c-accent);
+  background: var(--c-panel-bg, transparent);
+}
+.ly-card[data-tbl="pop"] .ly-body th,
+.ly-card[data-tbl="pop"] .ly-body td { border-color: var(--c-ink); }
+.ly-card[data-tbl="pop"] .ly-body th { background: var(--c-accent); color: var(--c-on-accent); }
+
+.ly-card[data-pre="boxed"] .ly-body pre.ly-code { border: 1.5px solid var(--c-rule); }
+.ly-card[data-pre="pop"] .ly-body pre.ly-code {
+  border: 2px solid var(--c-ink);
+  box-shadow: 4px 4px 0 var(--c-accent);
+  border-radius: 0;
+}
+.ly-card[data-pic="framed"] .ly-body img {
+  border: 2px solid var(--c-ink);
+  padding: 4px;
+  background: var(--c-panel-bg, #ffffff);
+  border-radius: 0;
+}
+.ly-card[data-pic="taped"] .ly-body img {
+  border: 6px solid #ffffff;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
+  transform: rotate(-0.6deg);
+}
+
+/* ---- 有序序号形态（schema 5）----
+ * 用 counter(list-item)：它是 CSS 内置的计数器，会跟随 ol 的 start 属性与 li 的 value 属性，
+ * 所以渲染器一行都不用改（md2card 是给每个 li 写 data-index，等于多一处隐式契约）。
+ * 注意：本文件的注释会被内联进 SVG 的 style 里，**不能出现裸的小于号**
+ * （写成「ol 的 start 属性」而不是尖括号形式），否则 XML 解析器会当标签开头。 */
+.ly-card[data-listno="circle"] .ly-body ol,
+.ly-card[data-listno="square"] .ly-body ol { list-style: none; padding-left: 2.15em; }
+.ly-card[data-listno="circle"] .ly-body ol > li,
+.ly-card[data-listno="square"] .ly-body ol > li { position: relative; }
+.ly-card[data-listno="circle"] .ly-body ol > li::before,
+.ly-card[data-listno="square"] .ly-body ol > li::before {
+  content: counter(list-item);
+  position: absolute;
+  left: -2.1em;
+  top: 0.16em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.62em;
+  height: 1.62em;
+  background: var(--c-accent);
+  color: var(--c-on-accent);
+  font-size: 0.74em;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.ly-card[data-listno="circle"] .ly-body ol > li::before { border-radius: 50%; }
+.ly-card[data-listno="square"] .ly-body ol > li::before { border-radius: 2px; }
+
+/* ---- 五角星项目符号（schema 5）----
+ * 不用 SVG：★ 是 U+2605，汉字字体全有，跟着字号缩放不用调；SVG 在这里要多挂 6 个
+ * 元素，列表一长就拖慢分页测量。 */
+.ly-card[data-bullet="star"] .ly-body ul > li:not(.task) {
+  list-style: none;
+  position: relative;
+  padding-left: 1.3em;
+}
+.ly-card[data-bullet="star"] .ly-body ul > li:not(.task)::before {
+  content: "★";
+  position: absolute;
+  left: 0;
+  top: 0;
+  color: var(--c-accent);
+  font-size: 0.86em;
+}
 `
 
 /**
@@ -278,6 +392,11 @@ export const CARD_BASE_CSS = `
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  /* schema 5：外圈带。0 时与旧版完全一致 —— 这是"双面卡片"的全部实现，
+     所谓"黄色边框"其实是这一圈留白，不是 border（见 docs/10 §2.1）。
+     "band-k" 是给缩略图用的整体压缩系数：30px 的带子放在 170px 宽的缩略图上
+     会吃掉三分之一，等比压一下才看得出"是黄边围着一张白卡"。 */
+  padding: calc(var(--c-band, 0px) * var(--c-band-k, 1));
   background: var(--c-paper);
   color: var(--c-ink);
   font-family: var(--c-font);
@@ -297,7 +416,14 @@ export const CARD_BASE_CSS = `
   flex-direction: column;
   flex: 1 1 auto;
   min-height: 0;
-  padding: var(--c-pad-top) var(--c-pad-x) var(--c-pad-bottom);
+  /* 内面板（"白卡"那一层）：四个变量默认全为"不画"，所以 28 套老模板一点不变。
+     分页测量量的是 .ly-body 的 clientHeight，这一圈 padding 与 border 天然计入，
+     不需要在 paginate 里额外补偿。 */
+  background-color: var(--c-panel-bg, transparent);
+  border: var(--c-panel-border, 0px) solid var(--c-ink);
+  border-radius: var(--c-panel-radius, 0px);
+  box-shadow: var(--c-panel-shadow, none);
+  padding: var(--c-panel-pad, var(--c-pad-top) var(--c-pad-x) var(--c-pad-bottom));
 }
 
 .ly-card .ly-head {
@@ -405,7 +531,13 @@ export const CARD_BASE_CSS = `
 .ly-card em { font-style: italic; }
 .ly-card del { color: var(--c-muted); }
 .ly-card mark { background: var(--c-mark); color: inherit; padding: 0 2px; border-radius: 2px; }
-.ly-card hr { border: none; border-top: 1px solid var(--c-rule); margin: 1.4em 0; }
+/* 分隔线：schema 5 起线高与线型都是变量（斜纹/胶带/虚线靠 background 画，不是 border-style） */
+.ly-card hr {
+  border: 0;
+  height: var(--c-hr-h, 1px);
+  margin: 1.4em 0;
+  background: var(--c-hr-bg, var(--c-rule));
+}
 
 .ly-card ul, .ly-card ol { margin: 0.7em 0; padding-left: 1.35em; }
 .ly-card li { margin: 0.3em 0; }
@@ -620,6 +752,11 @@ export function decorAttrMap(t: CardTemplate): Record<string, string> {
     'data-bullet': d.bullet ?? 'dot',
     'data-title': d.title ?? 'none',
     'data-frame': d.frame ?? 'none',
+    /* schema 5 */
+    'data-tbl': d.surface?.table ?? 'flat',
+    'data-pre': d.surface?.code ?? 'flat',
+    'data-pic': d.surface?.image ?? 'plain',
+    'data-listno': d.listNo ?? 'plain',
   }
 }
 
@@ -640,6 +777,8 @@ export function compileTemplate(t: CardTemplate): string {
   // 半透明纯色兜底：折角三角需要一个不透明的"纸色"，在这里退化成白色
   const solid = gradientSolid(k.paper)
   const bg = buildBgVars(t.decor)
+  const panel = t.decor.panel
+  const hr = t.decor.rule
   return `
 .ly-card[data-tpl="${t.id}"] {
   --c-paper: ${k.paper};
@@ -656,7 +795,7 @@ export function compileTemplate(t: CardTemplate): string {
   --c-quote-rule: ${k.quoteRule};
   --c-mark: ${k.mark};
   --c-shadow: ${k.shadow};
-  --c-tex-line: ${t.decor.texture === 'none' ? 'transparent' : texLine(solid, t.dark)};
+  --c-tex-line: ${texLineOf(t)};
   --c-halo: ${t.dark ? haloOf(k.accent) : 'rgba(120, 160, 255, 0.14)'};
   --c-fold: ${foldOf(k.ink)};
   --c-tape: ${t.dark ? 'rgba(255,255,255,0.14)' : 'rgba(255,255,255,0.55)'};
@@ -681,7 +820,122 @@ export function compileTemplate(t: CardTemplate): string {
   --tok-num: ${t.code.num};
   --tok-kw: ${t.code.kw};
   --tok-fn: ${t.code.fn};
-}`
+${panelVars(t, panel)}
+${hrVars(k.rule, k.ink, hr)}
+}` + headCss(t)
+}
+
+/** 内面板的变量块（全为默认值时整块省略，保持旧模板的 CSS 逐字节不变） */
+function panelVars(t: CardTemplate, p: CardTemplate['decor']['panel']): string {
+  if (!p.band && !p.border && !p.shadow && !p.pad) return ''
+  const lines = [
+    `  --c-band: ${Math.min(40, Math.max(0, p.band))}px;`,
+    // 面板底色只有一个来源：tokens.panelBg。再开一个 decor.panel.bg 会变成
+    // "两个都能改、谁赢看谁"的死结（面板上的色板到底该写哪一个？）
+    `  --c-panel-bg: ${t.tokens.panelBg || 'transparent'};`,
+    `  --c-panel-border: ${Math.min(4, Math.max(0, p.border))}px;`,
+    `  --c-panel-radius: ${Math.min(24, Math.max(0, p.radius))}px;`,
+    `  --c-panel-shadow: ${panelShadow(p.shadow, t.tokens.ink)};`,
+  ]
+  // pad 只在显式给了值时才接管 inner 的 padding；否则继续用 metrics 的三段留白。
+  // 乘 --c-pad-k 是为了缩略图：170px 宽的小卡片上 12px 内边距就是 7%，
+  // 直接照搬会让 .ly-body 只剩 40 多 px —— 那是"缩略图溢出"的真正来源。
+  if (p.pad > 0) lines.push(`  --c-panel-pad: calc(${Math.min(40, p.pad)}px * var(--c-pad-k, 1));`)
+  return lines.join('\n')
+}
+
+/**
+ * 面板投影：只有三档预设，不收自由字符串。
+ * "贴纸感"的本质是**模糊半径为 0 的硬影**（md2card 是 `10px 10px 0`），
+ * 一旦允许用户写 `0 0 40px red`，那种硬边就没了 —— 而且任意 CSS 会绕过 normalize 的夹取。
+ */
+function panelShadow(kind: string, ink: string): string {
+  if (kind === 'sticker') return `10px 10px 0 ${ink}`
+  if (kind === 'float') {
+    const rgb = toRgb(ink)
+    const c = rgb ? `${rgb.r}, ${rgb.g}, ${rgb.b}` : '0, 0, 0'
+    return `0 10px 26px rgba(${c}, 0.18)`
+  }
+  return 'none'
+}
+
+/** 分隔线的三条变量：线高、底（可能是渐变）、以及双色 */
+function hrVars(ruleColor: string, ink: string, hr: CardTemplate['decor']['rule']): string {
+  const c1 = hr.color || ruleColor
+  const c2 = hr.color2 || ink
+  const h = Math.min(12, Math.max(1, hr.height))
+  let bg = c1
+  if (hr.style === 'none') bg = 'transparent'
+  else if (hr.style === 'dashed') bg = `repeating-linear-gradient(to right, ${c1} 0 ${h * 3}px, transparent ${h * 3}px ${h * 5}px)`
+  else if (hr.style === 'stripe') bg = `repeating-linear-gradient(${Math.min(180, Math.max(0, hr.angle))}deg, ${c1} 0 ${h}px, ${c2} ${h}px ${h * 2}px)`
+  else if (hr.style === 'tape') bg = `repeating-linear-gradient(to right, ${c1} 0 14px, ${c2} 14px 28px)`
+  return `  --c-hr-h: ${h}px;\n  --c-hr-bg: ${bg};`
+}
+
+/** 这一级标题是不是"什么都不做"—— 是的话一条规则都不生成 */
+function isPlainHead(h: HeadSpec): boolean {
+  return (
+    !h.bg && !h.fg && !h.padX && !h.padY && !h.radius && !h.rotate && !h.shadow &&
+    !h.caps && !h.italic && h.align !== 'center' && !h.inline && h.rule === 'none'
+  )
+}
+
+/**
+ * 逐级标题形态。
+ *
+ * 为什么必须逐级：md2card 的波普三级标题是三种完全不同的东西 ——
+ * h1 红色重影 + 斜纹下划线、h2 青底旋转 −2°、h3 珊瑚圆角块。
+ * schema 4 的 `decor.title` 是对 h1/h2 同时生效的单一形态，表达不了这种"三级三样"。
+ *
+ * 为什么按模板条件生成、而不是在骨架里写一份通用规则：
+ * 通用规则会让 28 套老模板也吃到 `border: 0` 之类的重置，与 `decor.title` 打架。
+ * 只给真正用到的模板生成，旧模板的 CSS 逐字节不变（这也是升级不改变观感的保证）。
+ */
+function headCss(t: CardTemplate): string {
+  const out: string[] = []
+  for (const lv of HEAD_LEVELS) {
+    const h = t.decor.headings?.[lv]
+    if (!h || isPlainHead(h)) continue
+    const d: string[] = []
+    if (h.bg) d.push(`background-color: ${h.bg}`)
+    if (h.fg) d.push(`color: ${h.fg}`)
+    if (h.padX || h.padY) d.push(`padding: ${h.padY}px ${h.padX}px`)
+    if (h.radius) d.push(`border-radius: ${h.radius}px`)
+    if (h.rotate) d.push(`transform: rotate(${h.rotate}deg)`)
+    if (h.shadow) d.push(`text-shadow: ${h.shadow}px ${h.shadow}px 0 var(--c-accent)`)
+    if (h.caps) d.push('text-transform: uppercase')
+    if (h.italic) d.push('font-style: italic')
+    if (h.align === 'center') d.push('text-align: center')
+    if (h.inline) {
+      // display:table 让色块收窄到文字宽度（居中时再配 auto 外边距）
+      d.push('display: table')
+      if (h.align === 'center') d.push('margin-left: auto', 'margin-right: auto')
+    }
+    if (h.rule !== 'none') {
+      // 下划线用 background-image 而不是 border-bottom：border 会改变行盒高度，
+      // 而这里已经可能叠着底色块，加法越少越好
+      d.push('padding-bottom: 0.16em')
+      d.push('background-repeat: repeat-x')
+      d.push('background-position: left bottom')
+      if (h.rule === 'solid') {
+        d.push('background-image: linear-gradient(var(--c-accent), var(--c-accent))')
+        d.push('background-size: 100% 3px')
+      } else {
+        d.push('background-image: repeating-linear-gradient(45deg, var(--c-accent) 0 5px, var(--c-ink) 5px 10px)')
+        d.push('background-size: 100% 6px')
+      }
+    }
+    out.push(`.ly-card[data-tpl="${t.id}"] .ly-body ${lv} { ${d.join('; ')} }`)
+  }
+  return out.length ? '\n' + out.join('\n') : ''
+}
+
+/** 纹理线的颜色：模板指定了 patternInk 就用它，否则按纸色亮度自动算 */
+function texLineOf(t: CardTemplate): string {
+  if (t.decor.texture === 'none') return 'transparent'
+  const ink = t.tokens.patternInk
+  if (ink) return ink
+  return texLine(gradientSolid(t.tokens.paper), t.dark)
 }
 
 /** 渐变/函数色的"代表色"，给需要不透明底的地方用 */

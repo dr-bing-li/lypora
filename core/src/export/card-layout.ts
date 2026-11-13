@@ -473,9 +473,78 @@ export function decoHtml(tpl: CardTemplate): string {
   return (
     (d.binding && d.binding !== 'none' ? `<i class="ly-bind">${bindSvg(d.binding)}</i>` : '') +
     (d.tape ? '<i class="ly-tape"></i>' : '') +
+    ornHtml(tpl) +
     stampHtml(tpl) +
     (d.frame && d.frame !== 'none' ? '<i class="ly-frame"></i>' : '')
   )
+}
+
+/* ------------------------------------------------------------------ *
+ * 角饰贴纸（schema 5）
+ * ------------------------------------------------------------------ */
+
+/**
+ * 正多角星的顶点串。
+ *
+ * 写死一串 d 属性当然也行，但五个图元里有三个是星（五角/四角/爆炸星），
+ * 只有内径与外角数不同 —— 一个函数生成，改比例时三处一起改，不会漏。
+ * 角度从 −90° 起，第一只角朝正上方（"星"这个字形在中文里都是朝上的）。
+ */
+function starPath(points: number, outer: number, inner: number): string {
+  const pts: string[] = []
+  for (let i = 0; i < points * 2; i++) {
+    const r = i % 2 === 0 ? outer : inner
+    const a = (Math.PI / points) * i - Math.PI / 2
+    pts.push(`${(50 + r * Math.cos(a)).toFixed(1)},${(50 + r * Math.sin(a)).toFixed(1)}`)
+  }
+  return `M${pts.join(' L')} Z`
+}
+
+/** 单个贴纸的内联 SVG：颜色走变量，导出时随 foreignObject 一起被浏览器画出来 */
+function ornGlyph(o: { shape: string; fill: string; stroke: string }): string {
+  const fill = o.fill || 'var(--c-accent)'
+  const stroke = o.stroke ? ` stroke="${o.stroke}" stroke-width="4" stroke-linejoin="round"` : ''
+  if (o.shape === 'star4') {
+    return `<svg viewBox="0 0 100 100"><path d="${starPath(4, 48, 16)}" fill="${fill}"${stroke}/></svg>`
+  }
+  if (o.shape === 'burst') {
+    return `<svg viewBox="0 0 100 100"><path d="${starPath(12, 48, 33)}" fill="${fill}"${stroke}/></svg>`
+  }
+  if (o.shape === 'blob') {
+    return (
+      '<svg viewBox="0 0 100 100"><path d="M53 3 C78 5 97 24 96 49 C95 77 73 97 47 96 ' +
+      `C21 95 3 74 4 48 C5 22 27 1 53 3 Z" fill="${fill}"${stroke}/></svg>`
+    )
+  }
+  if (o.shape === 'badge') {
+    return (
+      '<svg viewBox="0 0 100 100">' +
+      `<circle cx="50" cy="50" r="47" fill="${fill}"${stroke}/>` +
+      '<circle cx="50" cy="50" r="38" fill="none" stroke="currentColor" stroke-width="2.5" opacity="0.55"/>' +
+      '</svg>'
+    )
+  }
+  return `<svg viewBox="0 0 100 100"><path d="${starPath(5, 48, 20)}" fill="${fill}"${stroke}/></svg>`
+}
+
+function ornHtml(tpl: CardTemplate): string {
+  const list = tpl.decor.ornaments ?? []
+  if (!list.length) return ''
+  return list
+    .map((o) => {
+      // 文字的色取描边色：波普那枚 POP! 徽标就是"蓝底 + 黑描边 + 黑字"，
+      // 再开一个 textColor 字段只会让面板多一行没人调的控件
+      // --o-size 里直接乘缩放系数（--o-k）：宽/高/字号三处都引它，一处改完全跟着缩
+      const style =
+        `--o-size:calc(${o.size}px * var(--o-k, 1));--o-rot:${o.rotate}deg;` +
+        `--o-bleed:${o.bleed}px;--o-text:${o.stroke || '#ffffff'}`
+      const text = o.text ? `<b>${escapeHtml(o.text)}</b>` : ''
+      return (
+        `<i class="ly-orn" data-shape="${o.shape}" data-pos="${o.pos}" style="${style}" aria-hidden="true">` +
+        `${ornGlyph(o)}${text}</i>`
+      )
+    })
+    .join('')
 }
 
 /**

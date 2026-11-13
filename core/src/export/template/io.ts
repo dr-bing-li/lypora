@@ -14,14 +14,29 @@ import {
   BINDINGS,
   BULLET_STYLES,
   FRAME_STYLES,
+  HEAD_LEVELS,
+  HEAD_RULES,
+  HR_STYLES,
+  LIST_NOS,
+  ORNAMENT_SHAPES,
+  PANEL_SHADOWS,
   QUOTE_STYLES,
   STAMP_POSITIONS,
   STAMP_PRESETS,
+  SURFACE_BOXES,
+  SURFACE_IMAGES,
   TITLE_MARKS,
   type CardTemplate,
+  type HeadSpec,
+  type HeadingsSpec,
+  type OrnamentSpec,
+  type PanelSpec,
+  type RuleSpec,
+  type SurfaceSpec,
   type TemplateDecor,
   type TemplateMetrics,
   type TemplateTokens,
+  type TemplateVariant,
 } from './types'
 import { ACCENTS, CORNERS, COVERS, TEXTURES } from './params'
 import { BUILTIN_TEMPLATES, builtinById } from './builtin'
@@ -117,6 +132,115 @@ function pickEnum<T extends string>(v: unknown, allowed: readonly T[], fallback:
   return typeof v === 'string' && (allowed as readonly string[]).includes(v) ? (v as T) : fallback
 }
 
+/** 可选颜色：非法或缺失时回落 fallback（可能是空串 = "不设置"） */
+function optColor(v: unknown, fallback: string): string {
+  return sanitizeColor(v) ?? fallback
+}
+
+/**
+ * schema 5 的四个嵌套结构。
+ * 全部走"逐字段白名单 + 夹取"，理由见文件头：这些值最终都会进 `<style>`。
+ */
+function normalizePanel(raw: unknown, fb: PanelSpec): PanelSpec {
+  const o = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>
+  return {
+    band: clampNum(o.band, 0, 40, fb.band),
+    border: clampNum(o.border, 0, 4, fb.border),
+    radius: clampNum(o.radius, 0, 24, fb.radius),
+    shadow: pickEnum(o.shadow, PANEL_SHADOWS, fb.shadow),
+    pad: clampNum(o.pad, 0, 40, fb.pad),
+  }
+}
+
+function normalizeHead(raw: unknown, fb: HeadSpec): HeadSpec {
+  const o = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>
+  return {
+    bg: optColor(o.bg, fb.bg),
+    fg: optColor(o.fg, fb.fg),
+    padX: clampNum(o.padX, 0, 40, fb.padX),
+    padY: clampNum(o.padY, 0, 24, fb.padY),
+    radius: clampNum(o.radius, 0, 24, fb.radius),
+    rotate: clampNum(o.rotate, -3, 3, fb.rotate),
+    shadow: clampNum(o.shadow, 0, 6, fb.shadow),
+    caps: typeof o.caps === 'boolean' ? o.caps : fb.caps,
+    italic: typeof o.italic === 'boolean' ? o.italic : fb.italic,
+    align: o.align === 'center' ? 'center' : fb.align,
+    inline: typeof o.inline === 'boolean' ? o.inline : fb.inline,
+    rule: pickEnum(o.rule, HEAD_RULES, fb.rule),
+  }
+}
+
+function normalizeHeads(raw: unknown, fb: HeadingsSpec): HeadingsSpec {
+  const o = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>
+  const out = {} as HeadingsSpec
+  for (const lv of HEAD_LEVELS) out[lv] = normalizeHead(o[lv], fb[lv])
+  return out
+}
+
+function normalizeRule(raw: unknown, fb: RuleSpec): RuleSpec {
+  const o = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>
+  return {
+    style: pickEnum(o.style, HR_STYLES, fb.style),
+    height: clampNum(o.height, 1, 12, fb.height),
+    color: optColor(o.color, fb.color),
+    color2: optColor(o.color2, fb.color2),
+    angle: clampNum(o.angle, 0, 180, fb.angle),
+  }
+}
+
+/** 贴纸：上限 6 枚。多出来的直接丢弃 —— 它们是绝对定位的装饰，堆多了只会互相盖。 */
+function normalizeOrnaments(raw: unknown, fb: OrnamentSpec[]): OrnamentSpec[] {
+  if (!Array.isArray(raw)) return fb.map((o) => ({ ...o }))
+  const out: OrnamentSpec[] = []
+  for (const item of raw.slice(0, 6)) {
+    const o = (item && typeof item === 'object' ? item : {}) as Record<string, unknown>
+    out.push({
+      shape: pickEnum(o.shape, ORNAMENT_SHAPES, 'star5'),
+      pos: pickEnum(o.pos, STAMP_POSITIONS, 'tl'),
+      size: clampNum(o.size, 24, 160, 64),
+      rotate: clampNum(o.rotate, -45, 45, 0),
+      fill: optColor(o.fill, '#ff2e63'),
+      stroke: optColor(o.stroke, ''),
+      text: scrubText(o.text, 6, ''),
+      bleed: clampNum(o.bleed, 0, 40, 0),
+    })
+  }
+  return out
+}
+
+function normalizeSurface(raw: unknown, fb: SurfaceSpec): SurfaceSpec {
+  const o = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>
+  return {
+    table: pickEnum(o.table, SURFACE_BOXES, fb.table),
+    code: pickEnum(o.code, SURFACE_BOXES, fb.code),
+    image: pickEnum(o.image, SURFACE_IMAGES, fb.image),
+  }
+}
+
+/** 配色变体：只收 token 里真实存在的颜色键，最多 8 套 */
+function normalizeVariants(raw: unknown, fb?: TemplateVariant[]): TemplateVariant[] | undefined {
+  if (!Array.isArray(raw)) return fb
+  const out: TemplateVariant[] = []
+  for (const item of raw.slice(0, 8)) {
+    const o = (item && typeof item === 'object' ? item : {}) as Record<string, unknown>
+    const id = typeof o.id === 'string' && /^[a-z0-9][a-z0-9-]{0,23}$/.test(o.id) ? o.id : `v${out.length + 1}`
+    const name = scrubText(o.name, 12, id)
+    const tkRaw = (o.tokens && typeof o.tokens === 'object' ? o.tokens : {}) as Record<string, unknown>
+    const tokens: Partial<TemplateTokens> = {}
+    for (const key of TOKEN_KEYS) {
+      const c = sanitizeColor(tkRaw[key])
+      if (c) tokens[key] = c
+    }
+    if (Object.keys(tokens).length) out.push({ id, name, tokens })
+  }
+  return out.length ? out : fb
+}
+
+const TOKEN_KEYS: readonly (keyof TemplateTokens)[] = [
+  'paper', 'ink', 'muted', 'faint', 'accent', 'onAccent', 'rule',
+  'codeBg', 'codeInk', 'quoteBg', 'quoteRule', 'mark', 'shadow', 'panelBg', 'patternInk',
+]
+
 const RANGES = {
   padX: [16, 84] as const,
   padTop: [16, 120] as const,
@@ -154,6 +278,9 @@ export function normalizeTemplate(raw: unknown, fallback: CardTemplate): CardTem
     quoteRule: color('quoteRule'),
     mark: color('mark'),
     shadow: color('shadow'),
+    // 这两个允许为空（空 = 不铺面板 / 纹理色自动算），所以不能用 `?? fallback` 硬补
+    panelBg: sanitizeColor(tk.panelBg) ?? fallback.tokens.panelBg ?? '',
+    patternInk: sanitizeColor(tk.patternInk) ?? fallback.tokens.patternInk ?? '',
   }
 
   const metrics: TemplateMetrics = {
@@ -191,6 +318,13 @@ export function normalizeTemplate(raw: unknown, fallback: CardTemplate): CardTem
     stampImage: sanitizeStampImage(dc.stampImage) || (fallback.decor.stampImage ?? ''),
     stampSize: clampNum(dc.stampSize, 34, 140, fallback.decor.stampSize ?? 64),
     stampPos: pickEnum(dc.stampPos, STAMP_POSITIONS, fallback.decor.stampPos ?? 'br'),
+    /* schema 5「艺术层」 */
+    panel: normalizePanel(dc.panel, fallback.decor.panel),
+    headings: normalizeHeads(dc.headings, fallback.decor.headings),
+    rule: normalizeRule(dc.rule, fallback.decor.rule),
+    ornaments: normalizeOrnaments(dc.ornaments, fallback.decor.ornaments ?? []),
+    surface: normalizeSurface(dc.surface, fallback.decor.surface),
+    listNo: pickEnum(dc.listNo, LIST_NOS, fallback.decor.listNo ?? 'plain'),
   }
 
   const code = {
@@ -232,6 +366,10 @@ export function normalizeTemplate(raw: unknown, fallback: CardTemplate): CardTem
     decor,
     code,
     font,
+    ...(() => {
+      const v = normalizeVariants(o.variants, fallback.variants)
+      return v ? { variants: v } : {}
+    })(),
   }
 }
 

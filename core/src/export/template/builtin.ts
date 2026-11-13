@@ -18,8 +18,16 @@ import {
   MONO_STACK,
   TEMPLATE_SCHEMA,
   type CardTemplate,
+  HEAD_LEVELS,
+  type HeadLevel,
+  type HeadSpec,
+  type HeadingsSpec,
+  type PanelSpec,
+  type RuleSpec,
+  type SurfaceSpec,
   type TemplateDecor,
   type TemplateMetrics,
+  type TemplateVariant,
 } from './types'
 
 const FONT = Object.fromEntries(FONT_PRESETS.map((f) => [f.id, f])) as Record<string, (typeof FONT_PRESETS)[number]>
@@ -40,6 +48,35 @@ const DEFAULT_METRICS: TemplateMetrics = {
   footText: '',
 }
 
+/**
+ * schema 5 的四组默认值 = 「什么都不做」。
+ * 这样 28 套老模板一个字都不用改，编译出来的 CSS 与 schema 4 完全一致
+ * （compile.ts 只在字段非默认时才追加规则，见 headCss）。
+ */
+const PLAIN_HEAD: HeadSpec = {
+  bg: '',
+  fg: '',
+  padX: 0,
+  padY: 0,
+  radius: 0,
+  rotate: 0,
+  shadow: 0,
+  caps: false,
+  italic: false,
+  align: 'start',
+  inline: false,
+  rule: 'none',
+}
+export const DEFAULT_PANEL: PanelSpec = { band: 0, border: 0, radius: 0, shadow: 'none', pad: 0 }
+export const DEFAULT_HEADS: HeadingsSpec = {
+  h1: { ...PLAIN_HEAD },
+  h2: { ...PLAIN_HEAD },
+  h3: { ...PLAIN_HEAD },
+  h4: { ...PLAIN_HEAD },
+}
+export const DEFAULT_RULE: RuleSpec = { style: 'solid', height: 1, color: '', color2: '', angle: 45 }
+export const DEFAULT_SURFACE: SurfaceSpec = { table: 'flat', code: 'flat', image: 'plain' }
+
 const DEFAULT_DECOR: TemplateDecor = {
   texture: 'none',
   accent: 'none',
@@ -59,6 +96,32 @@ const DEFAULT_DECOR: TemplateDecor = {
   stampImage: '',
   stampSize: 64,
   stampPos: 'br',
+  panel: DEFAULT_PANEL,
+  headings: DEFAULT_HEADS,
+  rule: DEFAULT_RULE,
+  ornaments: [],
+  surface: DEFAULT_SURFACE,
+  listNo: 'plain',
+}
+
+/** 逐级合并：只给出 h1/h2 的模板，h3/h4 自动拿 PLAIN_HEAD */
+function mergeHeads(h?: Partial<Record<HeadLevel, Partial<HeadSpec>>>): HeadingsSpec {
+  const out = {} as HeadingsSpec
+  for (const lv of HEAD_LEVELS) {
+    out[lv] = { ...PLAIN_HEAD, ...(h?.[lv] ?? {}) }
+  }
+  return out
+}
+
+/**
+ * 模板里能写的 decor 补丁：嵌套结构允许**逐级**给（只写 h1/h2，h3/h4 自动回落），
+ * 否则每套模板都得把 4×12 个标题字段抄一遍。
+ */
+type DecorPatch = Omit<Partial<TemplateDecor>, 'panel' | 'headings' | 'rule' | 'surface'> & {
+  panel?: Partial<PanelSpec>
+  headings?: Partial<Record<HeadLevel, Partial<HeadSpec>>>
+  rule?: Partial<RuleSpec>
+  surface?: Partial<SurfaceSpec>
 }
 
 interface Spec {
@@ -72,9 +135,15 @@ interface Spec {
   /** 代码高亮：注释 / 字符串 / 数字 / 关键字 / 函数 */
   code: [string, string, string, string, string]
   m?: Partial<TemplateMetrics>
-  d?: Partial<TemplateDecor>
+  d?: DecorPatch
   font?: 'sans' | 'serif' | 'kai' | 'mono'
   mono?: string
+  /** schema 5：内面板底色（不写 = 不铺底） */
+  pb?: string
+  /** schema 5：点阵/纹理色（不写 = 按纸色自动算） */
+  pi?: string
+  /** schema 5：配色变体 */
+  variants?: TemplateVariant[]
 }
 
 function tpl(s: Spec): CardTemplate {
@@ -88,11 +157,38 @@ function tpl(s: Spec): CardTemplate {
     enName: s.enName,
     names: { 'zh-CN': s.name, ...s.names, en: s.enName },
     dark: s.dark,
-    tokens: { paper, ink, muted, faint, accent, onAccent, rule, codeBg, codeInk, quoteBg, quoteRule, mark, shadow },
+    tokens: {
+      paper,
+      ink,
+      muted,
+      faint,
+      accent,
+      onAccent,
+      rule,
+      codeBg,
+      codeInk,
+      quoteBg,
+      quoteRule,
+      mark,
+      shadow,
+      panelBg: s.pb ?? '',
+      patternInk: s.pi ?? '',
+    },
     metrics: { ...DEFAULT_METRICS, ...s.m },
-    decor: { ...DEFAULT_DECOR, ...s.d },
+    // 嵌套对象必须逐层展开：`{...DEFAULT_DECOR, ...s.d}` 会让所有模板共享同一个
+    // panel/headings 引用，将来任何一处原地修改都会"一改全改"（V9 的同类教训）
+    decor: {
+      ...DEFAULT_DECOR,
+      ...s.d,
+      panel: { ...DEFAULT_PANEL, ...(s.d?.panel ?? {}) },
+      headings: mergeHeads(s.d?.headings),
+      rule: { ...DEFAULT_RULE, ...(s.d?.rule ?? {}) },
+      surface: { ...DEFAULT_SURFACE, ...(s.d?.surface ?? {}) },
+      ornaments: (s.d?.ornaments ?? []).map((o) => ({ ...o })),
+    },
     code: { com, str, num, kw, fn },
     font: { body: f.body, head: f.head, mono: s.mono ?? MONO_STACK },
+    ...(s.variants ? { variants: s.variants } : {}),
   }
 }
 
@@ -452,6 +548,87 @@ export const BUILTIN_TEMPLATES: CardTemplate[] = [
     m: { titleSize: 38, radius: 10, padX: 48, lineHeight: 1.8 },
     d: { texture: 'halo', frame: 'thin', quote: 'card', bullet: 'ring', title: 'underline' },
     font: 'serif',
+  }),
+
+  /* 29. 波普撞印 —— 黄纸点阵 + 白卡硬影 + 三级标题三种形态（schema 5 的样板） */
+  tpl({
+    id: 'popart',
+    name: '波普撞印',
+    enName: 'Pop Print',
+    names: { ja: 'ポップ印刷', ko: '팝 프린트', fr: 'Pop Imprimé', de: 'Pop-Druck', es: 'Pop Impreso' },
+    c: [
+      '#fde041', // 纸（黄）
+      '#252a34', // 墨
+      '#454b57',
+      '#7a7f8a',
+      '#ff2e63', // 强调（洋红）
+      '#ffffff',
+      '#252a34', // 分隔线
+      '#252a34', // 代码底
+      '#ffffff',
+      'rgba(255, 46, 99, 0.10)', // 引用底（md2card 那条 rgba 变量没声明，实际没渲染）
+      '#ff2e63',
+      '#ffe066',
+      'none',
+    ],
+    code: ['#7a7f8a', '#8ee06a', '#ffd166', '#7fd4ff', '#ff8fb1'],
+    m: {
+      padX: 12,
+      padTop: 12,
+      padBottom: 12,
+      fontSize: 16,
+      lineHeight: 1.8,
+      radius: 0,
+      titleSize: 32,
+      headRule: true,
+      headSide: '',
+      footText: '{doc}',
+    },
+    d: {
+      // 黄底铺点阵：点色必须手指定（#d3b000），自动推算是"深一点的灰"，出不来波普那种颗粒感
+      texture: 'dots',
+      panel: { band: 30, border: 2, radius: 0, shadow: 'sticker', pad: 12 },
+      headings: {
+        // h1：不铺底，红色位移重影 + 45° 斜纹下划线
+        h1: { shadow: 3, caps: true, rule: 'stripe' },
+        // h2：青底、轻微逆时针旋转
+        h2: { bg: '#51bafa', fg: '#252a34', padX: 10, padY: 4, rotate: -2 },
+        // h3：珊瑚块、4px 圆角、收窄到文字宽
+        h3: { bg: '#ff625a', fg: '#252a34', padX: 10, padY: 3, radius: 4, inline: true },
+      },
+      rule: { style: 'stripe', height: 6, color: '#ff2e63', color2: '#252a34', angle: 45 },
+      ornaments: [
+        { shape: 'star5', pos: 'tl', size: 64, rotate: -12, fill: '#ff2e63', stroke: '#252a34', text: '', bleed: 4 },
+        { shape: 'badge', pos: 'tr', size: 76, rotate: 8, fill: '#51bafa', stroke: '#252a34', text: 'POP!', bleed: 6 },
+      ],
+      quote: 'bar',
+      bullet: 'star',
+      listNo: 'circle',
+      surface: { table: 'pop', code: 'pop', image: 'framed' },
+      frame: 'none',
+      corner: 'none',
+      binding: 'none',
+      stamp: false,
+    },
+    pb: '#ffffff',
+    pi: '#d3b000',
+    variants: [
+      {
+        id: 'pink-blue',
+        name: '粉蓝',
+        tokens: { paper: '#a6dcef', patternInk: '#7fb8cc', accent: '#ff4e79' },
+      },
+      {
+        id: 'mint',
+        name: '薄荷',
+        tokens: { paper: '#e0f7fa', patternInk: '#a8dde3', accent: '#2bb673' },
+      },
+      {
+        id: 'night',
+        name: '紫夜',
+        tokens: { paper: '#3a1f75', patternInk: '#6b4bb5', accent: '#ff4e79', ink: '#f4f0ff', muted: '#c9bde8' },
+      },
+    ],
   }),
 ]
 

@@ -14,10 +14,13 @@
  *   schema 3 — 新增背景底纹 / 自定义背景图 / 背景不透明度（v0.10.0）
  *   schema 4 — 引用框 / 项目符号 / 标题装饰 / 外边框 / 印章预设与上传 /
  *              页眉页脚文本（v0.12.0，「样式包」那版）
+ *   schema 5 — 「艺术层」：双面卡片（外圈带 + 内面板）、逐级标题形态、分隔线、
+ *              角饰贴纸数组、支撑面（表格/代码/图片）三态、有序序号形态、
+ *              配色变体（v0.13.0，拆 md2card 波普那一版）
  * 归一化不留旧版本分支：缺字段一律回落默认值，所以旧模板与旧 .lyt.json 照旧能读。
  */
 
-export const TEMPLATE_SCHEMA = 4
+export const TEMPLATE_SCHEMA = 5
 
 /** 纸张与墨色：决定"这是什么质地"的六个基础色 */
 export interface TemplateTokens {
@@ -47,6 +50,17 @@ export interface TemplateTokens {
   mark: string
   /** 卡片投影，'none' 表示无 */
   shadow: string
+  /* ---- schema 5 ---- */
+  /**
+   * 内面板底色（"白卡"那一层）。空串 = 不铺底，等价于旧行为。
+   * 与外圈带配合才有意义：纸色铺满整卡，面板压在上面，中间挖出一块干净的书写区。
+   */
+  panelBg: string
+  /**
+   * 纹理/点阵的颜色。空串 = 自动（按纸色亮度算，见 compile.ts 的 texLine）。
+   * 波普的黄底点阵要的是「深一号的黄」，靠自动推算永远得不到，必须能指定。
+   */
+  patternInk: string
 }
 
 /** 版面度量：决定"读起来什么感觉" */
@@ -116,9 +130,9 @@ export const BG_PRESETS: readonly BgPreset[] = ['none', 'kraft', 'lined', 'grid'
 export type QuoteStyle = 'bar' | 'card' | 'quad' | 'bubble' | 'none'
 export const QUOTE_STYLES: readonly QuoteStyle[] = ['bar', 'card', 'quad', 'bubble', 'none']
 
-/** 项目符号：实心点 / 破折 / 方块 / 空心圈 / 汉字序号 / 无 */
-export type BulletStyle = 'dot' | 'dash' | 'square' | 'ring' | 'cjk' | 'none'
-export const BULLET_STYLES: readonly BulletStyle[] = ['dot', 'dash', 'square', 'ring', 'cjk', 'none']
+/** 项目符号：实心点 / 破折 / 方块 / 空心圈 / 汉字序号 / 五角星 / 无 */
+export type BulletStyle = 'dot' | 'dash' | 'square' | 'ring' | 'cjk' | 'star' | 'none'
+export const BULLET_STYLES: readonly BulletStyle[] = ['dot', 'dash', 'square', 'ring', 'cjk', 'star', 'none']
 
 /** 标题装饰：无 / 下划线 / 左侧竖条 / 底色块 / 直角括号 */
 export type TitleMark = 'none' | 'underline' | 'bar' | 'block' | 'bracket'
@@ -171,7 +185,159 @@ export interface TemplateDecor {
   stampSize: number
   /** 印章落点 */
   stampPos: StampPos
+  /* ---- schema 5 ---- */
+  /** 双面卡片：外圈带 + 内面板 */
+  panel: PanelSpec
+  /** 逐级标题形态（h1..h4 各一套） */
+  headings: HeadingsSpec
+  /** 分隔线（hr）形态 */
+  rule: RuleSpec
+  /** 角饰贴纸，最多 6 枚 */
+  ornaments: OrnamentSpec[]
+  /** 支撑面：表格 / 代码 / 图片 */
+  surface: SurfaceSpec
+  /** 有序列表序号形态 */
+  listNo: ListNo
 }
+
+/* ================================================================== *
+ * schema 5「艺术层」
+ *
+ * 拆 md2card 波普得到的三条判断，决定了这一层的形状：
+ * 1. 所谓"黄色边框"其实是 `padding: 30px` + 点阵底，中间的白卡是第二个面 ——
+ *    所以需要的是**面板**，不是更粗的 border。
+ * 2. 白卡的"厚度"来自 `box-shadow: 10px 10px 0`（模糊半径 0）—— 所以阴影必须是
+ *    **预设**而不是自由字符串：一旦允许 `box-shadow: 0 0 40px red` 进来，
+ *    "贴纸感"就没了，而且任意 CSS 会绕过 normalize 的夹取。
+ * 3. 三级标题三种形态（重影 / 青块旋转 / 珊瑚圆角块）—— 所以标题必须**逐级**，
+ *    一个全局 `decor.title` 表达不了。
+ *
+ * 这一层所有字段都是数字 / 枚举 / 颜色，没有一处自由字符串进 CSS。
+ * ================================================================== */
+
+/** 面板投影预设：无 / 贴纸（零模糊硬影）/ 浮起（柔影） */
+export type PanelShadow = 'none' | 'sticker' | 'float'
+export const PANEL_SHADOWS: readonly PanelShadow[] = ['none', 'sticker', 'float']
+
+/** 双面卡片：外圈带宽度 + 内面板的底/边/圆角/投影/内边距 */
+export interface PanelSpec {
+  /** 外圈宽度 px；0 = 单面（等价于 schema 4 的行为） */
+  band: number
+  /** 内面板描边 px，0 = 无（颜色固定取墨色：面板边是"墨线"，换色用 tokens.ink） */
+  border: number
+  /** 内面板圆角 px */
+  radius: number
+  /** 投影预设 */
+  shadow: PanelShadow
+  /** 面板内边距 px；0 = 沿用 metrics 的 padX/padTop/padBottom */
+  pad: number
+}
+
+/** 标题下划线：无 / 实线 / 斜纹（双色重复渐变） */
+export type HeadRuleStyle = 'none' | 'solid' | 'stripe'
+export const HEAD_RULES: readonly HeadRuleStyle[] = ['none', 'solid', 'stripe']
+
+/** 单级标题形态（h1..h4 各一份） */
+export interface HeadSpec {
+  /** 底色，空串 = 不铺底 */
+  bg: string
+  /** 文字色，空串 = 继承正文墨色 */
+  fg: string
+  /** 左右内边距 px */
+  padX: number
+  /** 上下内边距 px */
+  padY: number
+  /** 圆角 px */
+  radius: number
+  /** 旋转角度 −3..3；0 = 不转 */
+  rotate: number
+  /** 位移重影 px（文字阴影，色取 accent）；0 = 无 */
+  shadow: number
+  /** 全大写 */
+  caps: boolean
+  /** 斜体 */
+  italic: boolean
+  /** 对齐：左 / 居中 */
+  align: 'start' | 'center'
+  /** 收窄到内容宽（色块只包住字，不铺满整行） */
+  inline: boolean
+  /** 下划线样式 */
+  rule: HeadRuleStyle
+}
+
+export const HEAD_LEVELS = ['h1', 'h2', 'h3', 'h4'] as const
+export type HeadLevel = (typeof HEAD_LEVELS)[number]
+export type HeadingsSpec = Record<HeadLevel, HeadSpec>
+
+/** 分隔线形态：无 / 实线 / 虚线 / 斜纹 / 胶带（横条双色） */
+export type HrStyle = 'none' | 'solid' | 'dashed' | 'stripe' | 'tape'
+export const HR_STYLES: readonly HrStyle[] = ['none', 'solid', 'dashed', 'stripe', 'tape']
+
+export interface RuleSpec {
+  style: HrStyle
+  /** 线高 px */
+  height: number
+  /** 主色，空串 = 跟随 tokens.rule */
+  color: string
+  /** 第二色（斜纹与胶带用），空串 = 跟随 tokens.ink */
+  color2: string
+  /** 斜纹角度 */
+  angle: number
+}
+
+/** 贴纸图元：五角星 / 四角星 / 爆炸星 / 圆徽标（带字）/ 墨点 */
+export type OrnamentShape = 'star5' | 'star4' | 'burst' | 'badge' | 'blob'
+export const ORNAMENT_SHAPES: readonly OrnamentShape[] = ['star5', 'star4', 'burst', 'badge', 'blob']
+
+export interface OrnamentSpec {
+  shape: OrnamentShape
+  /** 落点（四角，与印章共用枚举） */
+  pos: StampPos
+  /** 边长 px */
+  size: number
+  /** 旋转角度 −45..45 */
+  rotate: number
+  /** 填充色 */
+  fill: string
+  /** 描边色（空串 = 不描边） */
+  stroke: string
+  /** badge/blob 上的字，≤6 字符 */
+  text: string
+  /** 出血：向卡片外顶出的 px，0 = 完全贴边 */
+  bleed: number
+}
+
+/** 支撑面三态：扁平 / 描边 / 波普（粗描边 + 硬投影） */
+export type SurfaceBox = 'flat' | 'boxed' | 'pop'
+export const SURFACE_BOXES: readonly SurfaceBox[] = ['flat', 'boxed', 'pop']
+/** 图片态：朴素 / 画框 / 胶带贴 */
+export type SurfaceImage = 'plain' | 'framed' | 'taped'
+export const SURFACE_IMAGES: readonly SurfaceImage[] = ['plain', 'framed', 'taped']
+
+export interface SurfaceSpec {
+  table: SurfaceBox
+  code: SurfaceBox
+  image: SurfaceImage
+}
+
+/** 有序序号：默认（1. 2.）/ 圆形徽标 / 方形徽标 */
+export type ListNo = 'plain' | 'circle' | 'square'
+export const LIST_NOS: readonly ListNo[] = ['plain', 'circle', 'square']
+
+/**
+ * 配色变体：只覆盖 token，不动任何布局。
+ *
+ * 这是性价比最高的一项 —— 一套模板四套配色，用户点一下就是另一张卡。
+ * 刻意**不做成"渲染时叠加"**：点击即写进当前模板的 tokens（见 beautify-panel 的
+ * applyVariant），当前项靠比对 tokens 高亮。这样"存为我的模板"拿到的是所见即所得的颜色，
+ * 也不会出现"面板改色被变体压回去"的优先级怪事。
+ */
+export interface TemplateVariant {
+  id: string
+  name: string
+  tokens: Partial<TemplateTokens>
+}
+
 
 /** 代码高亮配色：5 类 token */
 export interface TemplateCode {
@@ -207,6 +373,8 @@ export interface CardTemplate {
   decor: TemplateDecor
   code: TemplateCode
   font: TemplateFont
+  /** 配色变体（schema 5）：只覆盖 token，随模板一起导出/导入 */
+  variants?: TemplateVariant[]
 }
 
 /** 面板上要暴露的"可调项"元数据 —— 界面据此自动生成控件，不手写 28 套表单 */

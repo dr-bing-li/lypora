@@ -117,11 +117,22 @@ export async function captureCard(fragmentHtml: string, size: CardSize, opts: Ca
   // （∫₀¹ 会变成 ∫01，上标全部掉到基线上）。没有公式就不塞，省 360KB。
   const mathCss = fragmentHtml.includes('class="katex') ? KATEX_CSS : ''
 
+  /*
+   * 样式必须包 CDATA。
+   *
+   * SVG 是被 XML 解析器读的，`<style>` 里出现一个裸的小于号（CSS 注释里写
+   * 「ol 的 start 属性」时很自然会写成尖括号形式）就会被当成标签开头，
+   * 报 "Unexpected token inside qualified name" —— 整张卡片渲染失败，
+   * 而且只在导出/预览时炸，编辑器里看不出来。v0.13.0 就踩了这一下。
+   * `]]>` 在 CSS 里不存在，仍按规范切成两段 CDATA 兜住。
+   */
+  const cssText = (opts.css + mathCss).replace(/]]>/g, ']]]]><![CDATA[>')
+
   const svg =
     `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">` +
     `<foreignObject x="0" y="0" width="100%" height="100%">` +
     `<div xmlns="http://www.w3.org/1999/xhtml" style="width:${w}px;height:${h}px">` +
-    `<style>${opts.css}${mathCss}</style>${xhtml}` +
+    `<style><![CDATA[${cssText}]]></style>${xhtml}` +
     `</div></foreignObject></svg>`
 
   // 必须用 data URI：blob: 作为 <img> 源时 Chromium 会把画到 canvas 的结果标成

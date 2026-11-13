@@ -10,7 +10,24 @@
  */
 
 import type { CardTemplate, ParamKind } from './types'
-import { BINDINGS, BULLET_STYLES, FRAME_STYLES, QUOTE_STYLES, STAMP_POSITIONS, STAMP_PRESETS, TITLE_MARKS } from './types'
+import {
+  BINDINGS,
+  BULLET_STYLES,
+  FRAME_STYLES,
+  HEAD_LEVELS,
+  HEAD_RULES,
+  HR_STYLES,
+  LIST_NOS,
+  ORNAMENT_SHAPES,
+  PANEL_SHADOWS,
+  QUOTE_STYLES,
+  STAMP_POSITIONS,
+  STAMP_PRESETS,
+  SURFACE_BOXES,
+  SURFACE_IMAGES,
+  TITLE_MARKS,
+  type HeadLevel,
+} from './types'
 
 export interface ParamSpec {
   path: string
@@ -24,6 +41,12 @@ export interface ParamSpec {
   /** text 类控件：占位提示键与最大长度 */
   placeholderKey?: string
   maxLength?: number
+  /**
+   * 颜色控件允许"清空"。
+   * 有些颜色字段的空值是有语义的（标题底色为空 = 不铺底、面板底色为空 = 不画面板），
+   * 而 `input[type=color]` 表达不了"空"，必须额外给一个清除按钮。
+   */
+  clearable?: boolean
 }
 
 export const TEXTURES = ['none', 'grain', 'grid', 'dots', 'ruled', 'fiber', 'halo', 'stripe', 'perf'] as const
@@ -36,6 +59,13 @@ export const TITLES = TITLE_MARKS
 export const FRAMES = FRAME_STYLES
 export const STAMPS = STAMP_PRESETS
 export const STAMP_POS = STAMP_POSITIONS
+export const PANEL_SHADOW_LIST = PANEL_SHADOWS
+export const HR_STYLE_LIST = HR_STYLES
+export const HEAD_RULE_LIST = HEAD_RULES
+export const LIST_NO_LIST = LIST_NOS
+export const ORN_SHAPES = ORNAMENT_SHAPES
+export const BOXES = SURFACE_BOXES
+export const PICS = SURFACE_IMAGES
 
 const enumOpts = (prefix: string, values: readonly string[]) =>
   values.map((v) => ({ value: v, labelKey: `${prefix}.${v}` }))
@@ -135,7 +165,85 @@ export const PARAM_SPECS: ParamSpec[] = [
 
   /* 装订 */
   { path: 'decor.binding', kind: 'select', labelKey: 'tpl.p.binding', options: enumOpts('tpl.bind', BINDINGS) },
+
+  /* ---- schema 5「艺术层」 ---- */
+
+  /* 双面卡片：外圈带 + 内面板 */
+  { path: 'decor.panel.band', kind: 'number', labelKey: 'tpl.panel.band', min: 0, max: 40, step: 1, unit: 'px' },
+  { path: 'decor.panel.border', kind: 'number', labelKey: 'tpl.panel.border', min: 0, max: 4, step: 1, unit: 'px' },
+  { path: 'decor.panel.radius', kind: 'number', labelKey: 'tpl.panel.radius', min: 0, max: 24, step: 1, unit: 'px' },
+  { path: 'decor.panel.pad', kind: 'number', labelKey: 'tpl.panel.pad', min: 0, max: 40, step: 1, unit: 'px' },
+  {
+    path: 'decor.panel.shadow',
+    kind: 'select',
+    labelKey: 'tpl.panel.shadow',
+    options: enumOpts('tpl.pshadow', PANEL_SHADOWS),
+  },
+  // 面板底色走 token：panel 与支撑面（表格/代码底）共用它，两个字段会打架
+  { path: 'tokens.panelBg', kind: 'color', labelKey: 'tpl.panel.bg', clearable: true },
+
+  /* 分隔线（hr） */
+  { path: 'decor.rule.style', kind: 'select', labelKey: 'tpl.rule.style', options: enumOpts('tpl.rstyle', HR_STYLES) },
+  { path: 'decor.rule.height', kind: 'number', labelKey: 'tpl.rule.height', min: 1, max: 12, step: 1, unit: 'px' },
+  { path: 'decor.rule.color', kind: 'color', labelKey: 'tpl.rule.color', clearable: true },
+  { path: 'decor.rule.color2', kind: 'color', labelKey: 'tpl.rule.color2', clearable: true },
+  { path: 'decor.rule.angle', kind: 'number', labelKey: 'tpl.rule.angle', min: 0, max: 180, step: 5, unit: '°' },
+
+  /* 有序序号与支撑面 */
+  { path: 'decor.listNo', kind: 'select', labelKey: 'tpl.p.listNo', options: enumOpts('tpl.listno', LIST_NOS) },
+  { path: 'decor.surface.table', kind: 'select', labelKey: 'tpl.p.surfTable', options: enumOpts('tpl.box', SURFACE_BOXES) },
+  { path: 'decor.surface.code', kind: 'select', labelKey: 'tpl.p.surfCode', options: enumOpts('tpl.box', SURFACE_BOXES) },
+  { path: 'decor.surface.image', kind: 'select', labelKey: 'tpl.p.surfImage', options: enumOpts('tpl.pic', SURFACE_IMAGES) },
 ]
+
+/**
+ * 逐级标题的参数表：四级共用同一套字段，只有 path 前缀不同。
+ *
+ * 12 个字段 × 4 级 = 48 个控件，但仍然只写这一份 ——
+ * 面板遍历它生成，标题形态那一段因此不需要手写 4 份表单。
+ */
+export function headSpecs(lv: HeadLevel): ParamSpec[] {
+  const p = `decor.headings.${lv}`
+  return [
+    { path: `${p}.bg`, kind: 'color', labelKey: 'tpl.h.bg', clearable: true },
+    { path: `${p}.fg`, kind: 'color', labelKey: 'tpl.h.fg', clearable: true },
+    { path: `${p}.padX`, kind: 'number', labelKey: 'tpl.p.padX', min: 0, max: 40, step: 1, unit: 'px' },
+    { path: `${p}.padY`, kind: 'number', labelKey: 'tpl.h.padY', min: 0, max: 24, step: 1, unit: 'px' },
+    { path: `${p}.radius`, kind: 'number', labelKey: 'tpl.p.radius', min: 0, max: 24, step: 1, unit: 'px' },
+    { path: `${p}.rotate`, kind: 'number', labelKey: 'tpl.h.rotate', min: -3, max: 3, step: 0.5, unit: '°' },
+    { path: `${p}.shadow`, kind: 'number', labelKey: 'tpl.h.shadow', min: 0, max: 6, step: 1, unit: 'px' },
+    { path: `${p}.rule`, kind: 'select', labelKey: 'tpl.h.rule', options: enumOpts('tpl.hrule', HEAD_RULES) },
+    { path: `${p}.caps`, kind: 'toggle', labelKey: 'tpl.h.caps' },
+    { path: `${p}.italic`, kind: 'toggle', labelKey: 'tpl.h.italic' },
+    { path: `${p}.inline`, kind: 'toggle', labelKey: 'tpl.h.inline' },
+    {
+      path: `${p}.align`,
+      kind: 'select',
+      labelKey: 'tpl.h.align',
+      options: [
+        { value: 'start', labelKey: 'tpl.halign.start' },
+        { value: 'center', labelKey: 'tpl.halign.center' },
+      ],
+    },
+  ]
+}
+
+/** 贴纸参数：按序号生成（path 用数组下标，getPath/setPath 直接支持） */
+export function ornSpecs(idx: number): ParamSpec[] {
+  const p = `decor.ornaments.${idx}`
+  return [
+    { path: `${p}.shape`, kind: 'select', labelKey: 'tpl.orn.shape', options: enumOpts('tpl.ornshape', ORNAMENT_SHAPES) },
+    { path: `${p}.pos`, kind: 'select', labelKey: 'tpl.orn.pos', options: enumOpts('tpl.pos', STAMP_POSITIONS) },
+    { path: `${p}.size`, kind: 'number', labelKey: 'tpl.orn.size', min: 24, max: 160, step: 2, unit: 'px' },
+    { path: `${p}.rotate`, kind: 'number', labelKey: 'tpl.orn.rotate', min: -45, max: 45, step: 1, unit: '°' },
+    { path: `${p}.bleed`, kind: 'number', labelKey: 'tpl.orn.bleed', min: 0, max: 40, step: 1, unit: 'px' },
+    { path: `${p}.fill`, kind: 'color', labelKey: 'tpl.orn.fill' },
+    { path: `${p}.stroke`, kind: 'color', labelKey: 'tpl.orn.stroke', clearable: true },
+    { path: `${p}.text`, kind: 'text', labelKey: 'tpl.orn.text', maxLength: 6 },
+  ]
+}
+
+export const HEAD_LEVEL_LIST = HEAD_LEVELS
 
 /** 点路径读取（只看 tokens/metrics/decor 三层） */
 export function getPath(t: CardTemplate, path: string): unknown {

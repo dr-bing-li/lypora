@@ -2594,6 +2594,88 @@ body.col-resizing * {
   line-height: 1.5;
   color: var(--fg-chrome-dim);
 }
+
+/* ---- schema 5「艺术层」的控件 ---- */
+
+/* 颜色旁的清除键：空值有语义（不铺底 / 不画白卡），色板表达不了"空" */
+.ce-mini {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border-radius: 5px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--fg-muted);
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.ce-mini:hover:not(:disabled) { border-color: var(--accent); color: var(--fg); }
+.ce-mini:disabled { opacity: 0.35; cursor: default; }
+
+/* 逐级标题：四级折叠。48 个控件摊开会把参数区拉成三屏。
+   横向内边距给 summary 而不是给盒子：折叠框里的参数行必须和外面的参数行
+   共用一个右边界（ui-check LAYOUT-4 量的是 .ce-hex/.ce-num-val 的右边缘），
+   盒子自己留 8px 内边距会让里面的数值列整体左移 9px。 */
+.ce-sub {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  padding: 0 0 4px;
+  margin-top: 6px;
+}
+.ce-sub-sum {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--fg);
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+.ce-sub-sum::-webkit-details-marker { display: none; }
+.ce-sub-sum::before {
+  content: "▸";
+  font-size: 9px;
+  color: var(--fg-chrome-dim);
+  transition: transform 0.12s ease;
+}
+.ce-sub[open] > .ce-sub-sum::before { transform: rotate(90deg); }
+.ce-sub[open] { padding-bottom: 6px; }
+
+/* 贴纸：一枚一块，头行给名字与删除键。
+   理由同 .ce-sub：横向内边距只加在头行，参数行才能与外部共用同一列右边界。 */
+.ce-orn { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+.ce-orn-item {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 4px 0 6px;
+  background: var(--bg);
+}
+.ce-orn-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px 4px;
+}
+.ce-orn-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--fg);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .ce-del {
   position: absolute;
   top: 2px;

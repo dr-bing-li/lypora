@@ -1,8 +1,8 @@
 /**
- * 「排版」验收 —— 八组硬指标，任一不过即失败。
+ * 「排版」验收 —— 九组硬指标，任一不过即失败。
  *
- *  A. 交互：一级菜单「排版」能开面板、28 套模板按钮齐全、20s 内出预览、Esc 能关。
- *  B. 模板：28 套逐一出图，且每张采样颜色数 > 8（防"白图假通过"）。
+ *  A. 交互：一级菜单「排版」能开面板、29 套模板按钮齐全、20s 内出预览、Esc 能关。
+ *  B. 模板：29 套逐一出图，且每张采样颜色数 > 8（防"白图假通过"）。
  *  C. 参数：改字号必须让页数变化（证明"参数→重排"链路真的通了，不是只换 CSS）；
  *           纹理必须在**同一字号**下比「无 → 网格」，并且设回去要回到基线
  *           （v0.9.0 拿改字号前的图当基线，纹理完全不可见也能通过）。
@@ -11,6 +11,13 @@
  *  C3. 圆角与装饰：半径 0→24 圆角必须真的变大（量预览图左上角第一颗不透明像素的 x）、
  *           「圆切角」必须比「不处理」更圆、回形针/订书钉必须各自画出来且彼此不同、
  *           印章开关必须改变画面；缩略图必须是真卡片且内容不溢出。
+ *  C4. 艺术层（schema 5）：带宽度（黄边）真的存在且能被 band 参数改窄、
+ *           内面板是白底+墨色描边、硬阴影是 0 模糊（阴影内部像素不许有渐变）、
+ *           三级标题三种形态（h2 蓝块 / h3 珊瑚块 / h1 斜纹下划线）、
+ *           分隔线是斜纹、贴纸画在左上右上、有序序号徽标能开关、
+ *           配色变体只换颜色不动尺寸、分页不被带宽度破坏。
+ *           —— 全部量「预览图上的像素」，不量 CSS 中间量：v0.12.0 的
+ *           "缩略图溢出"和"dick 双计数"两次假失败/假通过都是量中间量惹的祸。
  *  D. 模板进出：导出 .zip 样式包（template.json + README，带图时还有 bg.png）→
  *           再导入 → 成为当前模板；旧版单文件 .lyt.json 仍要能认（老模板不弃）。
  *  E. 离线：整场操作**零外部网络请求**（除本机 127.0.0.1 静态资源）。
@@ -48,6 +55,12 @@ const SAMPLE = `# Lypora 美化输出验收
 
 1. 有序第一项
 2. 有序第二项
+
+### 三级小标题
+
+C4 要量「三级标题是不是有自己的形态」，所以样例里必须有 h3 与一条分隔线。
+
+---
 
 ## 二、代码块
 
@@ -117,7 +130,7 @@ const open = await page.locator('.ce').count()
 const tplCount = await page.locator('.ce-style[data-tpl]').count()
 report.steps.panel = { open: open === 1, templates: tplCount }
 if (!open) errors.push('排版面板没有打开')
-if (tplCount < 28) errors.push(`模板数量不足：${tplCount} < 28`)
+if (tplCount < 29) errors.push(`模板数量不足：${tplCount} < 29`)
 
 await page.waitForFunction(() => {
   const img = document.querySelector('.ce-img')
@@ -528,6 +541,327 @@ if (!/^[\u4e00-\u9fa5]{4}$/.test(thumbStats.firstName)) {
 }
 
 
+/* ---------- C4. 艺术层（schema 5）：面板 / 标题 / 分隔线 / 贴纸 / 变体 ---------- */
+
+/**
+ * 把预览 PNG 读进页面里的 canvas（800×1067 的 ImageData 约 3.4MB）。
+ * 后面所有断言都在这上面量像素 —— 量「看到的东西」，不量 CSS 中间量：
+ * v0.12.0 的「缩略图溢出」假失败和「dock 双计数」假通过，都是量中间量害的。
+ */
+const loadPix = async (key, file) => {
+  const b64 = fs.readFileSync(path.join(OUT, file)).toString('base64')
+  return page.evaluate(
+    async ([d, k]) => {
+      const img = new Image()
+      img.src = 'data:image/png;base64,' + d
+      await img.decode()
+      const c = document.createElement('canvas')
+      c.width = img.naturalWidth
+      c.height = img.naturalHeight
+      const g = c.getContext('2d', { willReadFrequently: true })
+      g.drawImage(img, 0, 0)
+      const P = (window.__P = window.__P || {})
+      P[k] = { w: c.width, h: c.height, d: g.getImageData(0, 0, c.width, c.height).data }
+      return { w: c.width, h: c.height }
+    },
+    [b64, key],
+  )
+}
+
+const ART = { blue: [81, 186, 250], coral: [255, 98, 90], accent: [255, 46, 99], ink: [37, 42, 52], paper: [253, 224, 65] }
+
+/** 一次遍历把艺术层的六件事全量出来（每张图约 2 遍扫描，够快）。 */
+const pixMeasure = (key) =>
+  page.evaluate(
+    ([k, C]) => {
+      const P = window.__P[k]
+      const W = P.w
+      const H = P.h
+      const at = (x, y) => {
+        const i = (y * W + x) * 4
+        return [P.d[i], P.d[i + 1], P.d[i + 2]]
+      }
+      const near = (a, b, tol) => Math.abs(a[0] - b[0]) <= tol && Math.abs(a[1] - b[1]) <= tol && Math.abs(a[2] - b[2]) <= tol
+      const luma = (c) => (c[0] + c[1] + c[2]) / 3
+      const isInk = (c) => luma(c) < 110
+      const avg = (x0, y0, x1, y1) => {
+        let r = 0
+        let g = 0
+        let b = 0
+        let n = 0
+        for (let y = y0; y <= y1; y += 1) {
+          for (let x = x0; x <= x1; x += 1) {
+            const c = at(x, y)
+            r += c[0]
+            g += c[1]
+            b += c[2]
+            n += 1
+          }
+        }
+        return [Math.round(r / n), Math.round(g / n), Math.round(b / n)]
+      }
+      const yMid = Math.round(H * 0.5)
+
+      // 面板左边界 = 中线上第一颗墨色像素（带宽度 + 描边都算在它左边）
+      let borderL = -1
+      for (let x = 0; x < W; x += 1) if (isInk(at(x, yMid))) { borderL = x; break }
+      let borderT = 0
+      if (borderL >= 0) {
+        let x = borderL
+        while (x < W && isInk(at(x, yMid))) { borderT += 1; x += 1 }
+      }
+      // 右边界那段连续墨色 = 竖描边 + 硬阴影（两者在像素上是连着的）
+      let runB = -1
+      for (let x = W - 1; x >= 0; x -= 1) if (isInk(at(x, yMid))) { runB = x; break }
+      let runA = runB
+      while (runA > 0 && isInk(at(runA - 1, yMid))) runA -= 1
+      const len = runB - runA + 1
+      let sLo = 255
+      let sHi = 0
+      if (len >= 6) {
+        // 只量中段 40%：两端一定有抗锯齿过渡，量进去就成了"误差"不是"模糊"
+        const a0 = runA + Math.round(len * 0.3)
+        const b0 = runB - Math.round(len * 0.3)
+        for (let x = a0; x <= b0; x += 1) {
+          const l = luma(at(x, yMid))
+          if (l < sLo) sLo = l
+          if (l > sHi) sHi = l
+        }
+      }
+
+      let blue = 0
+      let blueMax = 0
+      let coral = 0
+      let cx0 = W
+      let cy0 = H
+      let cx1 = -1
+      let cy1 = -1
+      let accentTL = 0
+      let accent = 0
+      let blueTR = 0
+      for (let y = 0; y < H; y += 1) {
+        let run = 0
+        for (let x = 0; x < W; x += 1) {
+          const c = at(x, y)
+          if (near(c, C.blue, 16)) {
+            blue += 1
+            run += 1
+            if (run > blueMax) blueMax = run
+            if (x > W - 140 && y < 140) blueTR += 1
+            continue
+          }
+          run = 0
+          if (near(c, C.coral, 16)) {
+            coral += 1
+            if (x < cx0) cx0 = x
+            if (x > cx1) cx1 = x
+            if (y < cy0) cy0 = y
+            if (y > cy1) cy1 = y
+          }
+          if (near(c, C.accent, 18)) {
+            accent += 1
+            if (x < 140 && y < 140) accentTL += 1
+          }
+        }
+      }
+
+      /* 斜纹：一行里 accent↔ink 交替 ≥10 次，且这一行 80% 以上都是这两色
+         （排除文字行：文字行主要是白底，粉/墨交替是 h1 的 text-shadow 一类的零星像素） */
+      let stripeRows = 0
+      for (let y = 0; y < H; y += 1) {
+        let prev = '.'
+        let flips = 0
+        let solid = 0
+        for (let x = 0; x < W; x += 1) {
+          const c = at(x, y)
+          const s = near(c, C.accent, 24) ? 'A' : near(c, C.ink, 26) ? 'B' : '.'
+          if (s !== '.') solid += 1
+          if (s !== prev) {
+            if (s !== '.' && prev !== '.') flips += 1
+            prev = s
+          }
+        }
+        if (flips >= 10 && solid / W > 0.8) stripeRows += 1
+      }
+
+      return {
+        W,
+        H,
+        yMid,
+        borderL,
+        borderT,
+        shadow: { a: runA, b: runB, len, spread: sHi - sLo },
+        blue,
+        blueMax,
+        coral,
+        coralBox: cx1 >= 0 ? [cx0, cy0, cx1, cy1] : null,
+        accent,
+        accentTL,
+        blueTR,
+        stripeRows,
+        topLeft: avg(3, 3, 9, 9),
+        center: avg(Math.round(W / 2) - 10, Math.round(H * 0.42), Math.round(W / 2) + 10, Math.round(H * 0.42) + 10),
+      }
+    },
+    [key, ART],
+  )
+
+/** 改参数 → 等预览图真的换掉 → 读像素。固定 sleep 要么慢要么假通过（读到上一张图）。 */
+const artShot = async (key, name, mutate) => {
+  const prev = await page.evaluate(() => document.querySelector('.ce-img')?.src || '')
+  await mutate()
+  const fresh = await page
+    .waitForFunction(
+      (p) => {
+        const s = document.querySelector('.ce-img')?.src || ''
+        return !!s && s !== p && s.startsWith('data:image/png')
+      },
+      prev,
+      { timeout: 25000 },
+    )
+    .then(() => true)
+    .catch(() => false)
+  if (!fresh) {
+    errors.push(`[艺术层] 改参数后预览图 25s 内没刷新（${name}）`)
+    return null
+  }
+  const shot = await grab(name)
+  if (!shot) {
+    errors.push(`[艺术层] ${name} 没取到预览图`)
+    return null
+  }
+  await loadPix(key, name)
+  return pixMeasure(key)
+}
+
+// 第 29 套：波普撞印
+await page.click('.ce-style[data-tpl="popart"]')
+await page.waitForTimeout(900)
+
+const artGroups = await page.evaluate(() => {
+  const n = (s) => document.querySelectorAll(s).length
+  return {
+    panel: n('[data-group="panel"]'),
+    head: n('[data-group="head"] .ce-sub'),
+    rule: n('[data-group="rule"]'),
+    orn: n('[data-group="orn"] .ce-orn-item'),
+    variant: n('[data-group="variant"] .ce-seg-btn[data-variant]'),
+    paths: n('.ce-param[data-path]'),
+  }
+})
+report.steps.artGroups = artGroups
+if (!artGroups.panel) errors.push('[艺术层] 面板组没渲染')
+if (artGroups.head < 4) errors.push(`[艺术层] 标题级别只有 ${artGroups.head}/4 组`)
+if (!artGroups.rule) errors.push('[艺术层] 分隔线组没渲染')
+if (artGroups.orn < 2) errors.push(`[艺术层] 贴纸控件只有 ${artGroups.orn} 个（波普带 2 张）`)
+if (artGroups.variant < 3) errors.push(`[艺术层] 配色变体只有 ${artGroups.variant} 个（波普带 3 个）`)
+
+// 关掉封面：要量的是正文页上的标题 / 列表 / 分隔线（顺手当"图真的换了"的信号）
+const band30 = await artShot('band30', 'art-band30.png', async () => {
+  await page.locator('.ce-check input[type="checkbox"]').first().setChecked(false)
+})
+const pagesBand30 = await pageCountOf()
+
+// band 30 → 0：带宽度必须真的消失，且面板左边界左移 ≥25px（30px 带 × 缩放）
+const band0 = await artShot('band0', 'art-band0.png', () => setNum('decor.panel.band', 0))
+const pagesBand0 = await pageCountOf()
+// 复原：后面 D 组要导出的就是这套模板
+const bandBack = await artShot('bandBack', 'art-bandback.png', () => setNum('decor.panel.band', 30))
+
+const px = (a, b) => Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1]) + Math.abs(a[2] - b[2])
+report.steps.artPanel = {
+  band30: band30 && { borderL: band30.borderL, borderT: band30.borderT, topLeft: band30.topLeft, center: band30.center },
+  band0: band0 && { borderL: band0.borderL, topLeft: band0.topLeft },
+  bandBack: bandBack && { borderL: bandBack.borderL },
+  shadow: band30?.shadow,
+  pages: { band30: pagesBand30, band0: pagesBand0 },
+}
+if (!band30 || !band0) errors.push('[艺术层] 面板像素量测失败')
+else {
+  // ① 带：左上角必须是纸色（黄），而不是面板白
+  if (px(band30.topLeft, ART.paper) > 36) {
+    errors.push(`[艺术层] 左上角不是纸色 ${band30.topLeft.join(',')}，带没画出来？`)
+  }
+  // ② 内面板：白底 + 墨色描边（描边 2px × 缩放 ≈ 2–6 个像素）
+  if (px(band30.center, [255, 255, 255]) > 24) {
+    errors.push(`[艺术层] 面板不是白底（中心 ${band30.center.join(',')}）`)
+  }
+  if (band30.borderT < 1 || band30.borderT > 8) {
+    errors.push(`[艺术层] 面板描边宽度异常：${band30.borderT}px`)
+  }
+  // ③ 硬阴影 = 零模糊：阴影内部不许有渐变（中段 40% 的亮度极差 < 8）
+  if (!band30.shadow || band30.shadow.len < 8) {
+    errors.push(`[艺术层] 右侧没有硬阴影（连续墨色只有 ${band30.shadow?.len}px）`)
+  } else if (band30.shadow.spread > 8) {
+    errors.push(`[艺术层] 阴影有渐变（内部亮度极差 ${band30.shadow.spread}），不是 0 模糊的硬投影`)
+  }
+  // ④ 带宽度可变：band 0 时面板贴到画布左侧，位移 ≥25px
+  const shift = band30.borderL - band0.borderL
+  if (band0.borderL > 6) errors.push(`[艺术层] band=0 时面板没贴边（左边界 x=${band0.borderL}）`)
+  if (shift < 25) errors.push(`[艺术层] band 30→0 面板只位移了 ${shift}px（带宽度没真的生效）`)
+  if (bandBack && Math.abs(bandBack.borderL - band30.borderL) > 2) {
+    errors.push(`[艺术层] band 设回 30 后左边界 ${bandBack.borderL} ≠ 基线 ${band30.borderL}`)
+  }
+  // ⑤ 分页不被带宽度破坏
+  if (Math.abs(pagesBand0 - pagesBand30) > 1) {
+    errors.push(`[艺术层] band 0/30 的页数差 ${Math.abs(pagesBand0 - pagesBand30)} > 1（改带宽度把分页带崩了）`)
+  }
+}
+
+report.steps.artHeads = band30 && {
+  blue: band30.blue,
+  blueMax: band30.blueMax,
+  coral: band30.coral,
+  coralBox: band30.coralBox,
+  stripeRows: band30.stripeRows,
+  accentTL: band30.accentTL,
+  blueTR: band30.blueTR,
+}
+if (band30) {
+  // ⑥ 三种标题形态：h2 是整行宽的蓝块（连续蓝游程 ≥250px，POP 徽标只有 76px 画不出这么长）
+  if (band30.blueMax < 250) errors.push(`[艺术层] 二级标题蓝块没画出来（最长蓝游程 ${band30.blueMax}px）`)
+  // ⑦ h3 是收窄的行内珊瑚色块
+  if (!band30.coralBox) errors.push('[艺术层] 三级标题珊瑚色块没画出来')
+  else {
+    const [x0, y0, x1, y1] = band30.coralBox
+    if (x1 - x0 < 60 || y1 - y0 < 18) errors.push(`[艺术层] 三级色块尺寸异常 ${x1 - x0}×${y1 - y0}`)
+  }
+  // ⑧ 斜纹：h1 下划线与分隔线各一条，至少 6 行是满行双色交替
+  if (band30.stripeRows < 6) errors.push(`[艺术层] 斜纹下划线/分隔线没画出来（满行交替只有 ${band30.stripeRows} 行）`)
+  // ⑨ 贴纸：左上酱红五角星、右上蓝色 POP 徽标
+  if (band30.accentTL < 150) errors.push(`[艺术层] 左上贴纸几乎没画（${band30.accentTL} px）`)
+  if (band30.blueTR < 150) errors.push(`[艺术层] 右上贴纸几乎没画（${band30.blueTR} px）`)
+}
+
+// ⑩ 有序序号徽标：换回「无」必须少一大片 accent 像素（3 个圆形徽标）
+const stampListNo = band30 ? await artShot('listNoPlain', 'art-listno-plain.png', () => clickSeg('decor.listNo', 'plain')) : null
+const listNoDrop = band30 && stampListNo ? band30.accent - stampListNo.accent : null
+const listNoDiff = await diffRatio('art-band30.png', 'art-listno-plain.png')
+report.steps.artListNo = { circleAccent: band30?.accent, plainAccent: stampListNo?.accent, drop: listNoDrop, diff: listNoDiff }
+if (stampListNo) {
+  if (Math.abs(listNoDiff) < 0.0004) errors.push(`[艺术层] 有序序号开/关画面几乎一样（diff=${listNoDiff}）`)
+  if (listNoDrop !== null && listNoDrop < 200) errors.push(`[艺术层] 关掉圆形徽标后 accent 只少了 ${listNoDrop} px（徽标可能没画）`)
+}
+await clickSeg('decor.listNo', 'circle')
+
+// ⑪ 配色变体只换颜色，不动尺寸
+const mint = await artShot('mint', 'art-mint.png', async () => {
+  await page.evaluate(() => {
+    document.querySelector('[data-group="variant"] [data-variant="mint"]')?.click()
+  })
+})
+report.steps.artVariant = mint && { topLeft: mint.topLeft, borderL: mint.borderL, borderT: mint.borderT }
+if (mint && band30) {
+  if (px(mint.topLeft, band30.topLeft) < 60) errors.push(`[艺术层] 切薄荷变体纸色没变（${mint.topLeft.join(',')}）`)
+  if (Math.abs(mint.borderL - band30.borderL) > 2 || mint.borderT !== band30.borderT) {
+    errors.push(`[艺术层] 切变体把尺寸也改了（左边界 ${band30.borderL}→${mint.borderL}，描边 ${band30.borderT}→${mint.borderT}）`)
+  }
+}
+
+// 变体是"就地改色"，量完要回到原色：点内置卡片 = 换回内置那套（structuredClone，不受改动污染）
+await page.click('.ce-style[data-tpl="popart"]')
+await page.waitForTimeout(1500)
+
 /* ---------- D. 样式包导出 / 导入 ---------- */
 
 /**
@@ -593,8 +927,26 @@ else {
     report.steps.templateExport.hasDecorFields =
       json.decor &&
       ['bg', 'bgImage', 'bgOpacity', 'binding', 'quote', 'bullet', 'title', 'frame', 'stampPreset'].every((k) => k in json.decor)
-    if (json.schema !== 4) errors.push(`样式包 schema 应为 4，实测 ${json.schema}`)
+    // schema 5「艺术层」：面板 / 分级标题 / 分隔线 / 贴纸 / 表码图三态 / 序号，六样都得在包里
+    report.steps.templateExport.hasArtFields =
+      json.decor &&
+      ['panel', 'headings', 'rule', 'ornaments', 'surface', 'listNo'].every((k) => k in json.decor) &&
+      'panelBg' in json.tokens &&
+      'patternInk' in json.tokens
+    report.steps.templateExport.artValues = json.decor && {
+      band: json.decor.panel?.band,
+      shadow: json.decor.panel?.shadow,
+      h2bg: json.decor.headings?.h2?.bg,
+      hr: json.decor.rule?.style,
+      orn: json.decor.ornaments?.length,
+      listNo: json.decor.listNo,
+    }
+    if (json.schema !== 5) errors.push(`样式包 schema 应为 5，实测 ${json.schema}`)
     if (!report.steps.templateExport.hasDecorFields) errors.push('样式包缺 schema 4 的 decor 字段')
+    if (!report.steps.templateExport.hasArtFields) errors.push('样式包缺 schema 5 的艺术层字段')
+    // 导出的正是波普撞印：带宽度与硬阴影必须原样留在包里（不是"导出成功但只有半个模板"）
+    if (json.decor?.panel?.band !== 30) errors.push(`样式包里 band=${json.decor?.panel?.band}，应为 30`)
+    if (json.decor?.panel?.shadow !== 'sticker') errors.push(`样式包里 shadow=${json.decor?.panel?.shadow}，应为 sticker`)
     if (!json.tokens?.accent) errors.push('样式包缺少 tokens')
   }
 

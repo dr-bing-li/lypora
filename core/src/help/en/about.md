@@ -4,7 +4,7 @@
 
 ## Version
 
-- Current version: **0.12.0**
+- Current version: **0.13.0**
 - Licence: **MIT** (see `LICENSE`)
 - Repository: `github.com/dr-bing-li/lypora`
 

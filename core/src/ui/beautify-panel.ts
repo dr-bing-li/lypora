@@ -20,7 +20,7 @@ import { decoHtml } from '../export/card-layout'
 import { buildZip, renderPagePreview, renderPagesToPdf, renderPagesToPng } from '../export/card-capture'
 import { saveBinary } from '../export/save-binary'
 import { BUILTIN_TEMPLATES, templateName } from '../export/template/builtin'
-import { BG_PREVIEW, BG_PREVIEW_SIZE, PARAM_SPECS, getPath, setPath, type ParamSpec } from '../export/template/params'
+import { BG_PREVIEW, BG_PREVIEW_SIZE, PARAM_SPECS, headSpecs, ornSpecs, HEAD_LEVEL_LIST, getPath, setPath, type ParamSpec } from '../export/template/params'
 import {
   exportTemplate,
   importTemplate,
@@ -147,7 +147,10 @@ export function createBeautifyPanel(deps: BeautifyDeps): BeautifyHandle {
     const quote = escapeHtml(t('card.sampleQuote'))
     return (
       `<div class="ly-card ly-sample" data-tpl="${tpl.id}"${decorAttrs(tpl)}` +
-      ` style="--ly-card-w:100%;--ly-card-h:100%;--c-lh:1.45">` +
+      // --c-band-k / --c-pad-k / --o-k 是缩略图专用的压缩系数：外圈带 30px、内面板
+      // 内边距 12px、贴纸 76px 直接搬进 170px 宽的缩略图会吃掉大半张卡（v0.13.0 实测
+      // 波普撞印的 .ly-body 溢出 21px），等比压一下才看得出"黄边围白卡 + 贴纸"
+      ` style="--ly-card-w:100%;--ly-card-h:100%;--c-lh:1.45;--c-band-k:0.46;--c-pad-k:0.34;--o-k:0.52">` +
       `<i class="ly-bg"></i>${decoHtml(tpl)}` +
       `<div class="ly-inner">` +
       (tpl.metrics.headRule ? `<div class="ly-head"><span class="ly-doc">Lypora</span></div>` : '') +
@@ -272,12 +275,31 @@ export function createBeautifyPanel(deps: BeautifyDeps): BeautifyHandle {
 
     if (spec.kind === 'color') {
       const wrap = el('div', 'ce-color')
+      const raw = String(value ?? '')
       const pick = el('input') as HTMLInputElement
       pick.type = 'color'
-      pick.value = toHex6(String(value))
+      pick.value = raw ? toHex6(raw) : '#ffffff'
       pick.oninput = () => void apply(pick.value)
-      const code = el('span', 'ce-hex', String(value).slice(0, 18))
-      wrap.append(pick, code)
+      // 空字符串是有语义的（标题底色空 = 不铺底、面板底色空 = 不画白卡），
+      // 而色板控件表达不了"空"，所以码位直接写「—」并另给一枚清除键
+      const code = el('span', 'ce-hex', raw ? raw.slice(0, 18) : '—')
+      wrap.appendChild(pick)
+      if (spec.clearable) {
+        const clr = el('button', 'ce-mini', '∅') as HTMLButtonElement
+        clr.type = 'button'
+        clr.title = t('card.clearColor')
+        clr.dataset.act = 'clear-color'
+        clr.disabled = !raw
+        clr.onclick = () => {
+          code.textContent = '—'
+          clr.disabled = true
+          void apply('')
+        }
+        // 清除键放在色板与码位之间：码位（.ce-hex）必须留在最右，
+        // 否则"有清除键的行"整列右移 30px，数值列就不共线了（ui-check LAYOUT-4）
+        wrap.appendChild(clr)
+      }
+      wrap.appendChild(code)
       row.appendChild(wrap)
     } else if (spec.kind === 'number') {
       const min = spec.min ?? 0
@@ -475,8 +497,7 @@ export function createBeautifyPanel(deps: BeautifyDeps): BeautifyHandle {
   }
 
   /** 单独的开关行（印章这类要跟在一组控件最前面，又不能进 PARAM_SPECS 顺序里） */
-  function renderToggle(label: string, value: boolean, onChange: (v: boolean) => void): HTMLElement {
-    const row = el('div', 'ce-param')
+  function renderToggle(label: string, value: boolean, onChange: (v: boolean) => void): HTMLElement {    const row = el('div', 'ce-param')
     row.appendChild(el('label', 'ce-param-label', label))
     const sw = el('button', 'ce-switch') as HTMLButtonElement
     sw.type = 'button'
@@ -493,9 +514,141 @@ export function createBeautifyPanel(deps: BeautifyDeps): BeautifyHandle {
     return row
   }
 
+  /* ---------------- schema 5：面板 / 标题形态 / 分割线贴纸 / 配色变体 ---------------- */
+
+  /** 双面卡片：外圈带 + 内面板。带宽度 0 就是单面（与旧模板一致） */
+  function renderPanelGroup(labelKey: string): HTMLElement {
+    const g = el('div', 'ce-group')
+    g.dataset.group = 'panel'
+    g.appendChild(el('div', 'ce-label', tl(labelKey)))
+    for (const p of ['decor.panel.band', 'tokens.panelBg', 'decor.panel.border', 'decor.panel.radius', 'decor.panel.shadow', 'decor.panel.pad']) {
+      const spec = PARAM_SPECS.find((s) => s.path === p)
+      if (spec) g.appendChild(renderParam(spec))
+    }
+    g.appendChild(el('div', 'ce-hint', t('card.panelHint')))
+    return g
+  }
+
+  /**
+   * 逐级标题：四级各自折叠。
+   * 48 个控件一次全摊开会把面板拉成三屏，而绝大多数模板只改 h1/h2 —— 折叠是必需的。
+   */
+  function renderHeadGroup(labelKey: string): HTMLElement {
+    const g = el('div', 'ce-group')
+    g.dataset.group = 'head'
+    g.appendChild(el('div', 'ce-label', tl(labelKey)))
+    for (const lv of HEAD_LEVEL_LIST) {
+      const d = el('details', 'ce-sub') as HTMLDetailsElement
+      d.dataset.level = lv
+      // 只有 h1 默认展开：一眼能看到"这套模板的标题长什么样"
+      if (lv === 'h1') d.open = true
+      const sum = el('summary', 'ce-sub-sum', lv.toUpperCase())
+      d.appendChild(sum)
+      for (const spec of headSpecs(lv)) d.appendChild(renderParam(spec))
+      g.appendChild(d)
+    }
+    return g
+  }
+
+  /** 分隔线五式 + 有序序号 + 支撑面三态 */
+  function renderRuleGroup(labelKey: string): HTMLElement {
+    const g = el('div', 'ce-group')
+    g.dataset.group = 'rule'
+    g.appendChild(el('div', 'ce-label', tl(labelKey)))
+    for (const p of ['decor.rule.style', 'decor.rule.height', 'decor.rule.color', 'decor.rule.color2', 'decor.rule.angle']) {
+      const spec = PARAM_SPECS.find((s) => s.path === p)
+      if (spec) g.appendChild(renderParam(spec))
+    }
+    for (const p of ['decor.listNo', 'decor.surface.table', 'decor.surface.code', 'decor.surface.image']) {
+      const spec = PARAM_SPECS.find((s) => s.path === p)
+      if (spec) g.appendChild(renderParam(spec))
+    }
+    g.appendChild(renderOrnGroup('card.groupOrn'))
+    return g
+  }
+
+  /** 角饰贴纸：可加可删，每枚 8 个字段（path 用数组下标） */
+  function renderOrnGroup(labelKey: string): HTMLElement {
+    const wrap = el('div', 'ce-orn')
+    wrap.dataset.group = 'orn'
+    wrap.appendChild(el('div', 'ce-label', tl(labelKey)))
+    const list = state.template.decor.ornaments ?? []
+    list.forEach((o, i) => {
+      const box = el('div', 'ce-orn-item')
+      box.dataset.idx = String(i)
+      const head = el('div', 'ce-orn-head')
+      head.appendChild(el('span', 'ce-orn-name', `${tl(`tpl.ornshape.${o.shape}`)} · ${tl(`tpl.pos.${o.pos}`)}`))
+      const del = el('button', 'ce-mini', '×') as HTMLButtonElement
+      del.type = 'button'
+      del.title = t('card.ornRemove')
+      del.dataset.act = 'orn-del'
+      del.onclick = () => {
+        const next = [...list.slice(0, i), ...list.slice(i + 1)]
+        applyPath('decor.ornaments', next, true)
+      }
+      head.appendChild(del)
+      box.appendChild(head)
+      for (const spec of ornSpecs(i)) box.appendChild(renderParam(spec))
+      wrap.appendChild(box)
+    })
+    const add = el('button', 'ce-seg-btn', t('card.ornAdd')) as HTMLButtonElement
+    add.type = 'button'
+    add.dataset.act = 'orn-add'
+    add.disabled = list.length >= 6
+    add.onclick = () => {
+      const next = [
+        ...list,
+        { shape: 'star5' as const, pos: 'br' as const, size: 56, rotate: 0, fill: tplAccent(), stroke: '', text: '', bleed: 4 },
+      ]
+      applyPath('decor.ornaments', next, true)
+    }
+    const row = el('div', 'ce-seg')
+    row.appendChild(add)
+    wrap.appendChild(row)
+    return wrap
+  }
+
+  /** 新贴纸的默认填充色 = 当前强调色，加进来就看得见（不至于加了个透明的） */
+  function tplAccent(): string {
+    const a = state.template.tokens.accent
+    return /^#[0-9a-f]{6}$/i.test(a) ? a : '#ff2e63'
+  }
+
+  /**
+   * 配色变体：点一下把 token 写进当前模板。
+   *
+   * 刻意不做"渲染时叠加变体"：那样面板改色会被变体压回去（谁赢取决于执行顺序），
+   * 而"存为我的模板"也会存下一个看不出来的隐式状态。写进去则所见即所得。
+   */
+  function renderVariantGroup(): HTMLElement {
+    const g = el('div', 'ce-group')
+    g.dataset.group = 'variant'
+    g.appendChild(el('div', 'ce-label', t('card.groupVariant')))
+    const seg = el('div', 'ce-seg')
+    for (const v of state.template.variants ?? []) {
+      const b = el('button', 'ce-seg-btn', v.name) as HTMLButtonElement
+      b.type = 'button'
+      b.dataset.variant = v.id
+      const hit = Object.entries(v.tokens).every(
+        ([k, val]) => (state.template.tokens as unknown as Record<string, string>)[k] === val,
+      )
+      b.classList.toggle('on', hit)
+      b.onclick = () => {
+        state.template = { ...state.template, tokens: { ...state.template.tokens, ...v.tokens } }
+        saveCurrent(state.template)
+        renderParams()
+        void recompute()
+      }
+      seg.appendChild(b)
+    }
+    g.appendChild(seg)
+    g.appendChild(el('div', 'ce-hint', t('card.variantHint')))
+    return g
+  }
+
   function renderParams(): void {
     if (!refs) return
-    const groups: { labelKey: string; paths: string[]; special?: 'bg' | 'stamp' }[] = [
+    const groups: { labelKey: string; paths: string[]; special?: 'bg' | 'stamp' | 'panel' | 'head' | 'rule' | 'orn' | 'variant' }[] = [
       { labelKey: 'card.groupColor', paths: ['tokens.paper', 'tokens.ink', 'tokens.accent', 'tokens.codeBg'] },
       {
         labelKey: 'card.groupMetrics',
@@ -509,6 +662,10 @@ export function createBeautifyPanel(deps: BeautifyDeps): BeautifyHandle {
       },
       // schema 4：引用框 / 项目符号 / 标题装饰 —— 这三项是"这套模板有没有性格"的关键
       { labelKey: 'card.groupType', paths: ['decor.quote', 'decor.bullet', 'decor.title'] },
+      /* schema 5「艺术层」三组 */
+      { labelKey: 'card.groupPanel', paths: [], special: 'panel' },
+      { labelKey: 'card.groupHead', paths: [], special: 'head' },
+      { labelKey: 'card.groupRule', paths: [], special: 'rule' },
       { labelKey: 'card.groupStamp', paths: [], special: 'stamp' },
       {
         labelKey: 'card.groupHeaderFooter',
@@ -526,6 +683,22 @@ export function createBeautifyPanel(deps: BeautifyDeps): BeautifyHandle {
         host.appendChild(renderStampGroup(g.labelKey))
         continue
       }
+      if (g.special === 'panel') {
+        host.appendChild(renderPanelGroup(g.labelKey))
+        continue
+      }
+      if (g.special === 'head') {
+        host.appendChild(renderHeadGroup(g.labelKey))
+        continue
+      }
+      if (g.special === 'rule') {
+        host.appendChild(renderRuleGroup(g.labelKey))
+        continue
+      }
+      if (g.special === 'orn') {
+        host.appendChild(renderOrnGroup(g.labelKey))
+        continue
+      }
       const section = el('div', 'ce-group')
       section.appendChild(el('div', 'ce-label', tl(g.labelKey)))
       for (const p of g.paths) {
@@ -534,6 +707,9 @@ export function createBeautifyPanel(deps: BeautifyDeps): BeautifyHandle {
       }
       host.appendChild(section)
     }
+
+    // 配色变体只在这套模板带了变体时才出现（28 套老模板没有，不占地方）
+    if ((state.template.variants ?? []).length) host.appendChild(renderVariantGroup())
 
     // 字体族：一个下拉同时决定 body/head，故单独处理
     const fSection = el('div', 'ce-group')
