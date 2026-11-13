@@ -161,3 +161,12 @@ pixel-identical to 0.12.0. All ids are unchanged and nothing needs migrating.
 | `lypora-0.13.0-1.x86_64.rpm` | Fedora 32+ / RHEL 9+ / openSUSE | 系统包（`dnf install`） | 105.0 MiB | `1d376e39c8a93b80a786b22c29c75d24c50b497c0b252c03ed749d3e46e65816` |
 | `lypora_0.13.0_amd64.deb` | Debian 11+ / Ubuntu 20.04+ / 深度 / 麒麟 | 系统包（`apt install`） | 81.0 MiB | `1faeba550b72b11b0da2b1a2fe88494d98bb240b5024da27d07becac3a074702` |
 
+同一份校验值也放在附件 **`SHA256SUMS.txt`** 里，批量校验：
+
+```bash
+curl -LO https://github.com/dr-bing-li/lypora/releases/download/v0.13.0/SHA256SUMS.txt
+sha256sum -c SHA256SUMS.txt --ignore-missing
+```
+
+The same checksums ship as the **`SHA256SUMS.txt`** asset for batch verification (command above).
+
