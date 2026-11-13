@@ -275,6 +275,15 @@ seamless live-preview editor, nothing else. Specifically:
   general look of a rendered document. If you believe something here crosses a line, please open an issue and
   it will be removed.
 
+**Design references are not code.** A few card templates take their *ideas* from other markdown-to-card tools —
+the "a theme is data, not a stylesheet" model, and art-direction habits such as colour-blocked headings, hard
+offset shadows and stickers bleeding off the card edge, were informed by looking at how
+[md2card](https://md2card.cn/zh/editor) and similar products solve the same problems. No CSS rule, selector,
+class name, custom property, asset or line of JavaScript from any of them exists in this repository: every
+template compiles from our own schema (`core/src/export/template/`) into our own selectors and CSS variables.
+The analysis notes under `docs/` record observed *parameters* and measurements, not source text. Product names
+are used descriptively and belong to their respective owners.
+
 ### Feedback
 
 Bug reports, feature requests and blunt criticism are all welcome — especially "this is worse than Typora
@@ -642,6 +651,13 @@ Lypora 想做的是，把那种写作方式搬到 Typora 自己跑不了的地�
   此处仅用于指称该产品本身，属描述性使用。
 - 所谓兼容，只到「行为与习惯」这一层——快捷键、交互形状、渲染出来的大致观感。如果你认为某处越过了界线，
   请开 issue 指出，我会删掉它。
+
+**设计参考不是代码。** 少数卡片模板的*思路*来自其它 Markdown 转卡片工具——「主题是一份数据、不是一张样式表」
+这个模型，以及「标题做成色块 / 硬偏移阴影 / 贴纸出血到卡外」这类美术习惯，是观察
+[md2card](https://md2card.cn/zh/editor) 等同类产品怎么解决同一问题之后总结出来的。但仓库里**没有**它们任何
+一条 CSS 规则、选择器、类名、自定义属性、素材或一行 JavaScript：每套模板都从我们自己的 schema
+（`core/src/export/template/`）编译成我们自己的选择器与 CSS 变量。`docs/` 下的分析笔记记录的是**观察到的
+参数与测量值**，不是源码原文。产品名此处仅作描述性指称，归各自权利人所有。
 
 ### 反馈
 
