@@ -14,7 +14,9 @@ import {
   BINDINGS,
   BULLET_STYLES,
   FRAME_STYLES,
+  HEAD_ELEVS,
   HEAD_LEVELS,
+  HEAD_MARKS,
   HEAD_RULES,
   HR_STYLES,
   LIST_NOS,
@@ -47,9 +49,16 @@ export interface ParamSpec {
    * 而 `input[type=color]` 表达不了"空"，必须额外给一个清除按钮。
    */
   clearable?: boolean
+  /**
+   * 下拉框的值写回模板时转成数字。
+   * 字重这类字段是"离散数字"（0/400/600/700/800），用下拉比滑块好点，
+   * 但 HTML 的 option value 只能是字符串；不转的话 `'0'` 在 JS 里是 truthy，
+   * 会绕过 `if (weight)` 的判断，真的写出 `font-weight: 0`。
+   */
+  numeric?: boolean
 }
 
-export const TEXTURES = ['none', 'grain', 'grid', 'dots', 'ruled', 'fiber', 'halo', 'stripe', 'perf'] as const
+export const TEXTURES = ['none', 'grain', 'grid', 'dots', 'ruled', 'fiber', 'halo', 'stripe', 'perf', 'lattice'] as const
 export const ACCENTS = ['none', 'left', 'top', 'corner'] as const
 export const CORNERS = ['none', 'fold', 'round'] as const
 export const COVERS = ['center', 'top', 'band'] as const
@@ -194,6 +203,11 @@ export const PARAM_SPECS: ParamSpec[] = [
   { path: 'decor.surface.table', kind: 'select', labelKey: 'tpl.p.surfTable', options: enumOpts('tpl.box', SURFACE_BOXES) },
   { path: 'decor.surface.code', kind: 'select', labelKey: 'tpl.p.surfCode', options: enumOpts('tpl.box', SURFACE_BOXES) },
   { path: 'decor.surface.image', kind: 'select', labelKey: 'tpl.p.surfImage', options: enumOpts('tpl.pic', SURFACE_IMAGES) },
+
+  /* schema 6：顶部色条 */
+  { path: 'decor.topBar.height', kind: 'number', labelKey: 'tpl.topBar.height', min: 0, max: 24, step: 1, unit: 'px' },
+  { path: 'decor.topBar.from', kind: 'color', labelKey: 'tpl.topBar.from', clearable: true },
+  { path: 'decor.topBar.to', kind: 'color', labelKey: 'tpl.topBar.to', clearable: true },
 ]
 
 /**
@@ -210,6 +224,25 @@ export function headSpecs(lv: HeadLevel): ParamSpec[] {
     { path: `${p}.padX`, kind: 'number', labelKey: 'tpl.p.padX', min: 0, max: 40, step: 1, unit: 'px' },
     { path: `${p}.padY`, kind: 'number', labelKey: 'tpl.h.padY', min: 0, max: 24, step: 1, unit: 'px' },
     { path: `${p}.radius`, kind: 'number', labelKey: 'tpl.p.radius', min: 0, max: 24, step: 1, unit: 'px' },
+    /* schema 6 */
+    { path: `${p}.radiusAlt`, kind: 'number', labelKey: 'tpl.h.radiusAlt', min: 0, max: 24, step: 1, unit: 'px' },
+    {
+      path: `${p}.weight`,
+      kind: 'select',
+      labelKey: 'tpl.h.weight',
+      numeric: true,
+      options: [
+        { value: '0', labelKey: 'tpl.hw.inherit' },
+        { value: '400', labelKey: 'tpl.hw.normal' },
+        { value: '600', labelKey: 'tpl.hw.semi' },
+        { value: '700', labelKey: 'tpl.hw.bold' },
+        { value: '800', labelKey: 'tpl.hw.heavy' },
+      ],
+    },
+    { path: `${p}.track`, kind: 'number', labelKey: 'tpl.h.track', min: -2, max: 8, step: 0.5, unit: 'px' },
+    { path: `${p}.mark`, kind: 'select', labelKey: 'tpl.h.mark', options: enumOpts('tpl.hmark', HEAD_MARKS) },
+    { path: `${p}.markColor`, kind: 'color', labelKey: 'tpl.h.markColor', clearable: true },
+    { path: `${p}.elev`, kind: 'select', labelKey: 'tpl.h.elev', options: enumOpts('tpl.helev', HEAD_ELEVS) },
     { path: `${p}.rotate`, kind: 'number', labelKey: 'tpl.h.rotate', min: -3, max: 3, step: 0.5, unit: '°' },
     { path: `${p}.shadow`, kind: 'number', labelKey: 'tpl.h.shadow', min: 0, max: 6, step: 1, unit: 'px' },
     { path: `${p}.rule`, kind: 'select', labelKey: 'tpl.h.rule', options: enumOpts('tpl.hrule', HEAD_RULES) },

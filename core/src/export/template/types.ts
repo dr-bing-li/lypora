@@ -17,10 +17,13 @@
  *   schema 5 — 「艺术层」：双面卡片（外圈带 + 内面板）、逐级标题形态、分隔线、
  *              角饰贴纸数组、支撑面（表格/代码/图片）三态、有序序号形态、
  *              配色变体（v0.13.0，拆 md2card 波普那一版）
+ *   schema 6 — 「字体与渐层」：标题的字重/字距/前置标记/柔和投影/对角圆角，
+ *              标题底与顶条支持渐变，分隔线加渐隐与点线，纹理加菱形网格，
+ *              引用块加大引号（v0.14.0，另外四套艺术风）
  * 归一化不留旧版本分支：缺字段一律回落默认值，所以旧模板与旧 .lyt.json 照旧能读。
  */
 
-export const TEMPLATE_SCHEMA = 5
+export const TEMPLATE_SCHEMA = 6
 
 /** 纸张与墨色：决定"这是什么质地"的六个基础色 */
 export interface TemplateTokens {
@@ -97,7 +100,17 @@ export interface TemplateMetrics {
 }
 
 /** 纹理与装饰：决定"有没有手工感" */
-export type Texture = 'none' | 'grain' | 'grid' | 'dots' | 'ruled' | 'fiber' | 'halo' | 'stripe' | 'perf'
+export type Texture =
+  | 'none'
+  | 'grain'
+  | 'grid'
+  | 'dots'
+  | 'ruled'
+  | 'fiber'
+  | 'halo'
+  | 'stripe'
+  | 'perf'
+  | 'lattice'
 export type AccentMark = 'none' | 'left' | 'top' | 'corner'
 /** 角处理：none 直角 / fold 折角 / round 圆切角（明显的大圆角，与 radius 滑块叠加） */
 export type CornerStyle = 'none' | 'fold' | 'round'
@@ -126,9 +139,9 @@ export type BgPreset = 'none' | 'kraft' | 'lined' | 'grid' | 'dots' | 'watercolo
  */
 export const BG_PRESETS: readonly BgPreset[] = ['none', 'kraft', 'lined', 'grid', 'dots', 'watercolor', 'paper', 'mesh']
 
-/** 引用框形态：左竖线 / 卡片 / 四角书引 / 气泡 / 无 */
-export type QuoteStyle = 'bar' | 'card' | 'quad' | 'bubble' | 'none'
-export const QUOTE_STYLES: readonly QuoteStyle[] = ['bar', 'card', 'quad', 'bubble', 'none']
+/** 引用框形态：左竖线 / 卡片 / 四角书引 / 气泡 / 大引号 / 无 */
+export type QuoteStyle = 'bar' | 'card' | 'quad' | 'bubble' | 'quotemark' | 'none'
+export const QUOTE_STYLES: readonly QuoteStyle[] = ['bar', 'card', 'quad', 'bubble', 'quotemark', 'none']
 
 /** 项目符号：实心点 / 破折 / 方块 / 空心圈 / 汉字序号 / 五角星 / 无 */
 export type BulletStyle = 'dot' | 'dash' | 'square' | 'ring' | 'cjk' | 'star' | 'none'
@@ -198,6 +211,9 @@ export interface TemplateDecor {
   surface: SurfaceSpec
   /** 有序列表序号形态 */
   listNo: ListNo
+  /* ---- schema 6 ---- */
+  /** 卡片顶部的横向色条（品牌栏那种） */
+  topBar: TopBarSpec
 }
 
 /* ================================================================== *
@@ -233,13 +249,28 @@ export interface PanelSpec {
   pad: number
 }
 
-/** 标题下划线：无 / 实线 / 斜纹（双色重复渐变） */
-export type HeadRuleStyle = 'none' | 'solid' | 'stripe'
-export const HEAD_RULES: readonly HeadRuleStyle[] = ['none', 'solid', 'stripe']
+/** 标题下划线：无 / 实线 / 斜纹（双色重复渐变） / 渐隐（两端透明） / 短棒（居中定宽） */
+export type HeadRuleStyle = 'none' | 'solid' | 'stripe' | 'fade' | 'bar'
+export const HEAD_RULES: readonly HeadRuleStyle[] = ['none', 'solid', 'stripe', 'fade', 'bar']
+
+/**
+ * 标题前置标记：无 / 竖条 / 菱形。
+ * 竖条是"引文式"的左饰条（左内边距让它有地方站），菱形是装饰艺术风格的小菱形。
+ * 两者都用 ::before 画，因此**与「下划线」不冲突**（下划线走 background，占的是自身盒子）。
+ */
+export type HeadMark = 'none' | 'bar' | 'diamond'
+export const HEAD_MARKS: readonly HeadMark[] = ['none', 'bar', 'diamond']
+
+/**
+ * 标题块的投影：无 / 柔和（下落 4px、模糊 12px、取 accent 的淡影） / 光晕（同尺寸的辉光）。
+ * 波普那种"零模糊硬阴影"是 HeadSpec.shadow（文字位移重影），这里管的是**盒子**的影。
+ */
+export type HeadElev = 'none' | 'soft' | 'glow'
+export const HEAD_ELEVS: readonly HeadElev[] = ['none', 'soft', 'glow']
 
 /** 单级标题形态（h1..h4 各一份） */
 export interface HeadSpec {
-  /** 底色，空串 = 不铺底 */
+  /** 底色或渐变，空串 = 不铺底。渐变走 background 而不是 background-color */
   bg: string
   /** 文字色，空串 = 继承正文墨色 */
   fg: string
@@ -249,10 +280,25 @@ export interface HeadSpec {
   padY: number
   /** 圆角 px */
   radius: number
+  /**
+   * 对角圆角 px（第 2、4 角），0 = 等于 radius。
+   * 四值圆角没法用一个滑块表达，但"胶囊 + 一对大角"这种形态靠两个值就够了。
+   */
+  radiusAlt: number
   /** 旋转角度 −3..3；0 = 不转 */
   rotate: number
   /** 位移重影 px（文字阴影，色取 accent）；0 = 无 */
   shadow: number
+  /** 块投影 */
+  elev: HeadElev
+  /** 字重；0 = 不设（跟随基础样式） */
+  weight: number
+  /** 字距 px，−2..8；正数拉开、负数收紧 */
+  track: number
+  /** 前置标记 */
+  mark: HeadMark
+  /** 标记色，空串 = 跟随文字色；标记也用作下划线以外的小装饰 */
+  markColor: string
   /** 全大写 */
   caps: boolean
   /** 斜体 */
@@ -269,9 +315,11 @@ export const HEAD_LEVELS = ['h1', 'h2', 'h3', 'h4'] as const
 export type HeadLevel = (typeof HEAD_LEVELS)[number]
 export type HeadingsSpec = Record<HeadLevel, HeadSpec>
 
-/** 分隔线形态：无 / 实线 / 虚线 / 斜纹 / 胶带（横条双色） */
-export type HrStyle = 'none' | 'solid' | 'dashed' | 'stripe' | 'tape'
-export const HR_STYLES: readonly HrStyle[] = ['none', 'solid', 'dashed', 'stripe', 'tape']
+/**
+ * 分隔线形态：无 / 实线 / 虚线 / 斜纹 / 胶带（横条双色） / 渐隐（两端透明） / 点线（打字机虚线）
+ */
+export type HrStyle = 'none' | 'solid' | 'dashed' | 'stripe' | 'tape' | 'fade' | 'dot'
+export const HR_STYLES: readonly HrStyle[] = ['none', 'solid', 'dashed', 'stripe', 'tape', 'fade', 'dot']
 
 export interface RuleSpec {
   style: HrStyle
@@ -323,6 +371,24 @@ export interface SurfaceSpec {
 /** 有序序号：默认（1. 2.）/ 圆形徽标 / 方形徽标 */
 export type ListNo = 'plain' | 'circle' | 'square'
 export const LIST_NOS: readonly ListNo[] = ['plain', 'circle', 'square']
+
+/**
+ * 卡片顶部的横向色条（"品牌栏"）。
+ *
+ * 一行高度 + 两个色值，就是一个水平渐变条。做成数据而不是"再来一个 frame 枚举"，
+ * 是因为它的三个自由度（多高、哪两色、要不要渐变）都必须是可调的：
+ * 同一套模板换个主色，这条栏得跟着变。
+ *
+ * 高度默认 0 = 不画，所以老模板加这个字段不会有任何像素变化。
+ */
+export interface TopBarSpec {
+  /** 高度 px，0 = 不画 */
+  height: number
+  /** 起始色，空串 = 跟随 tokens.accent */
+  from: string
+  /** 结束色，空串 = 同 from（即纯色条） */
+  to: string
+}
 
 /**
  * 配色变体：只覆盖 token，不动任何布局。

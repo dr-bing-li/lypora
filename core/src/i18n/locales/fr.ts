@@ -425,6 +425,7 @@ export default {
       halo: 'Halo',
       stripe: 'Rayures',
       perf: 'Perforations',
+      lattice: 'Treillis',
     },
     acc: {
       none: 'Aucune',
@@ -464,6 +465,7 @@ export default {
       quad: 'Coins',
       bubble: 'Bulle',
       none: 'Aucun',
+      quotemark: 'Guillemet',
     },
     bullet: {
       dot: 'Point',
@@ -512,6 +514,12 @@ export default {
       align: 'Alignement',
       inline: 'Ajuster au texte',
       rule: 'Soulignement',
+      radiusAlt: 'Coins alternés',
+      weight: 'Graisse',
+      track: 'Interlettrage',
+      mark: 'Repère',
+      markColor: 'Couleur du repère',
+      elev: 'Ombre du bloc',
     },
     rule: {
       style: 'Style de filet',
@@ -539,6 +547,8 @@ export default {
       none: 'Aucun',
       solid: 'Plein',
       stripe: 'Rayures',
+      fade: 'Dégradé',
+      bar: 'Barre courte',
     },
     halign: {
       start: 'Gauche',
@@ -550,6 +560,8 @@ export default {
       dashed: 'Tirets',
       stripe: 'Rayures',
       tape: 'Ruban',
+      fade: 'Dégradé',
+      dot: 'Pointillé',
     },
     listno: {
       plain: 'Chiffres',
@@ -572,6 +584,28 @@ export default {
       burst: 'Éclat',
       badge: 'Badge',
       blob: 'Tache',
+    },
+    hw: {
+      inherit: 'Hérité',
+      normal: 'Normal',
+      semi: 'Demi-gras',
+      bold: 'Gras',
+      heavy: 'Très gras',
+    },
+    hmark: {
+      none: 'Aucun',
+      bar: 'Barre',
+      diamond: 'Losange',
+    },
+    helev: {
+      none: 'Aucune',
+      soft: 'Douce',
+      glow: 'Halo',
+    },
+    topBar: {
+      height: 'Hauteur du bandeau',
+      from: 'Début',
+      to: 'Fin',
     },
     pos: {
       br: 'Bas droite',

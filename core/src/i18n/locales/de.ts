@@ -425,6 +425,7 @@ export default {
       halo: 'Halo',
       stripe: 'Streifen',
       perf: 'Perforation',
+      lattice: 'Gitter',
     },
     acc: {
       none: 'Keine',
@@ -464,6 +465,7 @@ export default {
       quad: 'Ecken',
       bubble: 'Blase',
       none: 'Keine',
+      quotemark: 'Anführungszeichen',
     },
     bullet: {
       dot: 'Punkt',
@@ -512,6 +514,12 @@ export default {
       align: 'Ausrichtung',
       inline: 'Auf Textbreite',
       rule: 'Unterstrich',
+      radiusAlt: 'Ecken alternierend',
+      weight: 'Schriftschnitt',
+      track: 'Laufweite',
+      mark: 'Marke',
+      markColor: 'Markenfarbe',
+      elev: 'Block-Schatten',
     },
     rule: {
       style: 'Linienstil',
@@ -539,6 +547,8 @@ export default {
       none: 'Keiner',
       solid: 'Durchgezogen',
       stripe: 'Streifen',
+      fade: 'Verlauf',
+      bar: 'Kurzer Balken',
     },
     halign: {
       start: 'Links',
@@ -550,6 +560,8 @@ export default {
       dashed: 'Gestrichelt',
       stripe: 'Streifen',
       tape: 'Klebeband',
+      fade: 'Verlauf',
+      dot: 'Gepunktet',
     },
     listno: {
       plain: 'Zahlen',
@@ -572,6 +584,28 @@ export default {
       burst: 'Knall',
       badge: 'Plakette',
       blob: 'Klecks',
+    },
+    hw: {
+      inherit: 'Erben',
+      normal: 'Normal',
+      semi: 'Halbfett',
+      bold: 'Fett',
+      heavy: 'Extrafett',
+    },
+    hmark: {
+      none: 'Keine',
+      bar: 'Balken',
+      diamond: 'Raute',
+    },
+    helev: {
+      none: 'Keiner',
+      soft: 'Weich',
+      glow: 'Schein',
+    },
+    topBar: {
+      height: 'Balkenhöhe',
+      from: 'Startfarbe',
+      to: 'Endfarbe',
     },
     pos: {
       br: 'Unten rechts',

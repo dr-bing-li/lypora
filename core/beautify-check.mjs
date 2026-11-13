@@ -1,8 +1,8 @@
 /**
- * 「排版」验收 —— 九组硬指标，任一不过即失败。
+ * 「排版」验收 —— 十组硬指标，任一不过即失败。
  *
- *  A. 交互：一级菜单「排版」能开面板、29 套模板按钮齐全、20s 内出预览、Esc 能关。
- *  B. 模板：29 套逐一出图，且每张采样颜色数 > 8（防"白图假通过"）。
+ *  A. 交互：一级菜单「排版」能开面板、33 套模板按钮齐全、20s 内出预览、Esc 能关。
+ *  B. 模板：33 套逐一出图，且每张采样颜色数 > 8（防"白图假通过"）。
  *  C. 参数：改字号必须让页数变化（证明"参数→重排"链路真的通了，不是只换 CSS）；
  *           纹理必须在**同一字号**下比「无 → 网格」，并且设回去要回到基线
  *           （v0.9.0 拿改字号前的图当基线，纹理完全不可见也能通过）。
@@ -18,6 +18,10 @@
  *           配色变体只换颜色不动尺寸、分页不被带宽度破坏。
  *           —— 全部量「预览图上的像素」，不量 CSS 中间量：v0.12.0 的
  *           "缩略图溢出"和"dick 双计数"两次假失败/假通过都是量中间量惹的祸。
+ *  C5. 样式层（schema 6）：四套新样式各自最有辨识度的那一处必须在预览图上量得到 ——
+ *           黑金菱纹的黑底 + 满幅菱形网 + 顶部金条、橙光胶囊的收窄药丸（不是一条分隔线）、
+ *           青蓝流线的**对角不等圆角**、米纸铅字的两层米色 + 点线分隔；
+ *           外加一条回归：素笺清墨的标题不许被新字段污染。
  *  D. 模板进出：导出 .zip 样式包（template.json + README，带图时还有 bg.png）→
  *           再导入 → 成为当前模板；旧版单文件 .lyt.json 仍要能认（老模板不弃）。
  *  E. 离线：整场操作**零外部网络请求**（除本机 127.0.0.1 静态资源）。
@@ -130,7 +134,7 @@ const open = await page.locator('.ce').count()
 const tplCount = await page.locator('.ce-style[data-tpl]').count()
 report.steps.panel = { open: open === 1, templates: tplCount }
 if (!open) errors.push('排版面板没有打开')
-if (tplCount < 29) errors.push(`模板数量不足：${tplCount} < 29`)
+if (tplCount < 33) errors.push(`模板数量不足：${tplCount} < 33`)
 
 await page.waitForFunction(() => {
   const img = document.querySelector('.ce-img')
@@ -862,7 +866,434 @@ if (mint && band30) {
 await page.click('.ce-style[data-tpl="popart"]')
 await page.waitForTimeout(1500)
 
+/**
+ * ---------- C5. 另外四套艺术风（schema 6） ----------
+ *
+ * 这一组要回答的问题只有一个：**"把标题做成色块"的这六个新字段真的画出来了吗**。
+ * 四套模板各挑它最有辨识度的一处现象，全部在预览图上量：
+ *   黑金菱纹 —— 黑底 + 满幅菱形网 + 顶部金条
+ *   橙光胶囊 —— 顶部橙条 + 橙色胶囊（收窄且四角是大圆角）
+ *   青蓝流线 —— 蓝青渐变块 + **一对角比另一对大**（这是它唯一的结构特征）
+ *   米纸铅字 —— 纸与内卡是两种米色 + 分隔线是点线（有/无交替）
+ * 再加一条回归：第 1 套「素笺清墨」的标题不许被新字段污染（字距、字重、圆角、下划线都得是原样）。
+ */
+
+const c5Shot = async (id, name) => {
+  const prev = await page.evaluate(() => document.querySelector('.ce-img')?.src || '')
+  await page.click(`.ce-style[data-tpl="${id}"]`)
+  const fresh = await page
+    .waitForFunction(
+      (p) => {
+        const s = document.querySelector('.ce-img')?.src || ''
+        return !!s && s !== p && s.startsWith('data:image/png')
+      },
+      prev,
+      { timeout: 25000 },
+    )
+    .then(() => true)
+    .catch(() => false)
+  if (!fresh) {
+    errors.push(`[样式层] ${id} 换了模板但预览图 25s 没刷新`)
+    return null
+  }
+  // 要量的是正文页：封面在的话先关掉（状态可能被上一组复位）
+  const cover = page.locator('.ce-check input[type="checkbox"]').first()
+  if (await cover.isChecked().catch(() => false)) {
+    const p2 = await page.evaluate(() => document.querySelector('.ce-img')?.src || '')
+    await cover.setChecked(false).catch(() => {})
+    await page
+      .waitForFunction((p) => (document.querySelector('.ce-img')?.src || '') !== p, p2, { timeout: 25000 })
+      .catch(() => {})
+  }
+  return grab(name)
+}
+
+/**
+ * 量一张卡片图：顶行采样、按色统计包围盒与纵向分布、中线游程。
+ * 全部在浏览器里做，只把数字传回 Node（跨进程传 ImageData 会很慢）。
+ */
+const pixProbe = async (name, colors, tol = 26, probeY = 0.5, skipTop = 0) => {
+  const b64 = fs.readFileSync(path.join(OUT, name)).toString('base64')
+  return page.evaluate(
+    async ([d, colors, tol, probeY, skipTop]) => {
+      const img = new Image()
+      img.src = 'data:image/png;base64,' + d
+      await img.decode()
+      const c = document.createElement('canvas')
+      c.width = img.naturalWidth
+      c.height = img.naturalHeight
+      const g = c.getContext('2d')
+      g.drawImage(img, 0, 0)
+      const W = c.width
+      const H = c.height
+      const A = g.getImageData(0, 0, W, H).data
+      const at = (x, y) => {
+        const i = (y * W + x) * 4
+        return [A[i], A[i + 1], A[i + 2]]
+      }
+      const near = (a, b, t) => Math.abs(a[0] - b[0]) + Math.abs(a[1] - b[1]) + Math.abs(a[2] - b[2]) < t * 3
+      const out = { W, H, topRow: [], boxes: [], bands: {}, midRuns: [], row: null }
+      // 顶部第一行（离边缘 2px，避开抗锯齿）三处采样：用来认"顶部色条"
+      out.topRow = [0.2, 0.5, 0.8].map((k) => at(Math.round(W * k), 2))
+      // 每个目标色：像素数 / 包围盒 / 八段纵向分布 / **最宽那一行**。
+      // 最后一项是关键：满幅的顶条会把包围盒撑到整幅宽，而"标题色块有多宽"
+      // 只能看它自己那一行 —— 包围盒回答不了这个问题。
+      for (const t of colors) {
+        let n = 0
+        const bands = new Array(8).fill(0)
+        const rows = new Map()
+        for (let y = skipTop; y < H; y += 2) {
+          for (let x = 0; x < W; x += 2) {
+            if (!near(at(x, y), t.rgb, tol)) continue
+            n += 1
+            bands[Math.min(7, Math.floor((y / H) * 8))] += 1
+            const r = rows.get(y) || { c: 0, x0: 1e9, x1: -1 }
+            r.c += 1
+            if (x < r.x0) r.x0 = x
+            if (x > r.x1) r.x1 = x
+            rows.set(y, r)
+          }
+        }
+        let widest = null
+        for (const [y, r] of rows) {
+          if (!widest || r.c > widest.c) widest = { y, c: r.c, x0: r.x0, x1: r.x1 }
+        }
+        out.boxes.push({ name: t.name, n, widest })
+        out.bands[t.name] = bands
+      }
+      // 中线游程：看"纸 / 面板 / 正文"的分层。按**长度**取前八段再按位置排序 ——
+      // 正文行里颜色被文字切成几十个碎段，取"前八个"只会拿到文字间隙。
+      const yMid = Math.round(H * probeY)
+      const runs = []
+      let cur = null
+      for (let x = 0; x < W; x += 1) {
+        const p = at(x, yMid)
+        if (cur && near(p, cur.c, 3)) cur.x1 = x
+        else {
+          cur = { x0: x, x1: x, c: p }
+          runs.push(cur)
+        }
+      }
+      out.row = yMid
+      out.midRuns = runs
+        .filter((r) => r.x1 - r.x0 > 2)
+        .sort((a, b) => b.x1 - b.x0 - (a.x1 - a.x0))
+        .slice(0, 8)
+        .sort((a, b) => a.x0 - b.x0)
+        .map((r) => [r.x0, r.x1, r.c])
+      return out
+    },
+    [b64, colors, tol, probeY, skipTop],
+  )
+}
+
+/**
+ * 找一个"有色横带"的轮廓：逐行取**饱和度足够高的连续段**，只保留宽度 ≥ minW 的。
+ *
+ * 为什么不用单一目标色：渐变块的右端是另一个颜色（蓝→青、橙→浅橙），
+ * 拿 #1677ff 去匹配只能圈出左半边，量出来的"块宽"是假的。
+ * 用"饱和度"定义色块，与具体色值无关，渐变也能整块圈住。
+ * 文字（近黑、低饱和）与纸（低饱和）都会被排除。
+ */
+const bandEdges = async (name, minW = 150, yFrom = 30, yTo = 0.92) => {
+  const b64 = fs.readFileSync(path.join(OUT, name)).toString('base64')
+  return page.evaluate(
+    async ([d, minW, yFrom, yTo]) => {
+      const img = new Image()
+      img.src = 'data:image/png;base64,' + d
+      await img.decode()
+      const c = document.createElement('canvas')
+      c.width = img.naturalWidth
+      c.height = img.naturalHeight
+      const g = c.getContext('2d')
+      g.drawImage(img, 0, 0)
+      const W = c.width
+      const H = c.height
+      const A = g.getImageData(0, 0, W, H).data
+      const rows = []
+      for (let y = yFrom; y < Math.round(H * yTo); y += 1) {
+        let best = null
+        let cur = null
+        for (let x = 0; x < W; x += 1) {
+          const i = (y * W + x) * 4
+          const r = A[i]
+          const gr = A[i + 1]
+          const b = A[i + 2]
+          const mx = Math.max(r, gr, b)
+          const mn = Math.min(r, gr, b)
+          const colored = mx > 90 && mx - mn > 55
+          if (colored) {
+            if (!cur) cur = { x0: x, x1: x }
+            else cur.x1 = x
+          } else if (cur) {
+            if (!best || cur.x1 - cur.x0 > best.x1 - best.x0) best = cur
+            cur = null
+          }
+        }
+        if (cur && (!best || cur.x1 - cur.x0 > best.x1 - best.x0)) best = cur
+        if (best && best.x1 - best.x0 >= minW) rows.push([y, best.x0, best.x1])
+      }
+      return rows
+    },
+    [b64, minW, yFrom, yTo],
+  )
+}
+
+/** 量一条竖带在给定列区间里的真实上下沿：某行只要有 ≥30% 的像素是目标色就算"在带内"。
+ *  为什么不用 bandEdges 的行数当高度：色块里压着白字，字行上的连续色段被切成碎片，
+ *  `bandEdges` 会因为跑不满 minW 而漏掉这些行 —— 胶囊 69px 高会被量成 18 行。 */
+const spanIn = async (name, rgb, tol, x0, x1, yFrom, yTo) => {
+  const b64 = fs.readFileSync(path.join(OUT, name)).toString('base64')
+  return page.evaluate(
+    async ([d, rgb, tol, x0, x1, yFrom, yTo]) => {
+      const img = new Image()
+      img.src = 'data:image/png;base64,' + d
+      await img.decode()
+      const c = document.createElement('canvas')
+      c.width = img.naturalWidth
+      c.height = img.naturalHeight
+      const g = c.getContext('2d')
+      g.drawImage(img, 0, 0)
+      const W = c.width
+      const A = g.getImageData(0, 0, W, c.height).data
+      const need = Math.max(8, Math.round((x1 - x0) * 0.3))
+      let y0 = -1
+      let y1 = -1
+      for (let y = yFrom; y <= yTo; y += 1) {
+        let n = 0
+        for (let x = x0; x <= x1; x += 1) {
+          const i = (y * W + x) * 4
+          if (Math.abs(A[i] - rgb[0]) + Math.abs(A[i + 1] - rgb[1]) + Math.abs(A[i + 2] - rgb[2]) < tol * 3) n += 1
+        }
+        if (n >= need) {
+          if (y0 < 0) y0 = y
+          y1 = y
+        }
+      }
+      return { y0, y1, h: y0 < 0 ? 0 : y1 - y0 + 1 }
+    },
+    [b64, rgb, tol, x0, x1, yFrom, yTo],
+  )
+}
+
+/** 把逐行的色带拼成"块"：连续行（允许 2px 断口）归为一块，只留够高的块。
+ *  为什么非拼不可：1–2 行的分隔线同样是一条"有色横带"，但它撑不起标题块。
+ *  橙光胶囊第一版就吃了这个亏 —— 一条 680px 的浅橙分隔线把胶囊自己的 258px 盖掉，
+ *  断言拿 84.9% 险过 85% 的阈值，而胶囊实际只占 32%。测"是不是块"必须一起测高度。 */
+const thickBands = (rows, minRows = 12) => {
+  const groups = []
+  for (const r of rows) {
+    const last = groups[groups.length - 1]
+    if (last && r[0] - last.y1 <= 2) {
+      last.y1 = r[0]
+      last.rows.push(r)
+    } else groups.push({ y0: r[0], y1: r[0], rows: [r] })
+  }
+  return groups
+    .filter((g) => g.y1 - g.y0 + 1 >= minRows)
+    .map((g) => {
+      const widest = g.rows.reduce((a, c) => (c[2] - c[1] > a[2] - a[1] ? c : a))
+      return { y0: g.y0, y1: g.y1, h: g.y1 - g.y0 + 1, widest, rows: g.rows }
+    })
+}
+
+/** 全图找"最像虚线/点线"的那一行：逐行统计某色的 on/off 交替次数，取最大。
+ *  fac 窗口是必须的：实线覆盖率≈1、纸纹是稀疏噪点（覆盖率很低），
+ *  只有"一半上色一半留白"的那一行才可能是点线。 */
+const dottedAlt = async (name, rgb, tol = 30, fac = [0.3, 0.75]) => {
+  const b64 = fs.readFileSync(path.join(OUT, name)).toString('base64')
+  return page.evaluate(
+    async ([d, rgb, tol, fac]) => {
+      const img = new Image()
+      img.src = 'data:image/png;base64,' + d
+      await img.decode()
+      const c = document.createElement('canvas')
+      c.width = img.naturalWidth
+      c.height = img.naturalHeight
+      const g = c.getContext('2d')
+      g.drawImage(img, 0, 0)
+      const W = c.width
+      const H = c.height
+      const A = g.getImageData(0, 0, W, H).data
+      let best = { alt: 0, y: -1, frac: 0 }
+      for (let y = Math.round(H * 0.15); y < Math.round(H * 0.92); y += 1) {
+        let alt = 0
+        let on = 0
+        let prev = false
+        for (let x = 0; x < W; x += 1) {
+          const i = (y * W + x) * 4
+          const hit = Math.abs(A[i] - rgb[0]) + Math.abs(A[i + 1] - rgb[1]) + Math.abs(A[i + 2] - rgb[2]) < tol * 3
+          if (hit) on += 1
+          if (x > 0 && hit !== prev) alt += 1
+          prev = hit
+        }
+        const frac = on / W
+        if (frac >= fac[0] && frac <= fac[1] && alt > best.alt) best = { alt, y, frac }
+      }
+      return best
+    },
+    [b64, rgb, tol, fac],
+  )
+}
+
+const GOLD = { name: 'gold', rgb: [212, 175, 55] }
+const ORANGE = { name: 'orange', rgb: [255, 106, 0] }
+const CYAN = { name: 'cyan', rgb: [22, 119, 255] }
+const PAPER_M = { name: 'paper', rgb: [245, 239, 224] }
+
+/* ① 黑金菱纹：黑底 + 满幅菱形 + 顶部金条 */
+const decoShot = await c5Shot('deco', 'deco.png')
+const deco = decoShot ? await pixProbe('deco.png', [GOLD]) : null
+report.steps.deco = deco && { paper: deco.midRuns[0]?.[2], gold: deco.boxes[0].n, bands: deco.bands.gold, topRow: deco.topRow }
+if (!deco) errors.push('[样式层] 黑金菱纹没出图')
+else {
+  // 底是黑的（中线第一段 = 纸色）
+  const paper = deco.midRuns[0]?.[2] ?? [255, 255, 255]
+  if (px(paper, [10, 10, 10]) > 45) errors.push(`[样式层] 黑金菱纹底色不是近黑（${paper.join(',')}）`)
+  // 金色像素要够多，且在纵向八段里**处处都有** —— 满幅菱形网的特征，局部装饰做不到
+  const filled = deco.bands.gold.filter((n) => n > 0).length
+  if (deco.boxes[0].n < 1200) errors.push(`[样式层] 黑金菱纹金色像素只有 ${deco.boxes[0].n}，菱形网没画出来？`)
+  if (filled < 6) errors.push(`[样式层] 黑金菱纹金色只出现在 ${filled}/8 段，不像满幅网格`)
+  // 顶部金条：y=2 行三处都得"偏金"（R>G>B 且红蓝差够大）。
+  // 不能拿 #d4af37 做绝对比对 —— 顶条是 金→暗金 的渐变，右端实测 (152,122,35)
+  for (const c of deco.topRow) {
+    if (!(c[0] > c[1] && c[1] > c[2] && c[0] - c[2] > 50 && c[0] > 110)) {
+      errors.push(`[样式层] 黑金菱纹顶部金条缺失（y=2 采样 ${c.join(',')}）`)
+      break
+    }
+  }
+}
+
+/* ② 橙光胶囊：顶部橙条 + 收窄的橙色胶囊（大圆角把角切掉） */
+const pillShot = await c5Shot('pillorange', 'pill.png')
+const pill = pillShot ? await pixProbe('pill.png', [ORANGE], 26, 0.5, 26) : null
+const pillRows = pillShot ? await bandEdges('pill.png', 150) : []
+const pillBands = thickBands(pillRows, 12)
+report.steps.pill = pill && { orange: pill.boxes[0].n, rows: pillRows.length, bands: pillBands.length, topRow: pill.topRow }
+if (!pill) errors.push('[样式层] 橙光胶囊没出图')
+else {
+  if (pill.topRow.some((c) => px(c, ORANGE.rgb) > 120)) {
+    errors.push(`[样式层] 橙光胶囊顶部橙条缺失（${pill.topRow[1].join(',')}）`)
+  }
+  // 胶囊必须"收窄成一个块"：既是够高的一块（不是分隔线），又明显窄于正文栏宽。
+  // 包围盒不行 —— 顶条会把它撑到整幅宽；逐行取最宽也不行 —— 一条浅橙分隔线就把它盖过去。
+  if (!pillBands.length) errors.push('[样式层] 橙光胶囊的标题色块没找到（没有既 ≥150px 宽、又 ≥12 行高的色块）')
+  else {
+    const cap = pillBands.reduce((a, b) => (b.widest[2] - b.widest[1] > a.widest[2] - a.widest[1] ? b : a))
+    const wPx = cap.widest[2] - cap.widest[1]
+    const wRatio = wPx / pill.W
+    report.steps.pill.pill = {
+      y0: cap.y0,
+      y1: cap.y1,
+      w: wPx,
+      hPx: cap.h,
+      ratio: Number(wRatio.toFixed(3)),
+      x: [cap.widest[1], cap.widest[2]],
+    }
+    if (wRatio > 0.75) errors.push(`[样式层] 橙光胶囊标题没收窄（腰宽占 ${(wRatio * 100).toFixed(0)}%）`)
+    if (wRatio < 0.15) errors.push(`[样式层] 橙光胶囊只量到一条竖线（腰宽 ${(wRatio * 100).toFixed(0)}%）`)
+    if (cap.widest[1] < 20 || cap.widest[2] > pill.W - 20) {
+      errors.push(`[样式层] 橙光胶囊贴到卡片边上了（x ${cap.widest[1]}..${cap.widest[2]}），没有"收窄居中"`)
+    }
+    // 胶囊要有厚度，而且厚度要按"整条竖带"量：色块里压着白字，逐行连续色段会被字切碎，
+    // 用那个行数当高度只能量到字上方那 18 行。这里在胶囊自己的列区间里数"有色的行"。
+    const span = await spanIn('pill.png', ORANGE.rgb, 26, cap.widest[1] + 6, cap.widest[2] - 6, cap.y0 - 40, cap.y1 + 60)
+    report.steps.pill.span = span
+    if (span.h < 40) errors.push(`[样式层] 橙光胶囊太薄（竖带只有 ${span.h} 行，药丸至少 40）`)
+  }
+}
+
+/* ③ 青蓝流线：蓝青渐变块 + 一对角比另一对大（8 / 24） */
+const cyShot = await c5Shot('cyanflow', 'cyan.png')
+const cy = cyShot ? await pixProbe('cyan.png', [CYAN], 26, 0.5, 26) : null
+const cyBands = cyShot ? await bandEdges('cyan.png', 150) : []
+report.steps.cyan = cy && { cyan: cy.boxes[0].n, bands: cyBands.length, topRow: cy.topRow }
+if (!cy) errors.push('[样式层] 青蓝流线没出图')
+else {
+  // 顶部条：左端偏蓝、右端偏红（这是"双色渐变条"的直接证据）
+  const [tl, , tr] = cy.topRow
+  if (!(tl[2] > tl[0] + 40)) errors.push(`[样式层] 青蓝流线顶条左端不是蓝（${tl.join(',')}）`)
+  if (!(tr[0] > tr[2] + 50 && tr[0] > 120)) errors.push(`[样式层] 青蓝流线顶条右端不是红（${tr.join(',')}）`)
+  const cyThick = thickBands(cyBands, 12)
+  report.steps.cyan.blockBands = cyThick.length
+  if (!cyThick.length) errors.push('[样式层] 青蓝流线找不到渐变色块（没有既 ≥150px 宽、又 ≥12 行高的色块）')
+  else {
+    // 对角圆角：块顶边那几行，左右两侧各被切掉多少？
+    // 8/24 的差别 = 顶边两端内缩量差 16px 左右，所以量"块内首行的 x0/x1"与"块内最宽行的 x0/x1"。
+    // 首行必须取自**同一块**：全图最早的有色行可能是一条分隔线，那样量出来的内缩是分隔线的缩进。
+    const blk = cyThick.reduce((a, b) => (b.h > a.h ? b : a))
+    const waist = blk.widest
+    const top = blk.rows.reduce((a, b) => (b[0] < a[0] ? b : a))
+    const insetL = top[1] - waist[1]
+    const insetR = waist[2] - top[2]
+    report.steps.cyan.corners = { band: [blk.y0, blk.y1], waist, top, insetL, insetR, delta: Math.abs(insetL - insetR) }
+    if (Math.abs(insetL - insetR) < 5) {
+      errors.push(`[样式层] 青蓝流线四角对称了（左内缩 ${insetL} / 右内缩 ${insetR}），对角圆角没生效`)
+    }
+    if (waist[0] < 30 || waist[2] < 30) errors.push('[样式层] 青蓝流线的块轮廓量得失真')
+  }
+}
+
+/* ④ 米纸铅字：纸与内卡是两种米色 + 分隔线是点线 */
+const twShot = await c5Shot('typograph', 'type.png')
+const tw = twShot ? await pixProbe('type.png', [PAPER_M], 18, 0.08) : null
+const twPanelY = 0.35
+const twPanel = twShot ? await pixProbe('type.png', [], 4, twPanelY) : null
+report.steps.typewriter = tw && { paper: tw.midRuns[0]?.[2], paperPx: tw.boxes[0].n }
+if (!tw) errors.push('[样式层] 米纸铅字没出图')
+else {
+  const edge = tw.midRuns[0]?.[2] ?? [255, 255, 255]
+  const inner = twPanel?.midRuns.find((r) => r[1] - r[0] > tw.W * 0.3)?.[2] ?? [255, 255, 255]
+  report.steps.typewriter.edge = edge
+  report.steps.typewriter.inner = inner
+  if (px(edge, PAPER_M.rgb) > 60) errors.push(`[样式层] 米纸铅字外圈不是米纸色（${edge.join(',')}）`)
+  // 内卡底色要和纸色**不一样**（米纸 + 略亮的卡），但也不能是纯白
+  if (px(edge, inner) < 12) errors.push(`[样式层] 米纸铅字的内卡与外纸同色（${inner.join(',')}），双面卡片没生效`)
+  if (inner[0] > 252 && inner[1] > 252 && inner[2] > 252) errors.push('[样式层] 米纸铅字内卡成了纯白，不是米色')
+  // 分隔线是点线：缩略图的样例正文里没有 hr，DOM 定位不到，只能量预览图。
+  // 判据是"虚线感"本身 —— 沿候选行统计 on/off 交替次数，而不是取第一个命中色差的行：
+  // 米纸模板的纤维纹理、页眉页脚实线用的都是同一个 #d3c6a6，只按颜色找会抓错行。
+  const hr = await dottedAlt('type.png', [211, 198, 166], 30)
+  report.steps.typewriter.hr = hr
+  if (hr.y < 0) errors.push('[样式层] 米纸铅字找不到可辨认的虚线（没有 30%–75% 覆盖率的长行）')
+  else if (hr.alt < 6) errors.push(`[样式层] 米纸铅字分隔线不是点线（交替 ${hr.alt} 次）`)
+}
+
+/* ⑤ 回归：新字段的默认值必须"不画"，第 1 套的标题不许有任何形态变化 */
+await page.click('.ce-style[data-tpl="paper"]')
+await page.waitForTimeout(1200)
+const plainHead = await page.evaluate(() => {
+  const card = document.querySelector('.ce-style.on .ly-card') || document.querySelector('.ce-style[data-tpl="paper"] .ly-card')
+  const pick = (sel) => {
+    const el = card?.querySelector(sel)
+    if (!el) return null
+    const s = getComputedStyle(el)
+    return {
+      bgImage: s.backgroundImage,
+      weight: s.fontWeight,
+      track: s.letterSpacing,
+      radius: s.borderRadius,
+      shadow: s.boxShadow,
+      align: s.textAlign,
+    }
+  }
+  return { h1: pick('.ly-body h1'), h2: pick('.ly-body h2'), tb: card?.getAttribute('data-topbar') }
+})
+report.steps.plainHead = plainHead
+if (plainHead.tb !== 'none') errors.push(`[样式层] 素笺清墨被加上了顶部色条（data-topbar=${plainHead.tb}）`)
+for (const lv of ['h1', 'h2']) {
+  const h = plainHead[lv]
+  if (!h) continue
+  if (h.bgImage !== 'none') errors.push(`[样式层] 素笺清墨 ${lv} 冒出背景图（${h.bgImage.slice(0, 40)}）`)
+  if (h.track !== 'normal') errors.push(`[样式层] 素笺清墨 ${lv} 被改了字距（${h.track}）`)
+  // 字重不校验：基础样式给 h1=700 / h2=800，那是模板之外的全局规则，不是新字段写出来的
+}
+
 /* ---------- D. 样式包导出 / 导入 ---------- */
+
+// D 组导出的是"当前模板"，这里必须回到波普（后面几条断言是按它的 band/阴影写的）
+await page.click('.ce-style[data-tpl="popart"]')
+await page.waitForTimeout(1500)
 
 /**
  * 最小 zip 读取（EOCD + 中央目录），只认 store/deflate 两种 method。
@@ -933,6 +1364,12 @@ else {
       ['panel', 'headings', 'rule', 'ornaments', 'surface', 'listNo'].every((k) => k in json.decor) &&
       'panelBg' in json.tokens &&
       'patternInk' in json.tokens
+    // schema 6「字体与渐层」：标题的字重/字距/标记/投影/对角圆角 + 顶部色条
+    report.steps.templateExport.hasDeco6Fields =
+      json.decor?.topBar &&
+      ['height', 'from', 'to'].every((k) => k in json.decor.topBar) &&
+      json.decor.headings?.h2 &&
+      ['weight', 'track', 'mark', 'elev', 'radiusAlt'].every((k) => k in json.decor.headings.h2)
     report.steps.templateExport.artValues = json.decor && {
       band: json.decor.panel?.band,
       shadow: json.decor.panel?.shadow,
@@ -940,10 +1377,12 @@ else {
       hr: json.decor.rule?.style,
       orn: json.decor.ornaments?.length,
       listNo: json.decor.listNo,
+      topBar: json.decor.topBar?.height,
     }
-    if (json.schema !== 5) errors.push(`样式包 schema 应为 5，实测 ${json.schema}`)
+    if (json.schema !== 6) errors.push(`样式包 schema 应为 6，实测 ${json.schema}`)
     if (!report.steps.templateExport.hasDecorFields) errors.push('样式包缺 schema 4 的 decor 字段')
     if (!report.steps.templateExport.hasArtFields) errors.push('样式包缺 schema 5 的艺术层字段')
+    if (!report.steps.templateExport.hasDeco6Fields) errors.push('样式包缺 schema 6 的字体与渐层字段')
     // 导出的正是波普撞印：带宽度与硬阴影必须原样留在包里（不是"导出成功但只有半个模板"）
     if (json.decor?.panel?.band !== 30) errors.push(`样式包里 band=${json.decor?.panel?.band}，应为 30`)
     if (json.decor?.panel?.shadow !== 'sticker') errors.push(`样式包里 shadow=${json.decor?.panel?.shadow}，应为 sticker`)

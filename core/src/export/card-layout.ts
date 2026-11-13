@@ -471,6 +471,7 @@ export function pageAsFragment(page: CardPage, size: CardSize, tpl: CardTemplate
 export function decoHtml(tpl: CardTemplate): string {
   const d = tpl.decor
   return (
+    (d.topBar && d.topBar.height > 0 ? '<i class="ly-topbar"></i>' : '') +
     (d.binding && d.binding !== 'none' ? `<i class="ly-bind">${bindSvg(d.binding)}</i>` : '') +
     (d.tape ? '<i class="ly-tape"></i>' : '') +
     ornHtml(tpl) +

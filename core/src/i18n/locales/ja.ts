@@ -425,6 +425,7 @@ export default {
       halo: '光暈',
       stripe: '斜線',
       perf: 'パーフォレーション',
+      lattice: '菱格子',
     },
     acc: {
       none: 'なし',
@@ -464,6 +465,7 @@ export default {
       quad: '四隅',
       bubble: '吹き出し',
       none: 'なし',
+      quotemark: '引用符',
     },
     bullet: {
       dot: '丸',
@@ -512,6 +514,12 @@ export default {
       align: '配置',
       inline: '文字幅に合わせる',
       rule: '下線',
+      radiusAlt: '対角の角丸',
+      weight: '字の太さ',
+      track: '字間',
+      mark: '前印',
+      markColor: '印の色',
+      elev: 'ブロック影',
     },
     rule: {
       style: '線の種類',
@@ -539,6 +547,8 @@ export default {
       none: 'なし',
       solid: '実線',
       stripe: '斜めストライプ',
+      fade: 'フェード',
+      bar: '短い棒',
     },
     halign: {
       start: '左',
@@ -550,6 +560,8 @@ export default {
       dashed: '破線',
       stripe: '斜めストライプ',
       tape: 'テープ',
+      fade: 'フェード',
+      dot: '点線',
     },
     listno: {
       plain: '数字',
@@ -572,6 +584,28 @@ export default {
       burst: '爆発',
       badge: 'バッジ',
       blob: 'しずく',
+    },
+    hw: {
+      inherit: '継承',
+      normal: '標準',
+      semi: '中太',
+      bold: '太字',
+      heavy: '極太',
+    },
+    hmark: {
+      none: 'なし',
+      bar: '縦棒',
+      diamond: '菱形',
+    },
+    helev: {
+      none: 'なし',
+      soft: 'ソフト',
+      glow: '光彩',
+    },
+    topBar: {
+      height: '上部バーの高さ',
+      from: '開始色',
+      to: '終了色',
     },
     pos: {
       br: '右下',

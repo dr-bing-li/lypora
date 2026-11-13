@@ -425,6 +425,7 @@ export default {
       halo: 'Halo',
       stripe: 'Stripe',
       perf: 'Sprockets',
+      lattice: 'Lattice',
     },
     acc: {
       none: 'None',
@@ -464,6 +465,7 @@ export default {
       quad: 'Corners',
       bubble: 'Bubble',
       none: 'None',
+      quotemark: 'Quote mark',
     },
     bullet: {
       dot: 'Dot',
@@ -512,6 +514,12 @@ export default {
       align: 'Align',
       inline: 'Shrink to text',
       rule: 'Underline',
+      radiusAlt: 'Alt corners',
+      weight: 'Weight',
+      track: 'Tracking',
+      mark: 'Mark',
+      markColor: 'Mark colour',
+      elev: 'Block shadow',
     },
     rule: {
       style: 'Rule style',
@@ -539,6 +547,8 @@ export default {
       none: 'None',
       solid: 'Solid',
       stripe: 'Stripes',
+      fade: 'Fade',
+      bar: 'Short bar',
     },
     halign: {
       start: 'Left',
@@ -550,6 +560,8 @@ export default {
       dashed: 'Dashed',
       stripe: 'Stripes',
       tape: 'Tape',
+      fade: 'Fade',
+      dot: 'Dotted',
     },
     listno: {
       plain: 'Plain',
@@ -572,6 +584,28 @@ export default {
       burst: 'Burst',
       badge: 'Badge',
       blob: 'Blob',
+    },
+    hw: {
+      inherit: 'Inherit',
+      normal: 'Regular',
+      semi: 'Semi-bold',
+      bold: 'Bold',
+      heavy: 'Heavy',
+    },
+    hmark: {
+      none: 'None',
+      bar: 'Bar',
+      diamond: 'Diamond',
+    },
+    helev: {
+      none: 'None',
+      soft: 'Soft',
+      glow: 'Glow',
+    },
+    topBar: {
+      height: 'Bar height',
+      from: 'Bar from',
+      to: 'Bar to',
     },
     pos: {
       br: 'Bottom right',

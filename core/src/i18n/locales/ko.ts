@@ -425,6 +425,7 @@ export default {
       halo: '빛무리',
       stripe: '사선',
       perf: '퍼포레이션',
+      lattice: '격자',
     },
     acc: {
       none: '없음',
@@ -464,6 +465,7 @@ export default {
       quad: '네 모서리',
       bubble: '말풍선',
       none: '없음',
+      quotemark: '인용부호',
     },
     bullet: {
       dot: '점',
@@ -512,6 +514,12 @@ export default {
       align: '정렬',
       inline: '글자 폭에 맞춤',
       rule: '밑줄',
+      radiusAlt: '대각 모서리',
+      weight: '굵기',
+      track: '자간',
+      mark: '앞표시',
+      markColor: '표시색',
+      elev: '블록 그림자',
     },
     rule: {
       style: '선 종류',
@@ -539,6 +547,8 @@ export default {
       none: '없음',
       solid: '실선',
       stripe: '사선',
+      fade: '페이드',
+      bar: '짧은 막대',
     },
     halign: {
       start: '왼쪽',
@@ -550,6 +560,8 @@ export default {
       dashed: '점선',
       stripe: '사선',
       tape: '테이프',
+      fade: '페이드',
+      dot: '점선',
     },
     listno: {
       plain: '숫자',
@@ -572,6 +584,28 @@ export default {
       burst: '폭발',
       badge: '배지',
       blob: '방울',
+    },
+    hw: {
+      inherit: '상속',
+      normal: '보통',
+      semi: '중간굵게',
+      bold: '굵게',
+      heavy: '아주굵게',
+    },
+    hmark: {
+      none: '없음',
+      bar: '세로막대',
+      diamond: '다이아',
+    },
+    helev: {
+      none: '없음',
+      soft: '부드럽게',
+      glow: '발광',
+    },
+    topBar: {
+      height: '상단 띠 높이',
+      from: '시작색',
+      to: '끝색',
     },
     pos: {
       br: '오른쪽 아래',

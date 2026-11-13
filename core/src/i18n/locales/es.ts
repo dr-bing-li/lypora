@@ -425,6 +425,7 @@ export default {
       halo: 'Halo',
       stripe: 'Rayas',
       perf: 'Perforaciones',
+      lattice: 'Celosía',
     },
     acc: {
       none: 'Ninguna',
@@ -464,6 +465,7 @@ export default {
       quad: 'Esquinas',
       bubble: 'Bocadillo',
       none: 'Ninguno',
+      quotemark: 'Comilla',
     },
     bullet: {
       dot: 'Punto',
@@ -512,6 +514,12 @@ export default {
       align: 'Alineación',
       inline: 'Ajustar al texto',
       rule: 'Subrayado',
+      radiusAlt: 'Esquinas alternas',
+      weight: 'Grosor',
+      track: 'Interletraje',
+      mark: 'Marca',
+      markColor: 'Color de marca',
+      elev: 'Sombra del bloque',
     },
     rule: {
       style: 'Estilo de línea',
@@ -539,6 +547,8 @@ export default {
       none: 'Ninguno',
       solid: 'Sólida',
       stripe: 'Rayas',
+      fade: 'Degradado',
+      bar: 'Barra corta',
     },
     halign: {
       start: 'Izquierda',
@@ -550,6 +560,8 @@ export default {
       dashed: 'Discontinua',
       stripe: 'Rayas',
       tape: 'Cinta',
+      fade: 'Degradado',
+      dot: 'Punteado',
     },
     listno: {
       plain: 'Números',
@@ -572,6 +584,28 @@ export default {
       burst: 'Estallido',
       badge: 'Insignia',
       blob: 'Mancha',
+    },
+    hw: {
+      inherit: 'Heredado',
+      normal: 'Normal',
+      semi: 'Seminegrita',
+      bold: 'Negrita',
+      heavy: 'Extranegrita',
+    },
+    hmark: {
+      none: 'Ninguna',
+      bar: 'Barra',
+      diamond: 'Rombo',
+    },
+    helev: {
+      none: 'Ninguna',
+      soft: 'Suave',
+      glow: 'Resplandor',
+    },
+    topBar: {
+      height: 'Alto de la barra',
+      from: 'Color inicial',
+      to: 'Color final',
     },
     pos: {
       br: 'Abajo der.',

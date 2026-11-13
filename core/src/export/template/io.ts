@@ -15,6 +15,8 @@ import {
   BULLET_STYLES,
   FRAME_STYLES,
   HEAD_LEVELS,
+  HEAD_ELEVS,
+  HEAD_MARKS,
   HEAD_RULES,
   HR_STYLES,
   LIST_NOS,
@@ -37,6 +39,7 @@ import {
   type TemplateMetrics,
   type TemplateTokens,
   type TemplateVariant,
+  type TopBarSpec,
 } from './types'
 import { ACCENTS, CORNERS, COVERS, TEXTURES } from './params'
 import { BUILTIN_TEMPLATES, builtinById } from './builtin'
@@ -160,8 +163,15 @@ function normalizeHead(raw: unknown, fb: HeadSpec): HeadSpec {
     padX: clampNum(o.padX, 0, 40, fb.padX),
     padY: clampNum(o.padY, 0, 24, fb.padY),
     radius: clampNum(o.radius, 0, 24, fb.radius),
+    radiusAlt: clampNum(o.radiusAlt, 0, 24, fb.radiusAlt),
     rotate: clampNum(o.rotate, -3, 3, fb.rotate),
     shadow: clampNum(o.shadow, 0, 6, fb.shadow),
+    elev: pickEnum(o.elev, HEAD_ELEVS, fb.elev),
+    // 字重只收 400 起的百位整数：300 以下在深色底上会糊成一团，900 以上没有对应字面
+    weight: clampNum(o.weight, 0, 900, fb.weight),
+    track: clampNum(o.track, -2, 8, fb.track),
+    mark: pickEnum(o.mark, HEAD_MARKS, fb.mark),
+    markColor: optColor(o.markColor, fb.markColor),
     caps: typeof o.caps === 'boolean' ? o.caps : fb.caps,
     italic: typeof o.italic === 'boolean' ? o.italic : fb.italic,
     align: o.align === 'center' ? 'center' : fb.align,
@@ -214,6 +224,15 @@ function normalizeSurface(raw: unknown, fb: SurfaceSpec): SurfaceSpec {
     table: pickEnum(o.table, SURFACE_BOXES, fb.table),
     code: pickEnum(o.code, SURFACE_BOXES, fb.code),
     image: pickEnum(o.image, SURFACE_IMAGES, fb.image),
+  }
+}
+
+function normalizeTopBar(raw: unknown, fb: TopBarSpec): TopBarSpec {
+  const o = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>
+  return {
+    height: clampNum(o.height, 0, 24, fb.height),
+    from: optColor(o.from, fb.from),
+    to: optColor(o.to, fb.to),
   }
 }
 
@@ -325,6 +344,8 @@ export function normalizeTemplate(raw: unknown, fallback: CardTemplate): CardTem
     ornaments: normalizeOrnaments(dc.ornaments, fallback.decor.ornaments ?? []),
     surface: normalizeSurface(dc.surface, fallback.decor.surface),
     listNo: pickEnum(dc.listNo, LIST_NOS, fallback.decor.listNo ?? 'plain'),
+    /* schema 6「字体与渐层」 */
+    topBar: normalizeTopBar(dc.topBar, fallback.decor.topBar),
   }
 
   const code = {

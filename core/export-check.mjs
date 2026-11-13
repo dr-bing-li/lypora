@@ -164,13 +164,18 @@ try {
 
   /* ---------- 6. 反例：不含公式的文档不该被塞进 360KB 的字体 ─---------- */
   await page.bringToFront()
-  await page.evaluate(() => {
-    const view = document.querySelector('.cm-content')
-    view?.focus()
-  })
-  await page.keyboard.press('Control+a')
-  await page.keyboard.type('# 纯文字\n\n没有任何公式的一段话。\n')
-  await page.waitForTimeout(600)
+  // 前五步连着导出过五次，焦点偶尔还留在菜单/下载上，Ctrl+A 就选不中正文 ——
+  // 这一组验的是「没公式的文档不该塞字体」，不是「打字功能好不好用」，
+  // 所以打完字要**回读确认内容真的换了**，没换就重来一次，别把焦点竞态记成功能缺陷。
+  const readDoc = () => page.evaluate(() => document.querySelector('.cm-content')?.innerText ?? '')
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    await page.evaluate(() => document.querySelector('.cm-content')?.focus())
+    await page.keyboard.press('Control+a')
+    await page.keyboard.insertText('# 纯文字\n\n没有任何公式的一段话。\n')
+    await page.waitForTimeout(400)
+    if ((await readDoc()).includes('纯文字') && !(await readDoc()).includes('功能演示')) break
+  }
+  await page.waitForTimeout(400)
   const [dl2] = await Promise.all([
     page.waitForEvent('download', { timeout: 15000 }),
     page.evaluate(() => {
@@ -188,8 +193,9 @@ try {
   report.noMath = {
     bytes: plain.length,
     hasKatexCss: /KaTeX_Main/.test(plain),
-    hasHeading: /<h1>纯文字<\/h1>/.test(plain),
+    hasHeading: /<h1[^>]*>纯文字<\/h1>/.test(plain),
   }
+  if (!report.noMath.hasHeading) report.errors.push('反例文档没导出成「纯文字」——打字没落进编辑器，这一组的结果不算数')
   report.noMath.pass = !report.noMath.hasKatexCss && report.noMath.bytes < 60_000 && report.noMath.hasHeading
 
   report.pass =

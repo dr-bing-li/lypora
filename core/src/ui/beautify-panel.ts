@@ -370,11 +370,13 @@ export function createBeautifyPanel(deps: BeautifyDeps): BeautifyHandle {
         const b = el('button', 'ce-seg-btn', tl(opt.labelKey ?? opt.value))
         b.type = 'button'
         b.dataset.val = opt.value
-        b.classList.toggle('on', opt.value === value)
+        // 用字符串比较：numeric 下拉的值存进模板后是数字，而 option 的 value 永远是字符串
+        b.classList.toggle('on', String(opt.value) === String(value))
         b.onclick = () => {
           for (const sib of Array.from(seg.children)) sib.classList.remove('on')
           b.classList.add('on')
-          void apply(opt.value)
+          // 数字型下拉（字重）要转回 number：'0' 是 truthy，写下去会变成 `font-weight: 0`
+          void apply(spec.numeric ? Number(opt.value) : opt.value)
         }
         seg.appendChild(b)
       }
@@ -521,7 +523,18 @@ export function createBeautifyPanel(deps: BeautifyDeps): BeautifyHandle {
     const g = el('div', 'ce-group')
     g.dataset.group = 'panel'
     g.appendChild(el('div', 'ce-label', tl(labelKey)))
-    for (const p of ['decor.panel.band', 'tokens.panelBg', 'decor.panel.border', 'decor.panel.radius', 'decor.panel.shadow', 'decor.panel.pad']) {
+    for (const p of [
+      'decor.panel.band',
+      'tokens.panelBg',
+      'decor.panel.border',
+      'decor.panel.radius',
+      'decor.panel.shadow',
+      'decor.panel.pad',
+      // schema 6：顶部色条也归这里 —— 它和 band 一样是"卡片外壳"上的东西
+      'decor.topBar.height',
+      'decor.topBar.from',
+      'decor.topBar.to',
+    ]) {
       const spec = PARAM_SPECS.find((s) => s.path === p)
       if (spec) g.appendChild(renderParam(spec))
     }

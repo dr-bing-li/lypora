@@ -28,6 +28,7 @@ import {
   type TemplateDecor,
   type TemplateMetrics,
   type TemplateVariant,
+  type TopBarSpec,
 } from './types'
 
 const FONT = Object.fromEntries(FONT_PRESETS.map((f) => [f.id, f])) as Record<string, (typeof FONT_PRESETS)[number]>
@@ -59,8 +60,14 @@ const PLAIN_HEAD: HeadSpec = {
   padX: 0,
   padY: 0,
   radius: 0,
+  radiusAlt: 0,
   rotate: 0,
   shadow: 0,
+  elev: 'none',
+  weight: 0,
+  track: 0,
+  mark: 'none',
+  markColor: '',
   caps: false,
   italic: false,
   align: 'start',
@@ -76,6 +83,9 @@ export const DEFAULT_HEADS: HeadingsSpec = {
 }
 export const DEFAULT_RULE: RuleSpec = { style: 'solid', height: 1, color: '', color2: '', angle: 45 }
 export const DEFAULT_SURFACE: SurfaceSpec = { table: 'flat', code: 'flat', image: 'plain' }
+
+/** 顶部色条：0 高 = 不画（所以 29 套老模板加这个字段后一个像素都不变） */
+export const DEFAULT_TOP_BAR: TopBarSpec = { height: 0, from: '', to: '' }
 
 const DEFAULT_DECOR: TemplateDecor = {
   texture: 'none',
@@ -102,6 +112,7 @@ const DEFAULT_DECOR: TemplateDecor = {
   ornaments: [],
   surface: DEFAULT_SURFACE,
   listNo: 'plain',
+  topBar: DEFAULT_TOP_BAR,
 }
 
 /** 逐级合并：只给出 h1/h2 的模板，h3/h4 自动拿 PLAIN_HEAD */
@@ -117,11 +128,12 @@ function mergeHeads(h?: Partial<Record<HeadLevel, Partial<HeadSpec>>>): Headings
  * 模板里能写的 decor 补丁：嵌套结构允许**逐级**给（只写 h1/h2，h3/h4 自动回落），
  * 否则每套模板都得把 4×12 个标题字段抄一遍。
  */
-type DecorPatch = Omit<Partial<TemplateDecor>, 'panel' | 'headings' | 'rule' | 'surface'> & {
+type DecorPatch = Omit<Partial<TemplateDecor>, 'panel' | 'headings' | 'rule' | 'surface' | 'topBar'> & {
   panel?: Partial<PanelSpec>
   headings?: Partial<Record<HeadLevel, Partial<HeadSpec>>>
   rule?: Partial<RuleSpec>
   surface?: Partial<SurfaceSpec>
+  topBar?: Partial<TopBarSpec>
 }
 
 interface Spec {
@@ -184,6 +196,7 @@ function tpl(s: Spec): CardTemplate {
       headings: mergeHeads(s.d?.headings),
       rule: { ...DEFAULT_RULE, ...(s.d?.rule ?? {}) },
       surface: { ...DEFAULT_SURFACE, ...(s.d?.surface ?? {}) },
+      topBar: { ...DEFAULT_TOP_BAR, ...(s.d?.topBar ?? {}) },
       ornaments: (s.d?.ornaments ?? []).map((o) => ({ ...o })),
     },
     code: { com, str, num, kw, fn },
@@ -629,6 +642,217 @@ export const BUILTIN_TEMPLATES: CardTemplate[] = [
         tokens: { paper: '#3a1f75', patternInk: '#6b4bb5', accent: '#ff4e79', ink: '#f4f0ff', muted: '#c9bde8' },
       },
     ],
+  }),
+
+  /* 30. 黑金菱纹 —— 黑底金线、菱形网格、两端渐隐的金色分隔
+     id 不能叫 artdeco：17 号「鎏金几何」从 v0.9.0 起就占着这个词（改名会丢用户设置），
+     而两套是不同东西 —— 鎏金几何靠光晕与双线框，这套靠菱形网格与渐隐线。 */
+  tpl({
+    id: 'deco',
+    name: '黑金菱纹',
+    enName: 'Art Deco',
+    names: { ja: '黒金菱文', ko: '흑금 능문', fr: 'Art Déco', de: 'Schwarzgold', es: 'Art Decó' },
+    dark: true,
+    c: [
+      '#0a0a0a', // 纸（近黑）
+      '#f5f5f5', // 墨
+      '#a9a9a9',
+      '#6f6f6f',
+      '#d4af37', // 强调（金）
+      '#0a0a0a',
+      '#2e2a22', // 分隔线
+      '#141312',
+      '#e9dfc4',
+      'rgba(212, 175, 55, 0.10)', // 引用底
+      '#d4af37',
+      'rgba(212, 175, 55, 0.26)',
+      '0 20px 44px rgba(0, 0, 0, 0.55)',
+    ],
+    code: ['#6f6f6f', '#9fd28a', '#e8c46a', '#8fc7ff', '#e9a3c0'],
+    m: { fontSize: 15, lineHeight: 1.82, radius: 4, titleSize: 36, padTop: 48, padBottom: 44 },
+    d: {
+      // 菱形网格：由两组正交斜线交叉而成，不用内联 SVG 贴图
+      texture: 'lattice',
+      headings: {
+        h1: { fg: '#f5f5f5', weight: 700, track: 3, caps: true, align: 'center', rule: 'fade', padY: 8 },
+        h2: { fg: '#d4af37', weight: 600, track: 2, caps: true, mark: 'diamond', padX: 18 },
+        h3: { fg: '#f5f5f5', weight: 600, rule: 'solid', padY: 6 },
+      },
+      rule: { style: 'fade', height: 1, color: '#d4af37' },
+      // 顶部金线栏：装饰艺术的"金边"感，比一整排三角形更克制
+      topBar: { height: 3, from: '#d4af37', to: '#8a6d1f' },
+      quote: 'quotemark',
+      bullet: 'dash',
+      frame: 'thin',
+      corner: 'none',
+      binding: 'none',
+      stamp: false,
+    },
+    font: 'serif',
+    pi: 'rgba(212, 175, 55, 0.20)',
+  }),
+
+  /* 31. 橙光胶囊 —— 白色纸上的一颗橙色药丸，标题被包成图形 */
+  tpl({
+    id: 'pillorange',
+    name: '橙光胶囊',
+    enName: 'Amber Capsule',
+    names: { ja: '橙光カプセル', ko: '주황 캡슐', fr: 'Capsule Ambre', de: 'Amberkapsel', es: 'Cápsula Ámbar' },
+    c: [
+      '#ffffff',
+      '#111111',
+      '#6a6a6a',
+      '#9e9e9e',
+      '#ff6a00', // 强调（橙）
+      '#ffffff',
+      '#eeeeee',
+      '#fff8f2',
+      '#3a2a20',
+      '#fffaf5',
+      '#ff6a00',
+      '#ffe3cc',
+      '0 14px 34px rgba(255, 106, 0, 0.12)',
+    ],
+    code: ['#9a8f86', '#2f7d4f', '#b45309', '#8a3ffc', '#1d4ed8'],
+    m: { fontSize: 15, lineHeight: 1.8, radius: 6, titleSize: 30, padTop: 46, padBottom: 42 },
+    d: {
+      headings: {
+        // 一级：居中短棒收尾（定宽 46px、4px 高的橙色横杠）
+        h1: { weight: 600, rule: 'bar', padY: 6 },
+        // 二级：橙色渐变的胶囊药丸，中心对齐、宽度收到文字
+        h2: {
+          bg: 'linear-gradient(135deg, #ff6a00, #ff8c00)',
+          fg: '#ffffff',
+          padX: 20,
+          padY: 7,
+          radius: 30,
+          radiusAlt: 30,
+          elev: 'soft',
+          align: 'center',
+          inline: true,
+          weight: 600,
+          track: 0.5,
+        },
+        // 三级：左侧一条橙棒（标记），文字仍是正文墨色
+        h3: { fg: '#333333', weight: 600, mark: 'bar', markColor: '#ff8c00', padX: 14, padY: 2 },
+      },
+      rule: { style: 'solid', height: 2, color: '#ffd9bf' },
+      topBar: { height: 12, from: '#ff8c00', to: '#ff6a00' },
+      quote: 'quotemark',
+      bullet: 'dot',
+      frame: 'none',
+      corner: 'none',
+      binding: 'none',
+      stamp: false,
+    },
+  }),
+
+  /* 32. 青蓝流线 —— 蓝青渐变 + 一对大圆角，四角不对称 */
+  tpl({
+    id: 'cyanflow',
+    name: '青蓝流线',
+    enName: 'Cyan Flow',
+    names: { ja: '青藍ストリーム', ko: '청람 스트림', fr: 'Flux Cyan', de: 'Cyanfluss', es: 'Flujo Cian' },
+    c: [
+      '#ffffff',
+      '#1c1f23',
+      '#4e5969',
+      '#86909c',
+      '#1677ff', // 强调（蓝）
+      '#ffffff',
+      '#e5e6eb',
+      '#f7f8fa',
+      '#1c1f23',
+      'rgba(22, 119, 255, 0.05)',
+      '#1677ff',
+      '#cfe4ff',
+      '0 14px 34px rgba(22, 119, 255, 0.12)',
+    ],
+    code: ['#8f959e', '#2f7d4f', '#b45309', '#7b3ff2', '#1d4ed8'],
+    m: { fontSize: 15, lineHeight: 1.8, radius: 8, titleSize: 30, padTop: 46, padBottom: 42 },
+    d: {
+      headings: {
+        h1: { weight: 600, align: 'center', rule: 'bar', padY: 6 },
+        // 二级：蓝→青渐变，8/24 交替圆角（本套最认得出的特征）
+        h2: {
+          bg: 'linear-gradient(135deg, #1677ff, #05d4cd)',
+          fg: '#ffffff',
+          padX: 24,
+          padY: 8,
+          radius: 8,
+          radiusAlt: 24,
+          elev: 'soft',
+          align: 'center',
+          inline: true,
+          weight: 600,
+          track: 0.5,
+        },
+        // 三级：淡蓝底 + 左侧蓝棒 + 圆角小卡
+        h3: {
+          bg: 'rgba(22, 119, 255, 0.06)',
+          fg: '#1677ff',
+          weight: 600,
+          radius: 6,
+          padX: 14,
+          padY: 6,
+          mark: 'bar',
+          markColor: '#1677ff',
+        },
+      },
+      rule: { style: 'solid', height: 2, color: '#e5e6eb' },
+      topBar: { height: 8, from: '#0066ff', to: '#fa2c19' },
+      quote: 'quotemark',
+      bullet: 'dot',
+      frame: 'none',
+      corner: 'none',
+      binding: 'none',
+      stamp: false,
+    },
+  }),
+
+  /* 33. 米纸铅字 —— 打字机年代：米色纸、内嵌卡、点线分隔、轻斜体小标题 */
+  tpl({
+    id: 'typograph',
+    name: '米纸铅字',
+    enName: 'Cream Typewriter',
+    names: { ja: '米紙活字', ko: '미색 활자', fr: 'Caractère Crème', de: 'Cremesatz', es: 'Tipo Crema' },
+    c: [
+      '#f5efe0', // 纸（米）
+      '#3a3a3a',
+      '#5a5a5a',
+      '#9a9484',
+      '#8b4513', // 强调（棕）
+      '#f8f3e3',
+      '#d3c6a6',
+      '#efe8d6',
+      '#3a3a3a',
+      'rgba(211, 198, 166, 0.20)',
+      '#d3c6a6',
+      'rgba(139, 69, 19, 0.18)',
+      '0 2px 8px rgba(0, 0, 0, 0.06)',
+    ],
+    code: ['#9a9484', '#4a7a4a', '#a05a1c', '#5a4a8a', '#2f5f8f'],
+    m: { fontSize: 15, lineHeight: 1.86, radius: 2, titleSize: 30, padTop: 40, padBottom: 38 },
+    d: {
+      // 内嵌卡：米纸外面留一圈，卡片本身再描一道浅棕细边
+      panel: { band: 12, border: 1, radius: 2, shadow: 'float', pad: 16 },
+      texture: 'fiber',
+      headings: {
+        h1: { align: 'center', weight: 600, track: -0.5, rule: 'bar', padY: 6 },
+        // 二级：轻、斜、居中 —— 打字机标题的"年代感"就靠这一下
+        h2: { align: 'center', weight: 400, italic: true, track: -0.5, padY: 4 },
+        h3: { weight: 600, rule: 'solid' },
+      },
+      rule: { style: 'dot', height: 1, color: '#d3c6a6' },
+      quote: 'quotemark',
+      bullet: 'dash',
+      frame: 'none',
+      corner: 'none',
+      binding: 'none',
+      stamp: false,
+    },
+    font: 'serif',
+    pb: '#f8f3e3',
   }),
 ]
 

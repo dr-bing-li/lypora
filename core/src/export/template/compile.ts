@@ -86,6 +86,14 @@ const DECOR_CSS = `
   background-repeat: no-repeat;
   background-position: 0 8px, 0 calc(100% - 8px);
 }
+/* 菱形网格：两组正交斜线交叉成菱形。用渐变而不是 SVG 贴图 ——
+   不用内联 data URI，导出时少一层编码，也不会因为 XML 转义写错而整张卡变空白。
+   45° 重复渐变的周期是沿法线的，所以 20px 的菱形边长对应 20/√2 ≈ 14px 的周期。 */
+.ly-card[data-tex="lattice"]::before {
+  background-image:
+    repeating-linear-gradient(45deg, var(--c-tex-line) 0 1px, transparent 1px 14px),
+    repeating-linear-gradient(-45deg, var(--c-tex-line) 0 1px, transparent 1px 14px);
+}
 
 /* ---- 强调条 ---- */
 .ly-card[data-acc="top"]::after { top: 0; left: 0; right: 0; height: 5px; background: var(--c-accent); }
@@ -116,6 +124,23 @@ const DECOR_CSS = `
 .ly-card[data-frame="inset"] .ly-frame { inset: 0; box-shadow: inset 0 0 0 1px var(--c-frame), inset 0 0 22px rgba(0, 0, 0, 0.06); }
 
 /* ---- 胶带 ---- */
+/* 顶部色条：贴着卡片上沿的一条渐变带（品牌栏）。
+   它同时接管 padding-top —— 否则内容会钻到条子底下；
+   高度为 0 时 --c-topbar-h 缺省为 0，算式退化成原来的 padding。 */
+.ly-card .ly-topbar {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: var(--c-topbar-h, 0px);
+  background: var(--c-topbar-bg, transparent);
+  pointer-events: none;
+  z-index: 4;
+}
+/* 用 [data-topbar] 而不是 :has()：:has 是 2023 年才进浏览器的选择器，
+   而我们要覆盖到 Android WebView 与老 Edge。属性选择器的兼容面大得多。 */
+.ly-card[data-topbar="1"] {
+  padding-top: calc(var(--c-band, 0px) * var(--c-band-k, 1) + var(--c-topbar-h, 0px));
+}
+
 .ly-card .ly-tape {
   position: absolute;
   top: -8px; left: 50%;
@@ -613,6 +638,26 @@ export const CARD_BASE_CSS = `
   padding: 0.8em 1.05em;
   box-shadow: 0 0 0 1px var(--c-rule);
 }
+/* 大引号：左侧竖线保留（引文的骨架），额外的「“」压在左上角外。
+   用文本字符而不是 SVG —— 一个字符就能缩放，导出时也不用再过一遍转义。 */
+.ly-card[data-quote="quotemark"] .ly-body blockquote {
+  border-left: 3px solid var(--c-accent);
+  background: var(--c-quote-bg);
+  border-radius: 0 8px 8px 0;
+  padding: 0.85em 1.1em 0.85em 1.35em;
+  position: relative;
+}
+.ly-card[data-quote="quotemark"] .ly-body blockquote::before {
+  content: "“";
+  position: absolute;
+  left: 0.18em;
+  top: -0.06em;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 2.6em;
+  line-height: 1;
+  color: var(--c-quote-quote);
+  pointer-events: none;
+}
 .ly-card[data-quote="none"] .ly-body blockquote {
   border: 0;
   background: transparent;
@@ -757,6 +802,8 @@ export function decorAttrMap(t: CardTemplate): Record<string, string> {
     'data-pre': d.surface?.code ?? 'flat',
     'data-pic': d.surface?.image ?? 'plain',
     'data-listno': d.listNo ?? 'plain',
+    /* schema 6 */
+    'data-topbar': d.topBar && d.topBar.height > 0 ? '1' : 'none',
   }
 }
 
@@ -797,6 +844,8 @@ export function compileTemplate(t: CardTemplate): string {
   --c-shadow: ${k.shadow};
   --c-tex-line: ${texLineOf(t)};
   --c-halo: ${t.dark ? haloOf(k.accent) : 'rgba(120, 160, 255, 0.14)'};
+  --c-head-gl: ${haloOf(k.accent)};
+  --c-quote-quote: ${haloOf(k.accent)};
   --c-fold: ${foldOf(k.ink)};
   --c-tape: ${t.dark ? 'rgba(255,255,255,0.14)' : 'rgba(255,255,255,0.55)'};
   --c-frame: ${frameOf(t)};
@@ -822,6 +871,7 @@ export function compileTemplate(t: CardTemplate): string {
   --tok-fn: ${t.code.fn};
 ${panelVars(t, panel)}
 ${hrVars(k.rule, k.ink, hr)}
+${topBarVars(k.accent, t.decor.topBar)}
 }` + headCss(t)
 }
 
@@ -867,15 +917,31 @@ function hrVars(ruleColor: string, ink: string, hr: CardTemplate['decor']['rule'
   let bg = c1
   if (hr.style === 'none') bg = 'transparent'
   else if (hr.style === 'dashed') bg = `repeating-linear-gradient(to right, ${c1} 0 ${h * 3}px, transparent ${h * 3}px ${h * 5}px)`
+  else if (hr.style === 'dot') bg = `repeating-linear-gradient(to right, ${c1} 0 ${h + 4}px, transparent ${h + 4}px ${h * 2 + 8}px)`
   else if (hr.style === 'stripe') bg = `repeating-linear-gradient(${Math.min(180, Math.max(0, hr.angle))}deg, ${c1} 0 ${h}px, ${c2} ${h}px ${h * 2}px)`
   else if (hr.style === 'tape') bg = `repeating-linear-gradient(to right, ${c1} 0 14px, ${c2} 14px 28px)`
+  else if (hr.style === 'fade') bg = `linear-gradient(90deg, transparent, ${c1}, transparent)`
   return `  --c-hr-h: ${h}px;\n  --c-hr-bg: ${bg};`
+}
+
+/**
+ * 顶部色条的变量。高度 0 时整块省略 —— 与 panelVars 同一条纪律：
+ * 老模板的 CSS 必须逐字节不变，否则"升级不改观感"的承诺就作废了。
+ */
+function topBarVars(accent: string, bar: CardTemplate['decor']['topBar']): string {
+  const h = Math.min(24, Math.max(0, bar.height))
+  if (!h) return ''
+  const from = bar.from || accent
+  const to = bar.to || from
+  const bg = to === from ? from : `linear-gradient(90deg, ${from}, ${to})`
+  return `  --c-topbar-h: ${h}px;\n  --c-topbar-bg: ${bg};`
 }
 
 /** 这一级标题是不是"什么都不做"—— 是的话一条规则都不生成 */
 function isPlainHead(h: HeadSpec): boolean {
   return (
-    !h.bg && !h.fg && !h.padX && !h.padY && !h.radius && !h.rotate && !h.shadow &&
+    !h.bg && !h.fg && !h.padX && !h.padY && !h.radius && !h.radiusAlt && !h.rotate && !h.shadow &&
+    h.elev === 'none' && !h.weight && !h.track && h.mark === 'none' && !h.markColor &&
     !h.caps && !h.italic && h.align !== 'center' && !h.inline && h.rule === 'none'
   )
 }
@@ -897,12 +963,23 @@ function headCss(t: CardTemplate): string {
     const h = t.decor.headings?.[lv]
     if (!h || isPlainHead(h)) continue
     const d: string[] = []
-    if (h.bg) d.push(`background-color: ${h.bg}`)
+    // 底色走 background 而不是 background-color：色值可能是渐变（sanitizeColor 已按语法放行
+    // linear-gradient/radial-gradient），而 background-color 不接受渐变，会整条丢弃
+    if (h.bg) d.push(`background: ${h.bg}`)
     if (h.fg) d.push(`color: ${h.fg}`)
     if (h.padX || h.padY) d.push(`padding: ${h.padY}px ${h.padX}px`)
-    if (h.radius) d.push(`border-radius: ${h.radius}px`)
+    // 对角圆角：radius 管第 1/3 角，radiusAlt 管第 2/4 角。只给 radius 时等价于四角同值
+    if (h.radius || h.radiusAlt) {
+      const a = h.radius
+      const b = h.radiusAlt || h.radius
+      d.push(`border-radius: ${a}px ${b}px ${a}px ${b}px`)
+    }
     if (h.rotate) d.push(`transform: rotate(${h.rotate}deg)`)
     if (h.shadow) d.push(`text-shadow: ${h.shadow}px ${h.shadow}px 0 var(--c-accent)`)
+    if (h.elev === 'soft') d.push('box-shadow: 0 4px 12px var(--c-head-gl)')
+    if (h.elev === 'glow') d.push('box-shadow: 0 0 18px var(--c-head-gl)')
+    if (h.weight) d.push(`font-weight: ${Math.round(h.weight / 100) * 100}`)
+    if (h.track) d.push(`letter-spacing: ${h.track}px`)
     if (h.caps) d.push('text-transform: uppercase')
     if (h.italic) d.push('font-style: italic')
     if (h.align === 'center') d.push('text-align: center')
@@ -911,21 +988,47 @@ function headCss(t: CardTemplate): string {
       d.push('display: table')
       if (h.align === 'center') d.push('margin-left: auto', 'margin-right: auto')
     }
+    // 前置标记：竖条 / 菱形。用 ::before 画，和 background 上的下划线互不占用
+    if (h.mark === 'bar' || h.mark === 'diamond') {
+      if (h.align !== 'center' && !h.padX) d.push('padding-left: 14px')
+      d.push('position: relative')
+    }
     if (h.rule !== 'none') {
       // 下划线用 background-image 而不是 border-bottom：border 会改变行盒高度，
       // 而这里已经可能叠着底色块，加法越少越好
       d.push('padding-bottom: 0.16em')
-      d.push('background-repeat: repeat-x')
+      d.push('background-repeat: no-repeat')
       d.push('background-position: left bottom')
       if (h.rule === 'solid') {
         d.push('background-image: linear-gradient(var(--c-accent), var(--c-accent))')
         d.push('background-size: 100% 3px')
+      } else if (h.rule === 'fade') {
+        // 两端透明的金线：装饰艺术风格的招牌收尾
+        d.push('background-image: linear-gradient(90deg, transparent, var(--c-accent), transparent)')
+        d.push('background-size: 62% 1px')
+        d.push('background-position: center bottom')
+      } else if (h.rule === 'bar') {
+        // 定宽短棒，居中或左对齐。宽度按行内盒的 46% 算，长标题也不会变成半条线
+        d.push('background-image: linear-gradient(90deg, var(--c-accent), var(--c-accent))')
+        d.push('background-size: 46px 4px')
+        d.push(h.align === 'center' ? 'background-position: center bottom' : 'background-position: left bottom')
       } else {
         d.push('background-image: repeating-linear-gradient(45deg, var(--c-accent) 0 5px, var(--c-ink) 5px 10px)')
         d.push('background-size: 100% 6px')
       }
     }
     out.push(`.ly-card[data-tpl="${t.id}"] .ly-body ${lv} { ${d.join('; ')} }`)
+    if (h.mark === 'bar' || h.mark === 'diamond') {
+      const mc = h.markColor || 'var(--c-accent)'
+      const glyph =
+        h.mark === 'diamond'
+          ? // 菱形同样是"一个方块转 45°"：不写 clip-path，老 WebView 不会白屏
+            `content:""; position:absolute; left:0; top:50%; width:9px; height:9px; ` +
+            `background:${mc}; transform:translateY(-50%) rotate(45deg);`
+          : `content:""; position:absolute; left:0; top:0.12em; bottom:0.12em; width:3px; ` +
+            `background:${mc};`
+      out.push(`.ly-card[data-tpl="${t.id}"] .ly-body ${lv}::before { ${glyph} }`)
+    }
   }
   return out.length ? '\n' + out.join('\n') : ''
 }

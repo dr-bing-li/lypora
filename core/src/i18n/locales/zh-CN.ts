@@ -452,6 +452,7 @@ export default {
       halo: '光晕',
       stripe: '斜纹',
       perf: '齿孔',
+      lattice: '菱形',
     },
     quote: {
       bar: '竖线',
@@ -459,6 +460,7 @@ export default {
       quad: '四角',
       bubble: '气泡',
       none: '无',
+      quotemark: '引号',
     },
     bullet: {
       dot: '圆点',
@@ -507,6 +509,12 @@ export default {
       align: '对齐',
       inline: '收窄',
       rule: '下划线',
+      radiusAlt: '对角圆角',
+      weight: '字重',
+      track: '字距',
+      mark: '前置标记',
+      markColor: '标记色',
+      elev: '块投影',
     },
     rule: {
       style: '线型',
@@ -534,6 +542,8 @@ export default {
       none: '无',
       solid: '实线',
       stripe: '斜纹',
+      fade: '渐隐',
+      bar: '短棒',
     },
     halign: {
       start: '左',
@@ -545,6 +555,8 @@ export default {
       dashed: '虚线',
       stripe: '斜纹',
       tape: '胶带',
+      fade: '渐隐',
+      dot: '点线',
     },
     listno: {
       plain: '数字',
@@ -567,6 +579,28 @@ export default {
       burst: '爆炸星',
       badge: '徽标',
       blob: '墨点',
+    },
+    hw: {
+      inherit: '继承',
+      normal: '常规',
+      semi: '半粗',
+      bold: '加粗',
+      heavy: '特粗',
+    },
+    hmark: {
+      none: '无',
+      bar: '竖条',
+      diamond: '菱形',
+    },
+    helev: {
+      none: '无',
+      soft: '柔和',
+      glow: '光晕',
+    },
+    topBar: {
+      height: '顶条高度',
+      from: '顶条起色',
+      to: '顶条止色',
     },
     pos: {
       br: '右下',
