@@ -2073,7 +2073,9 @@ body.col-resizing * {
   object-fit: contain;
   border-radius: 6px;
   box-shadow: 0 10px 28px rgba(0, 0, 0, 0.2);
-  background: #fff;
+  /* 预览图现在是**透明底 + 真圆角**：卡片自己的圆角画在面板底色上才看得出来。
+     写死 #fff 会把圆角填平 —— 那正是"拉圆角滑块没反应"的另一半原因。 */
+  background: transparent;
 }
 .ce-pager {
   display: flex;
@@ -2110,43 +2112,112 @@ body.col-resizing * {
   flex-direction: column;
   gap: 8px;
 }
+/* 分组标题：11px + 大写字母间距在 1040px 的面板里读起来很费劲（审计：用户报"看着比较费劲"）。
+ * 13px / 600 权重 / 正文色，靠颜色与字重分层，不靠"缩小"。
+ * 去掉 text-transform：28 套模板名是多语言的，德语大写会整行变宽。 */
 .ce-label {
-  font-size: 11px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--fg-muted);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--fg);
 }
+/* 模板橱窗：3 列横向大卡（约 2.3:1）。原来的 4 列小方块 + 30px 色块
+ * 只能看出"纸色和强调色"，20 套里有一半看着一样。 */
 .ce-styles {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
 }
 .ce-style {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 5px;
-  padding: 7px 4px 6px;
-  border-radius: 8px;
+  align-items: stretch;
+  gap: 0;
+  padding: 0;
+  border-radius: 10px;
   border: 1px solid var(--border);
   background: var(--bg);
   color: var(--fg-muted);
-  font-size: 10.5px;
+  font-size: 12px;
+  overflow: hidden;
+  cursor: pointer;
+  text-align: left;
+}
+.ce-style:hover {
+  border-color: var(--fg-faint);
 }
 .ce-style.on {
   border-color: var(--accent);
   box-shadow: 0 0 0 1px var(--accent) inset;
   color: var(--fg);
 }
-.ce-chip {
+/* 缩略图：真卡片（同 CARD_BASE_CSS + 该模板自己的变量块），只把字号压到缩略图尺度。
+ * aspect-ratio 让"横向长方形"在 2 列/3 列下都成立，不靠写死高度。 */
+.ce-thumb {
+  position: relative;
   display: block;
   width: 100%;
-  height: 30px;
-  border-radius: 5px;
-  border: 1px solid rgba(128, 128, 128, 0.22);
+  aspect-ratio: 2.3 / 1;
+  overflow: hidden;
+  background: var(--bg-elev);
+  border-bottom: 1px solid var(--border);
+  /* 缩略图里的字号/边距/印章一律用 cqw 跟着卡片宽度走：
+     桌面 296px 三列、手机 176px 两列，同一套模板两边都得放得下。
+     以前这些值是 inline 的固定 px，手机上正文就顶出卡片、印章被切掉一半。 */
+  container-type: inline-size;
+}
+.ce-thumb-inner {
+  position: absolute;
+  inset: 0;
+  display: block;
+}
+/* 选择器带 .ly-sample 是为了压过模板自己的 `.ly-card[data-tpl="x"]` 变量块 ——
+   模板样式表是运行时插到 head 末尾的，同特异性下它会赢。 */
+.ce-thumb-inner .ly-card.ly-sample {
+  width: 100%;
+  height: 100%;
+  --c-size: 2.55cqw;
+  --c-title-size: 5cqw;
+  --c-pad-x: 5%;
+  --c-pad-top: 3.4%;
+  --c-pad-bottom: 2.8%;
+  --c-stamp-size: 7.4cqw;
+  font-size: var(--c-size);
+  pointer-events: none;
+}
+/* 缩略图里的版式微调：页眉与页脚压薄，正文只留两行，宁可少也不能溢出 */
+.ce-thumb .ly-head {
+  margin-bottom: 0.35em;
+  padding-bottom: 0.25em;
+  font-size: 0.72em;
+}
+.ce-thumb .ly-body p {
+  margin: 0.35em 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.ce-thumb .ly-body blockquote {
+  margin: 0.4em 0;
+  padding-top: 0.3em;
+  padding-bottom: 0.3em;
+  font-size: 0.94em;
+}
+.ce-thumb .ly-sample-h {
+  margin: 0.1em 0 0.25em;
+  font-size: var(--c-title-size);
+  line-height: 1.24;
+  font-family: var(--c-head-font);
+  font-weight: 800;
+  color: var(--c-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .ce-style-name {
-  font-size: 11px; /* 10.5 太小：20 套模板主要靠名字辨认（审计 LAYOUT-3） */
+  font-size: 12px;
+  padding: 6px 9px 7px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2267,9 +2338,9 @@ body.col-resizing * {
     overflow-y: auto;
     padding: 12px 14px;
   }
-  /* 20 套模板在窄屏用 3 列：4 列时每格不到 90px，模板名会折成两行 */
+  /* 模板橱窗在窄屏用 2 列：3 列时每格不到 110px，横向缩略图会糊成一团 */
   .ce-styles {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(2, 1fr);
   }
   .ce-foot {
     flex-wrap: wrap;
@@ -2282,17 +2353,18 @@ body.col-resizing * {
 }
 
 /* ---------- 美化输出：参数控件 ---------- */
+/* 面板加宽到 1180：28 套模板要 3 列大卡（每格 ~230px），1040 下只能塞 2 列半 */
 .ce-wide {
-  width: min(1040px, 100%);
-  max-height: min(760px, 100%);
+  width: min(1180px, 100%);
+  max-height: min(780px, 100%);
 }
-/* 宽屏（横排）时预览占 38% 宽；窄屏要的是「固定 vh 高」，由上面的 @media (max-width:760px)
+/* 宽屏（横排）时预览占 34% 宽；窄屏要的是「固定 vh 高」，由上面的 @media (max-width:760px)
  * 给出。这条规则必须限定在宽屏里 —— 早先它是全局的，写在媒体查询之后、特异性相同，
  * 于是窄屏的 height:34vh 被 flex-basis:38% 悄悄顶掉（实测 390×844 下预览 239px 而不是 287px），
  * 注释说的「给确定高度」实际没生效。 */
 @media (min-width: 761px) {
   .ce-wide .ce-preview {
-    flex: 0 0 38%;
+    flex: 0 0 34%;
   }
 }
 
@@ -2499,6 +2571,28 @@ body.col-resizing * {
   background: var(--bg);
   color: var(--fg);
   font-size: 11.5px;
+}
+/* 页眉页脚的自由文本框：占满剩余宽度，等宽数字对齐 {page}/{total} 好看 */
+.ce-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 5px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--fg);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+}
+.ce-text:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+/* 说明性小字（样式包里有什么）：比参数标签再淡一档，不抢视线 */
+.ce-hint {
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--fg-chrome-dim);
 }
 .ce-del {
   position: absolute;

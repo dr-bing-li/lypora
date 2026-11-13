@@ -33,7 +33,8 @@ const report = { url: PAGE_URL, devices: [], pass: false, errors: [] }
 /** 与 main.ts 的菜单 id 一一对应（面板分区用它做 key，不随语言变） */
 // 0.10.0：语言降为二级（settings-language），一级换成 layout；设置也要在手机面板里
 // ——否则手机上根本改不了语言。
-const MENU_IDS = ['file', 'edit', 'paragraph', 'format', 'view', 'theme', 'layout', 'settings', 'help']
+// v0.12.0：主题降进「显示」、设置降进「文件」，顶级 9 → 7
+const MENU_IDS = ['file', 'edit', 'paragraph', 'format', 'view', 'layout', 'help']
 
 const browser = await chromium.launch({ executablePath: EDGE, headless: true })
 

@@ -178,17 +178,24 @@ try {
   if (helpAfter.title.startsWith('*') || helpAfter.dirtyMark === '*') await fail('帮助标签被算成未保存')
 
   /* ---------- 6. 设置 → 显示模式三态 ---------- */
-  await openMenu('settings')
-  await page.locator('.menu-drop .menu-item[data-mi="settings-display"]').hover()
+  // v0.12.0：设置从顶级降进「文件」，所以要先展开 文件 → 设置 两层再 hover 第三层
+  await openMenu('file')
+  await page.locator('.menu-drop .menu-item[data-mi="file-settings"]').hover()
+  await page.waitForTimeout(220)
+  await page.locator('.menu-drop.sub .menu-item[data-mi="settings-display"]').hover()
   await page.waitForTimeout(300)
-  const display = await page.evaluate(() =>
-    [...document.querySelectorAll('.menu-drop.sub .menu-item')].map((e) => ({
+  // 只量最深的那一层：.menu-drop.sub 现在有两层（设置、显示模式），
+  // 直接 querySelectorAll 会把上一层也算进来
+  const display = await page.evaluate(() => {
+    const pops = [...document.querySelectorAll('.menu-drop.sub')]
+    const last = pops[pops.length - 1]
+    return [...(last?.querySelectorAll('.menu-item') ?? [])].map((e) => ({
       id: e.dataset.mi,
       label: e.querySelector('.mi-label')?.textContent ?? '',
       checked: e.classList.contains('checked'),
       disabled: e.disabled,
-    })),
-  )
+    }))
+  })
   report.steps.display = display
   if (display.length !== 3) await fail('显示模式不是三项')
   if (!display.find((d) => d.id === 'settings-display-tabs' && d.checked)) await fail('默认没勾"仅标签页"')

@@ -77,6 +77,15 @@ const DECOR_CSS = `
   );
   opacity: 0.7;
 }
+/* 胶片齿孔：上下各一排小方块。用两层 no-repeat 渐变定位，不占额外元素。 */
+.ly-card[data-tex="perf"]::before {
+  background-image:
+    repeating-linear-gradient(to right, var(--c-tex-line) 0 12px, transparent 12px 30px),
+    repeating-linear-gradient(to right, var(--c-tex-line) 0 12px, transparent 12px 30px);
+  background-size: 100% 11px, 100% 11px;
+  background-repeat: no-repeat;
+  background-position: 0 8px, 0 calc(100% - 8px);
+}
 
 /* ---- 强调条 ---- */
 .ly-card[data-acc="top"]::after { top: 0; left: 0; right: 0; height: 5px; background: var(--c-accent); }
@@ -87,14 +96,26 @@ const DECOR_CSS = `
   opacity: 0.9;
 }
 
-/* ---- 折角（便签右上） ---- */
+/* ---- 折角 / 圆切角（右上） ----
+ * schema 3 只剩 [data-corner="fold"] 一条实现，"round" 是空选项：选了什么都不发生。
+ * schema 4 把它做成"明显的大圆角"：与 radius 滑块叠加（radius 决定小圆角的手感，
+ * round 在此基础上再加 16px），这样即使 radius=0 也能一眼看出变化。
+ * 预览与导出都必须保留这个圆角 —— 见 card-capture.ts 的 keepRadius。 */
 .ly-card[data-corner="fold"] .ly-inner::after {
   top: 0; right: 0; width: 46px; height: 46px;
   background: linear-gradient(225deg, var(--c-fold) 0 50%, var(--c-paper-solid) 50%);
   box-shadow: -2px 2px 4px rgba(0, 0, 0, 0.12);
 }
+.ly-card[data-corner="round"] { border-radius: calc(var(--c-radius) + 16px); }
 
-/* ---- 胶带 / 印章（真实元素，随页面 HTML 一起产出） ---- */
+/* ---- 整卡外边框（真实元素 .ly-frame，绝对定位，不参与布局） ---- */
+.ly-card .ly-frame { position: absolute; pointer-events: none; z-index: 3; border-radius: inherit; }
+.ly-card[data-frame="thin"] .ly-frame { inset: 0; border: 1px solid var(--c-frame); }
+.ly-card[data-frame="double"] .ly-frame { inset: 9px; border: 3px double var(--c-frame); border-radius: calc(var(--c-radius) * 0.6); }
+.ly-card[data-frame="dashed"] .ly-frame { inset: 7px; border: 1.5px dashed var(--c-frame); border-radius: calc(var(--c-radius) * 0.6); }
+.ly-card[data-frame="inset"] .ly-frame { inset: 0; box-shadow: inset 0 0 0 1px var(--c-frame), inset 0 0 22px rgba(0, 0, 0, 0.06); }
+
+/* ---- 胶带 ---- */
 .ly-card .ly-tape {
   position: absolute;
   top: -8px; left: 50%;
@@ -105,19 +126,91 @@ const DECOR_CSS = `
   border-right: 1px dashed rgba(160, 150, 120, 0.4);
   z-index: 4;
 }
+
+/* ---- 印章 ----
+ * 老实现是一个 34×34 的纯色方块 + 内描边，用户原话"不像印章"。
+ * 现在是四种用 HTML+CSS 画出来的预设（朱文圆印 / 白文方印 / 已阅长条 / 手写签名），
+ * 零文件零请求；也可以换成用户上传的透明 PNG。位置与大小都是变量。 */
 .ly-card .ly-stamp {
   position: absolute;
-  right: 26px; bottom: 26px;
-  width: 34px; height: 34px;
-  border-radius: 3px;
-  background: var(--c-accent);
-  opacity: 0.85;
-  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.34);
-  transform: rotate(-3deg);
   z-index: 4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  color: var(--c-accent);
+  opacity: 0.84;
+  transform: rotate(-7deg);
+  pointer-events: none;
+  line-height: 1;
 }
-/* ---- 装订位（真实元素，绝对定位，不参与布局） ---- */
+.ly-card .ly-stamp[data-pos="br"] { right: 22px; bottom: 20px; }
+.ly-card .ly-stamp[data-pos="bl"] { left: 22px; bottom: 20px; transform: rotate(6deg); }
+.ly-card .ly-stamp[data-pos="tr"] { right: 22px; top: 20px; transform: rotate(5deg); }
+.ly-card .ly-stamp[data-pos="tl"] { left: 22px; top: 20px; transform: rotate(-5deg); }
+.ly-card .ly-stamp b { font-weight: 700; line-height: 1; }
+
+/* 朱文圆印：双环 + 一个楷体字 */
+.ly-card .ly-stamp[data-stamp="seal"] {
+  width: var(--c-stamp-size); height: var(--c-stamp-size);
+  border: calc(var(--c-stamp-size) * 0.05) solid currentColor;
+  border-radius: 50%;
+}
+.ly-card .ly-stamp[data-stamp="seal"]::after {
+  content: ""; position: absolute; inset: calc(var(--c-stamp-size) * 0.085);
+  border: 1px solid currentColor; border-radius: 50%;
+}
+.ly-card .ly-stamp[data-stamp="seal"] b {
+  font-family: 'Kaiti SC', 'KaiTi', 'STKaiti', 'Songti SC', serif;
+  font-size: calc(var(--c-stamp-size) * 0.46);
+}
+/* 白文方印：实底反白，竖排两字 */
+.ly-card .ly-stamp[data-stamp="square"] {
+  width: var(--c-stamp-size); height: var(--c-stamp-size);
+  background: currentColor; border-radius: 3px;
+}
+.ly-card .ly-stamp[data-stamp="square"] b {
+  color: var(--c-paper-solid);
+  font-family: 'Kaiti SC', 'KaiTi', 'STKaiti', 'Songti SC', serif;
+  font-size: calc(var(--c-stamp-size) * 0.40);
+  letter-spacing: 0.06em;
+  writing-mode: vertical-rl;
+  text-orientation: upright;
+}
+/* 长条印：椭圆双线 + 横排小字 */
+.ly-card .ly-stamp[data-stamp="strip"] {
+  width: calc(var(--c-stamp-size) * 2.15); height: calc(var(--c-stamp-size) * 0.54);
+  border: calc(var(--c-stamp-size) * 0.035) solid currentColor;
+  border-radius: 999px;
+}
+.ly-card .ly-stamp[data-stamp="strip"] b {
+  font-family: 'Kaiti SC', 'KaiTi', 'STKaiti', 'Songti SC', serif;
+  font-size: calc(var(--c-stamp-size) * 0.30);
+  letter-spacing: 0.30em;
+  text-indent: 0.30em;
+}
+/* 手写签名：楷体斜体 + 一道下划线 */
+.ly-card .ly-stamp[data-stamp="signature"] {
+  width: calc(var(--c-stamp-size) * 1.75); height: calc(var(--c-stamp-size) * 0.70);
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(-4deg);
+}
+.ly-card .ly-stamp[data-stamp="signature"] b {
+  font-family: 'Kaiti SC', 'KaiTi', 'STKaiti', 'Songti SC', serif;
+  font-style: italic;
+  font-size: calc(var(--c-stamp-size) * 0.52);
+  letter-spacing: 0.04em;
+  padding-bottom: 0.08em;
+}
+/* 自定义上传：透明 PNG，按宽高比缩放进 stampSize 的方框 */
+.ly-card .ly-stamp-img { object-fit: contain; object-position: center; }
+.ly-card .ly-stamp[data-pos="br"] .ly-stamp-img, .ly-card .ly-stamp[data-pos="bl"] .ly-stamp-img { max-height: calc(var(--c-stamp-size) * 1.1); }
+
+/* ---- 装订位（真实元素，绝对定位，不参与布局） ----
+ * 回形针与订书钉原来是"三个 CSS 边框拼出来的"，形状与位置都不对（用户能一眼看出）。
+ * 现在改成内联 SVG：形状是画出来的，缩放不糊，随卡片一起进 foreignObject。 */
 .ly-card .ly-bind { position: absolute; z-index: 5; pointer-events: none; }
+.ly-card .ly-bind svg { display: block; width: 100%; height: 100%; overflow: visible; }
 .ly-card[data-bind="spiral"] .ly-bind {
   top: 0; bottom: 0; left: 6px; width: 22px;
   background-image: radial-gradient(
@@ -130,18 +223,14 @@ const DECOR_CSS = `
   background-repeat: repeat-y;
 }
 .ly-card[data-bind="clip"] .ly-bind {
-  top: 16px; left: 50%; width: 26px; height: 64px;
-  transform: translateX(-50%) rotate(-2deg);
-  border: 2.6px solid rgba(148, 152, 158, 0.8);
-  border-bottom-color: transparent;
-  border-radius: 9px 9px 4px 4px;
-  box-shadow: inset 0 2px 3px rgba(255, 255, 255, 0.55);
+  top: 2px; left: 50%; width: 30px; height: 78px;
+  transform: translateX(-50%) rotate(-13deg);
+  filter: drop-shadow(1.2px 2.2px 1.6px rgba(0, 0, 0, 0.3));
 }
 .ly-card[data-bind="staple"] .ly-bind {
-  top: 22px; left: 50%; width: 36px; height: 8px;
-  transform: translateX(-50%) rotate(-4deg);
-  border: 2.4px solid rgba(138, 142, 148, 0.9);
-  border-radius: 3px;
+  top: 10px; left: 50%; width: 44px; height: 24px;
+  transform: translateX(-50%) rotate(-6deg);
+  filter: drop-shadow(0.8px 1.6px 1.2px rgba(0, 0, 0, 0.28));
 }
 `
 
@@ -169,6 +258,8 @@ export const CARD_BASE_CSS = `
   --c-halo: rgba(120, 160, 255, 0.16);
   --c-fold: rgba(0, 0, 0, 0.06);
   --c-tape: rgba(255, 255, 255, 0.55);
+  --c-frame: #d9dde3;
+  --c-stamp-size: 64px;
   --c-pad-x: 40px;
   --c-pad-top: 44px;
   --c-pad-bottom: 40px;
@@ -334,6 +425,129 @@ export const CARD_BASE_CSS = `
 }
 .ly-card blockquote p { margin: 0.3em 0; }
 
+/* ---- 引用框形态（schema 4）----
+ * 优先级靠 data-quote 把每条都写成 [data-quote] 选择器，特异性高于上面的基础规则，
+ * 不依赖书写顺序 —— 与"末尾同权媒体查询会顶掉样式"是同一类教训。 */
+.ly-card[data-quote="bar"] .ly-body blockquote {
+  border: 0;
+  border-left: 3px solid var(--c-quote-rule);
+  background: var(--c-quote-bg);
+  border-radius: 0 4px 4px 0;
+  padding: 0.55em 0.9em 0.55em 0.9em;
+}
+.ly-card[data-quote="card"] .ly-body blockquote {
+  position: relative;
+  border: 0;
+  background: var(--c-quote-bg);
+  border-radius: 10px;
+  padding: 0.9em 1.05em 0.85em 1.05em;
+  box-shadow: inset 3px 0 0 var(--c-accent), 0 0 0 1px var(--c-rule);
+  overflow: hidden;
+}
+.ly-card[data-quote="card"] .ly-body blockquote::before {
+  content: "“";
+  position: absolute;
+  top: -0.42em;
+  right: 0.16em;
+  font-family: Georgia, 'Songti SC', serif;
+  font-size: 3.4em;
+  line-height: 1;
+  color: var(--c-accent);
+  opacity: 0.16;
+}
+/* 四角书引：8 条 1.5px 渐变线拼出四个角（单个伪元素画 8 个角，不占用正文节点） */
+.ly-card[data-quote="quad"] .ly-body blockquote {
+  border: 0;
+  background-color: transparent;
+  background-image:
+    linear-gradient(var(--c-accent) 0 0), linear-gradient(var(--c-accent) 0 0),
+    linear-gradient(var(--c-accent) 0 0), linear-gradient(var(--c-accent) 0 0),
+    linear-gradient(var(--c-accent) 0 0), linear-gradient(var(--c-accent) 0 0),
+    linear-gradient(var(--c-accent) 0 0), linear-gradient(var(--c-accent) 0 0);
+  background-repeat: no-repeat;
+  background-size:
+    18px 1.5px, 1.5px 18px, 18px 1.5px, 1.5px 18px,
+    18px 1.5px, 1.5px 18px, 18px 1.5px, 1.5px 18px;
+  background-position:
+    left top, left top, right top, right top,
+    left bottom, left bottom, right bottom, right bottom;
+  border-radius: 0;
+  padding: 0.85em 1.1em;
+}
+.ly-card[data-quote="bubble"] .ly-body blockquote {
+  border: 0;
+  background: var(--c-quote-bg);
+  border-radius: 14px 14px 14px 3px;
+  padding: 0.8em 1.05em;
+  box-shadow: 0 0 0 1px var(--c-rule);
+}
+.ly-card[data-quote="none"] .ly-body blockquote {
+  border: 0;
+  background: transparent;
+  padding: 0.5em 0;
+  color: var(--c-muted);
+}
+
+/* ---- 项目符号（schema 4）----
+ * 除 dot 外一律 list-style:none + ::before 定位：::marker 只能用 content 改字形，
+ * 改不了颜色以外的位置与宽度，中文符号在等宽上还会偏。 */
+.ly-card[data-bullet="dash"] .ly-body ul > li:not(.task),
+.ly-card[data-bullet="square"] .ly-body ul > li:not(.task),
+.ly-card[data-bullet="ring"] .ly-body ul > li:not(.task),
+.ly-card[data-bullet="cjk"] .ly-body ul > li:not(.task),
+.ly-card[data-bullet="none"] .ly-body ul > li:not(.task) {
+  list-style: none;
+  position: relative;
+  padding-left: 1.15em;
+}
+.ly-card[data-bullet="dash"] .ly-body ul > li:not(.task)::before,
+.ly-card[data-bullet="square"] .ly-body ul > li:not(.task)::before,
+.ly-card[data-bullet="ring"] .ly-body ul > li:not(.task)::before,
+.ly-card[data-bullet="cjk"] .ly-body ul > li:not(.task)::before {
+  position: absolute;
+  left: 0;
+  top: 0;
+  color: var(--c-accent);
+  font-variant-numeric: tabular-nums;
+}
+.ly-card[data-bullet="dash"] .ly-body ul > li:not(.task)::before { content: "—"; opacity: 0.8; }
+.ly-card[data-bullet="square"] .ly-body ul > li:not(.task)::before { content: "▪"; font-size: 0.92em; }
+.ly-card[data-bullet="ring"] .ly-body ul > li:not(.task)::before { content: "◦"; font-size: 1.05em; }
+.ly-card[data-bullet="cjk"] .ly-body ul > li:not(.task)::before { content: counter(list-item) "、"; }
+.ly-card[data-bullet="none"] .ly-body ul > li:not(.task) { padding-left: 0; }
+
+/* ---- 标题装饰（schema 4）---- */
+.ly-card[data-title="underline"] .ly-body h1,
+.ly-card[data-title="underline"] .ly-body h2 {
+  padding-bottom: 0.22em;
+  border-bottom: 2px solid var(--c-accent);
+}
+.ly-card[data-title="bar"] .ly-body h1,
+.ly-card[data-title="bar"] .ly-body h2 {
+  padding-left: 0.5em;
+  border-left: 4px solid var(--c-accent);
+}
+.ly-card[data-title="block"] .ly-body h1,
+.ly-card[data-title="block"] .ly-body h2 {
+  display: block;
+  background: var(--c-accent);
+  color: var(--c-on-accent);
+  padding: 0.16em 0.55em;
+  border-radius: 3px;
+  margin-left: -0.12em;
+}
+.ly-card[data-title="bracket"] .ly-body h1::before,
+.ly-card[data-title="bracket"] .ly-body h2::before {
+  content: "「";
+  color: var(--c-accent);
+  margin-left: -0.5em;
+}
+.ly-card[data-title="bracket"] .ly-body h1::after,
+.ly-card[data-title="bracket"] .ly-body h2::after {
+  content: "」";
+  color: var(--c-accent);
+}
+
 .ly-card code {
   font-family: var(--c-mono);
   font-size: 0.86em;
@@ -393,9 +607,27 @@ export const CARD_BASE_CSS = `
 .ly-card .katex-display { margin: 0.5em 0; }
 ` + DECOR_CSS
 
-/** 模板的 data 属性：渲染卡片时挂到根节点，纹理/强调位/折角/装订全靠它命中 */
+/** 模板的 data 属性表：纹理/强调位/折角/引用框/符号/标题/边框/装订全靠它命中 */
+export function decorAttrMap(t: CardTemplate): Record<string, string> {
+  const d = t.decor
+  return {
+    'data-tex': d.texture,
+    'data-acc': d.accent,
+    'data-corner': d.corner,
+    'data-cover': d.cover,
+    'data-bind': d.binding ?? 'none',
+    'data-quote': d.quote ?? 'bar',
+    'data-bullet': d.bullet ?? 'dot',
+    'data-title': d.title ?? 'none',
+    'data-frame': d.frame ?? 'none',
+  }
+}
+
+/** 同上的字符串形态（拼 HTML 时用） */
 export function decorAttrs(t: CardTemplate): string {
-  return ` data-tex="${t.decor.texture}" data-acc="${t.decor.accent}" data-corner="${t.decor.corner}" data-cover="${t.decor.cover}" data-bind="${t.decor.binding ?? 'none'}"`
+  return Object.entries(decorAttrMap(t))
+    .map(([k, v]) => ` ${k}="${v}"`)
+    .join('')
 }
 
 /**
@@ -428,6 +660,8 @@ export function compileTemplate(t: CardTemplate): string {
   --c-halo: ${t.dark ? haloOf(k.accent) : 'rgba(120, 160, 255, 0.14)'};
   --c-fold: ${foldOf(k.ink)};
   --c-tape: ${t.dark ? 'rgba(255,255,255,0.14)' : 'rgba(255,255,255,0.55)'};
+  --c-frame: ${frameOf(t)};
+  --c-stamp-size: ${Math.min(140, Math.max(34, t.decor.stampSize ?? 64))}px;
   --c-bg-img: ${bg.image};
   --c-bg-size: ${bg.size};
   --c-bg-repeat: ${bg.repeat};
@@ -491,6 +725,17 @@ function haloOf(accent: string): string {
   const rgb = toRgb(accent)
   if (!rgb) return 'rgba(120, 200, 255, 0.2)'
   return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.22)`
+}
+
+/**
+ * 外边框颜色：亮纸用墨色的一点点（比 rule 明显），暗纸用白的一点点。
+ * 直接复用 rule 会被浅色模板的分隔线吞掉（双线边框看着像没画）。
+ */
+function frameOf(t: CardTemplate): string {
+  const rgb = toRgb(t.tokens.ink)
+  if (!rgb) return t.dark ? 'rgba(255, 255, 255, 0.22)' : 'rgba(0, 0, 0, 0.16)'
+  const lum = 0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b
+  return lum > 140 ? 'rgba(0, 0, 0, 0.18)' : 'rgba(255, 255, 255, 0.26)'
 }
 
 function foldOf(ink: string): string {

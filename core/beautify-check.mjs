@@ -1,15 +1,18 @@
 /**
- * 「排版」验收 —— 七组硬指标，任一不过即失败。
+ * 「排版」验收 —— 八组硬指标，任一不过即失败。
  *
- *  A. 交互：一级菜单「排版」能开面板、20 套模板按钮齐全、20s 内出预览、Esc 能关。
- *  B. 模板：20 套逐一出图，且每张采样颜色数 > 8（防"白图假通过"）。
+ *  A. 交互：一级菜单「排版」能开面板、28 套模板按钮齐全、20s 内出预览、Esc 能关。
+ *  B. 模板：28 套逐一出图，且每张采样颜色数 > 8（防"白图假通过"）。
  *  C. 参数：改字号必须让页数变化（证明"参数→重排"链路真的通了，不是只换 CSS）；
  *           纹理必须在**同一字号**下比「无 → 网格」，并且设回去要回到基线
  *           （v0.9.0 拿改字号前的图当基线，纹理完全不可见也能通过）。
  *  C2. 背景与装订：两种底纹必须产出不同像素、装订位必须看得见、
  *           上传自定义图必须写进 decor.bgImage 并出现在缩略图。
- *  D. 模板进出：导出 .lyt.json（schema 3，含 decor 新字段）→ 再导入 → 成为当前模板；
- *           「存为我的模板」必须弹命名框，自定义名字要出现在「我的模板」里。
+ *  C3. 圆角与装饰：半径 0→24 圆角必须真的变大（量预览图左上角第一颗不透明像素的 x）、
+ *           「圆切角」必须比「不处理」更圆、回形针/订书钉必须各自画出来且彼此不同、
+ *           印章开关必须改变画面；缩略图必须是真卡片且内容不溢出。
+ *  D. 模板进出：导出 .zip 样式包（template.json + README，带图时还有 bg.png）→
+ *           再导入 → 成为当前模板；旧版单文件 .lyt.json 仍要能认（老模板不弃）。
  *  E. 离线：整场操作**零外部网络请求**（除本机 127.0.0.1 静态资源）。
  *
  * 用法：node beautify-check.mjs [url]
@@ -18,6 +21,7 @@
 import { chromium } from 'playwright-core'
 import fs from 'node:fs'
 import path from 'node:path'
+import zlib from 'node:zlib'
 import { fileURLToPath } from 'node:url'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
@@ -113,7 +117,7 @@ const open = await page.locator('.ce').count()
 const tplCount = await page.locator('.ce-style[data-tpl]').count()
 report.steps.panel = { open: open === 1, templates: tplCount }
 if (!open) errors.push('排版面板没有打开')
-if (tplCount < 20) errors.push(`模板数量不足：${tplCount} < 20`)
+if (tplCount < 28) errors.push(`模板数量不足：${tplCount} < 28`)
 
 await page.waitForFunction(() => {
   const img = document.querySelector('.ce-img')
@@ -357,45 +361,263 @@ await page.evaluate(() => {
 })
 await page.waitForTimeout(1200)
 
-/* ---------- D. 模板导出 / 导入 ---------- */
-const dlTpl = page.waitForEvent('download', { timeout: 30000 }).catch(() => null)
-await page.evaluate(() => {
-  const btns = [...document.querySelectorAll('.ce-seg-btn')]
-  btns.find((b) => b.textContent.includes('导出模板'))?.click()
+/* ---------- C3. 圆角 / 角处理 / 装订 / 印章 / 缩略图 ---------- */
+
+/**
+ * 圆角「看得见」的量化办法：预览是透明底的 PNG，从左上角第 0 行扫出第一颗不透明像素的 x。
+ * 半径越大，圆角弧线在 y=0 处越靠右 —— 这比"两张图 sig 不同"严格：
+ * 0.12.0 之前 .ce-img 写死白底、captureCard 又把 border-radius 抹成 0，
+ * 图像怎么比都一样，用户拉滑块自然"没有任何改动展示"。
+ */
+const cornerInset = () =>
+  page.evaluate(async () => {
+    const img = document.querySelector('.ce-img')
+    if (!img?.src) return null
+    const bmp = await createImageBitmap(await (await fetch(img.src)).blob())
+    const c = document.createElement('canvas')
+    c.width = bmp.width
+    c.height = bmp.height
+    const g = c.getContext('2d')
+    g.drawImage(bmp, 0, 0)
+    const row = g.getImageData(0, 0, bmp.width, 1).data
+    let firstX = -1
+    for (let x = 0; x < bmp.width; x += 1) {
+      if (row[x * 4 + 3] > 8) {
+        firstX = x
+        break
+      }
+    }
+    return { w: bmp.width, firstX }
+  })
+
+const setNum = async (p, v) => {
+  await page.evaluate(
+    ([path2, val]) => {
+      const input = document.querySelector(`.ce-param[data-path="${path2}"] input[type="range"]`)
+      if (!input) return
+      input.value = String(val)
+      input.dispatchEvent(new Event('input', { bubbles: true }))
+    },
+    [p, v],
+  )
+  await page.waitForTimeout(1400)
+}
+
+await page.click('.ce-style[data-tpl="paper"]')
+await page.waitForTimeout(900)
+await clickSeg('decor.corner', 'none')
+await setNum('metrics.radius', 0)
+const radius0 = await cornerInset()
+await setNum('metrics.radius', 24)
+const radius24 = await cornerInset()
+await grab('radius-24.png')
+
+// 同一半径下，「圆切角」必须比「不处理」更圆（CSS 里是 radius + 16px）
+await setNum('metrics.radius', 8)
+await clickSeg('decor.corner', 'round')
+const cornerRound = await cornerInset()
+await grab('corner-round.png')
+await clickSeg('decor.corner', 'fold')
+const cornerFold = await cornerInset()
+await clickSeg('decor.corner', 'none')
+await setNum('metrics.radius', 6)
+
+report.steps.corner = {
+  radius0: radius0?.firstX,
+  radius24: radius24?.firstX,
+  cornerFold: cornerFold?.firstX,
+  cornerRound: cornerRound?.firstX,
+  previewWidth: radius0?.w,
+}
+if (!radius0 || !radius24) errors.push('圆角测量拿不到预览图')
+else if (radius24.firstX - radius0.firstX < 8) {
+  errors.push(`半径 0→24 圆角几乎没变（firstX ${radius0.firstX} → ${radius24.firstX}）`)
+}
+if (!cornerFold || !cornerRound) errors.push('角处理测量拿不到预览图')
+else if (cornerRound.firstX - cornerFold.firstX < 8) {
+  errors.push(`「圆切角」没比「折角」更圆（firstX ${cornerFold.firstX} → ${cornerRound.firstX}）`)
+}
+
+/* 装订：回形针与订书钉各画一张，且两者不能长得一样（否则就是同一坨东西） */
+await clickSeg('decor.binding', 'none')
+const bindNone = await grab('bind-none.png')
+await clickSeg('decor.binding', 'clip')
+const bindClip = await grab('bind-clip.png')
+const diffClip = await diffRatio('bind-none.png', 'bind-clip.png')
+await clickSeg('decor.binding', 'staple')
+const bindStaple = await grab('bind-staple.png')
+const diffStaple = await diffRatio('bind-none.png', 'bind-staple.png')
+await clickSeg('decor.binding', 'none')
+
+report.steps.binding = {
+  clipDiff: diffClip,
+  stapleDiff: diffStaple,
+  clipVsStaple: !!(bindClip && bindStaple && bindClip.sig !== bindStaple.sig),
+}
+if (diffClip < 0.002) errors.push(`回形针几乎没画出来（diff=${diffClip}）`)
+// 订书钉本来就小（44×24px 画在 540 宽的纸上 ≈ 0.4% 面积），阈值按它的实际面积给
+if (diffStaple < 0.0008) errors.push(`订书钉几乎没画出来（diff=${diffStaple}）`)
+if (bindClip && bindStaple && bindClip.sig === bindStaple.sig) errors.push('回形针与订书钉画出来是同一个东西')
+
+/* 印章：开关与预设都要真的改画面 */
+const stampToggle = page.locator('[data-group="stamp"] .ce-switch')
+await clickSeg('decor.stampPreset', 'seal')
+const stampOff = await grab('stamp-off.png')
+await stampToggle.click()
+await page.waitForTimeout(1400)
+const stampOn = await grab('stamp-on.png')
+const diffStamp = await diffRatio('stamp-off.png', 'stamp-on.png')
+await clickSeg('decor.stampPreset', 'square')
+const stampSquare = await grab('stamp-square.png')
+// 朱文圆印「阅」和白文方印「已阅」色块几乎一样，sig（按量化色去重）分不开，要比像素
+const diffStampPreset = await diffRatio('stamp-on.png', 'stamp-square.png')
+await stampToggle.click()
+await page.waitForTimeout(1000)
+
+report.steps.stamp = { onDiff: diffStamp, presetDiff: diffStampPreset }
+if (diffStamp < 0.001) errors.push(`印章开关打开后画面没变（diff=${diffStamp}）`)
+if (diffStampPreset < 0.0008) errors.push(`换印章预设画面没变（diff=${diffStampPreset}）`)
+
+/* 缩略图：必须是真卡片（有 .ly-card 且挂了真节点），且内容不许溢出卡片 */
+await page.evaluate(async () => {
+  const sc = document.querySelector('.ce-styles')?.closest('section, div')
+  let node = document.querySelector('.ce-styles')
+  while (node && node.scrollHeight <= node.clientHeight + 4) node = node.parentElement
+  const host = node || sc || document.scrollingElement
+  for (let y = 0; y < host.scrollHeight; y += 320) {
+    host.scrollTop = y
+    await new Promise((r) => setTimeout(r, 60))
+  }
+  host.scrollTop = 0
 })
+await page.waitForTimeout(700)
+const thumbStats = await page.evaluate(() => {
+  const cards = Array.from(document.querySelectorAll('.ce-style[data-tpl]'))
+  let mounted = 0
+  let overflow = 0
+  let sample = null
+  for (const card of cards) {
+    const inner = card.querySelector('.ce-thumb-inner .ly-card')
+    if (!inner) continue
+    mounted += 1
+    if (!sample) {
+      const r = inner.getBoundingClientRect()
+      sample = { w: Math.round(r.width), h: Math.round(r.height) }
+    }
+    const body = inner.querySelector('.ly-body')
+    if (body && body.scrollHeight - body.clientHeight > 1) overflow += 1
+  }
+  return {
+    total: cards.length,
+    mounted,
+    overflow,
+    size: sample,
+    labelFont: document.querySelector('.ce-label') ? getComputedStyle(document.querySelector('.ce-label')).fontSize : null,
+    firstName: cards[0]?.querySelector('.ly-sample-h')?.textContent || '',
+  }
+})
+await page.screenshot({ path: path.join(OUT, 'templates.png') })
+report.steps.thumbs = thumbStats
+if (thumbStats.mounted < thumbStats.total * 0.6) {
+  errors.push(`缩略图只挂上 ${thumbStats.mounted}/${thumbStats.total} 张`)
+}
+if (thumbStats.overflow > 0) errors.push(`有 ${thumbStats.overflow} 张缩略图内容溢出卡片`)
+if (thumbStats.labelFont !== '13px') errors.push(`分组标题字号应为 13px，实测 ${thumbStats.labelFont}`)
+if (!/^[\u4e00-\u9fa5]{4}$/.test(thumbStats.firstName)) {
+  errors.push(`模板名不是四字词：${thumbStats.firstName}`)
+}
+
+
+/* ---------- D. 样式包导出 / 导入 ---------- */
+
+/**
+ * 最小 zip 读取（EOCD + 中央目录），只认 store/deflate 两种 method。
+ * 验收要看到「.zip 里到底装了什么」，不能只看下载文件非空 ——
+ * 这正是 0.11 那种"导出成功但只有半个模板"的假通过来源。
+ */
+const readZip = (buf) => {
+  let eocd = -1
+  for (let i = buf.length - 22; i >= 0; i -= 1) {
+    if (buf.readUInt32LE(i) === 0x06054b50) {
+      eocd = i
+      break
+    }
+  }
+  if (eocd < 0) return null
+  const n = buf.readUInt16LE(eocd + 10)
+  let p = buf.readUInt32LE(eocd + 16)
+  const out = {}
+  for (let i = 0; i < n; i += 1) {
+    if (buf.readUInt32LE(p) !== 0x02014b50) break
+    const method = buf.readUInt16LE(p + 10)
+    const csize = buf.readUInt32LE(p + 20)
+    const nameLen = buf.readUInt16LE(p + 28)
+    const extraLen = buf.readUInt16LE(p + 30)
+    const cmtLen = buf.readUInt16LE(p + 32)
+    const off = buf.readUInt32LE(p + 42)
+    const name = buf.subarray(p + 46, p + 46 + nameLen).toString('utf8')
+    const lnameLen = buf.readUInt16LE(off + 26)
+    const lextraLen = buf.readUInt16LE(off + 28)
+    const start = off + 30 + lnameLen + lextraLen
+    const raw = buf.subarray(start, start + csize)
+    out[name] = method === 0 ? raw : zlib.inflateRawSync(raw)
+    p += 46 + nameLen + extraLen + cmtLen
+  }
+  return out
+}
+
+const dlTpl = page.waitForEvent('download', { timeout: 30000 }).catch(() => null)
+await page.click('[data-act="tpl-export"]')
 const dTpl = await dlTpl
-if (!dTpl) errors.push('导出模板没有触发下载')
+if (!dTpl) errors.push('导出样式包没有触发下载')
 else {
-  const f = path.join(OUT, 'current.lyt.json')
+  const f = path.join(OUT, dTpl.suggestedFilename())
   await dTpl.saveAs(f)
-  const json = JSON.parse(fs.readFileSync(f, 'utf8'))
+  const entries = readZip(fs.readFileSync(f))
+  const json = entries?.['template.json'] ? JSON.parse(entries['template.json'].toString('utf8')) : null
   report.steps.templateExport = {
     file: path.basename(f),
-    schema: json.schema,
-    id: json.id,
-    hasTokens: !!json.tokens,
-    hasMetrics: !!json.metrics,
-    hasDecor: !!json.decor,
+    entries: entries ? Object.keys(entries) : [],
+    schema: json?.schema,
+    id: json?.id,
+    hasTokens: !!json?.tokens,
+    hasMetrics: !!json?.metrics,
+    hasDecor: !!json?.decor,
+    subType: fs.readFileSync(f).readUInt32LE(0) === 0x04034b50,
   }
-  if (json.schema !== 3 || !json.tokens?.accent) errors.push('导出的模板缺少 schema/tokens')
-  // 新增字段必须随模板一起走，否则换台机器打开就丢背景
-  report.steps.templateExport.hasDecorFields =
-    json.decor && 'bg' in json.decor && 'bgImage' in json.decor && 'bgOpacity' in json.decor && 'binding' in json.decor
-  if (!report.steps.templateExport.hasDecorFields) errors.push('导出的模板缺 v0.10.0 的 decor 字段')
+  if (!entries) errors.push('导出的样式包不是合法 zip')
+  else if (!entries['template.json']) errors.push('样式包里没有 template.json')
+  else {
+    if (!entries['README.txt']) errors.push('样式包里没有 README.txt')
+    // schema 4 起新增了引用框/项目符号/标题装饰/外边框/印章五组装饰
+    report.steps.templateExport.hasDecorFields =
+      json.decor &&
+      ['bg', 'bgImage', 'bgOpacity', 'binding', 'quote', 'bullet', 'title', 'frame', 'stampPreset'].every((k) => k in json.decor)
+    if (json.schema !== 4) errors.push(`样式包 schema 应为 4，实测 ${json.schema}`)
+    if (!report.steps.templateExport.hasDecorFields) errors.push('样式包缺 schema 4 的 decor 字段')
+    if (!json.tokens?.accent) errors.push('样式包缺少 tokens')
+  }
 
-  // 改个名字再导入，避免与内置 id 冲突后走重命名分支（测主路径）
-  json.id = 'imported-test'
-  json.name = '导入测试'
-  const inFile = path.join(OUT, 'import-test.lyt.json')
-  fs.writeFileSync(inFile, JSON.stringify(json, null, 2))
-
-  await page.setInputFiles('.ce-settings input[type="file"]', inFile)
-  await page.waitForTimeout(1500)
-  const mineCount = await page.locator('.ce-style[data-tpl^="imported-test"]').count()
+  /* 同一个 zip 再导回来：应当多出一张「我的模板」，且选中它 */
+  await page.setInputFiles('input[type="file"][accept*="zip"]', f)
+  await page.waitForTimeout(1600)
+  const dupCount = await page.locator(`.ce-style[data-tpl^="${json?.id}"]`).count()
   const curName = await page.locator('.ce-style.on .ce-style-name').innerText().catch(() => '')
-  report.steps.templateImport = { mineCount, current: curName }
-  if (mineCount < 1) errors.push('导入的模板没有出现在「我的模板」')
-  if (curName !== '导入测试') errors.push(`导入后当前模板不是它：${curName}`)
+  report.steps.templateImport = { dupCount, current: curName }
+  if (dupCount < 2) errors.push(`重新导入样式包后没有生成副本（同名卡片 ${dupCount} 张）`)
+  if (!curName) errors.push('导入样式包后当前模板名读不到')
+
+  /* 旧版单文件 .lyt.json 必须继续能认 */
+  const legacy = path.join(OUT, 'legacy.lyt.json')
+  fs.writeFileSync(legacy, JSON.stringify({ name: '旧包测试', tokens: { paper: '#fff7e6', accent: '#b1523a' } }), 'utf8')
+  const beforeLegacy = await page.locator('.ce-style[data-tpl]').count()
+  await page.setInputFiles('input[type="file"][accept*="zip"]', legacy)
+  await page.waitForTimeout(1600)
+  const afterLegacy = await page.locator('.ce-style[data-tpl]').count()
+  const legacyNamed = await page.locator('.ce-style-name:has-text("旧包测试")').count()
+  report.steps.legacyImport = { beforeLegacy, afterLegacy, legacyNamed }
+  if (afterLegacy !== beforeLegacy + 1) errors.push('旧版 .lyt.json 导入后卡片数没增加')
+  if (legacyNamed < 1) errors.push('旧版 .lyt.json 没出现在「我的模板」里')
 }
 
 /* ---------- D2. 我的模板：自定义名称 ---------- */

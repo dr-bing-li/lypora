@@ -293,13 +293,15 @@ async function runContrast(browser) {
       }
       check('contrast', `${id}/light`, r.ratio >= min, `${label} ${r.ratio}:1（需 ≥${min}）${r.color} on ${r.bg}`)
     }
-    await openMenu(page, 'settings')
+    // v0.12.0：顶级菜单瘦身到 7 项，「设置」并进「文件」、「主题」并进「显示」，
+    // 所以这里改开「显示」——它自带一个「主题」子菜单，箭头还在第一层
+    await openMenu(page, 'view')
     const arrow = await page.evaluate(() => window.__cc('.menu-drop .mi-arrow', 0))
     check(
       'contrast',
       'submenu-arrow/light',
       !!(arrow && arrow.visible && arrow.ratio >= 3.0),
-      arrow ? `子菜单箭头 ${arrow.ratio}:1（需 ≥3）${arrow.color}，宽 ${arrow.w}px` : '设置菜单里找不到 .mi-arrow',
+      arrow ? `子菜单箭头 ${arrow.ratio}:1（需 ≥3）${arrow.color}，宽 ${arrow.w}px` : '「显示」菜单里找不到 .mi-arrow',
     )
     await page.screenshot({ path: path.join(OUT, 'contrast-menu.png') })
     await page.keyboard.press('Escape')
@@ -513,29 +515,95 @@ async function runGeometry(browser) {
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.waitForTimeout(350)
 
-  /* --- 菜单：行高、根按钮、箭头、分组 --- */
-  await openMenu(page, 'settings')
+  /* --- 菜单：根项数、行高、根按钮、箭头、分组 --- */
+  await openMenu(page, 'file')
   const menu = await page.evaluate(() => {
     const item = document.querySelector('.menu-drop .menu-item')
     const root = document.querySelector('#menubar-items .menu-root')
     const arrow = document.querySelector('.menu-drop .mi-arrow')
     const r = (e) => (e ? e.getBoundingClientRect() : null)
-    const groups = document.querySelectorAll('.menu-drop .mi-group')
+    const roots = [...document.querySelectorAll('#menubar-items .menu-root')]
     return {
       itemH: item ? Math.round(r(item).height) : 0,
       rootH: root ? Math.round(r(root).height) : 0,
       arrow: arrow ? { w: Math.round(r(arrow).width), h: Math.round(r(arrow).height), text: (arrow.textContent || '').trim() } : null,
-      groups: groups.length,
-      groupTexts: [...groups].map((e) => (e.textContent || '').trim()),
-      submenuCount: document.querySelectorAll('.menu-drop .mi-arrow').length,
+      rootCount: roots.length,
+      rootIds: roots.map((e) => e.dataset.menu),
     }
   })
   check('geometry', 'menu-item-height', menu.itemH >= 28, `菜单项高 ${menu.itemH}px（需 ≥28）`)
   check('geometry', 'menu-root-height', menu.rootH >= 26, `菜单根按钮高 ${menu.rootH}px（需 ≥26）`)
+  // v0.12.0 把顶级菜单从 9 项收到 7 项（主题→显示、设置→文件），项数再涨回去就是没瘦身
+  check(
+    'geometry',
+    'menu-root-count',
+    menu.rootCount === 7,
+    `顶级菜单 ${menu.rootCount} 项（应为 7）：${menu.rootIds.join(' / ')}`,
+  )
   check('geometry', 'submenu-arrow-size', !!menu.arrow && menu.arrow.w >= 10 && menu.arrow.h >= 10, menu.arrow ? `箭头 ${menu.arrow.w}×${menu.arrow.h}（需 ≥10×10）文本「${menu.arrow.text}」` : '找不到箭头')
-  check('geometry', 'settings-groups', menu.groups >= 2 && menu.submenuCount >= 4, `设置菜单分组标题 ${menu.groups} 个（需 ≥2），带子菜单 ${menu.submenuCount} 项`)
+
+  /* 二级：文件 → 设置。分组标题与子菜单都在这一层，得先 hover 进去 */
+  await page.locator('.menu-drop .menu-item[data-mi="file-settings"]').hover()
+  await page.waitForTimeout(320)
+  const sub = await page.evaluate(() => {
+    const pops = [...document.querySelectorAll('.menu-drop.sub')]
+    const last = pops[pops.length - 1]
+    return {
+      pops: pops.length,
+      groups: last ? last.querySelectorAll('.mi-group').length : 0,
+      arrows: last ? last.querySelectorAll('.mi-arrow').length : 0,
+    }
+  })
+  check(
+    'geometry',
+    'settings-groups',
+    sub.pops >= 1 && sub.groups >= 2 && sub.arrows >= 4,
+    `二级弹层 ${sub.pops} 个；设置分组标题 ${sub.groups} 个（需 ≥2），带子菜单 ${sub.arrows} 项（需 ≥4）`,
+  )
   await page.screenshot({ path: path.join(OUT, 'geometry-menu.png') })
   await page.keyboard.press('Escape')
+  await page.keyboard.press('Escape')
+
+  /* --- 排版面板橱窗：3 列大卡 + 分组标题 13px --- */
+  await page.keyboard.press('Control+Shift+P')
+  await page.waitForTimeout(2200)
+  const gallery = await page.evaluate(() => {
+    const grid = document.querySelector('.ce-styles')
+    const thumb = document.querySelector('.ce-thumb')
+    const label = document.querySelector('.ce-label')
+    const tr = thumb ? thumb.getBoundingClientRect() : null
+    const cs = grid ? getComputedStyle(grid) : null
+    return {
+      cols: cs ? cs.gridTemplateColumns.split(/\s+/).filter(Boolean).length : 0,
+      labelFont: label ? parseFloat(getComputedStyle(label).fontSize) : 0,
+      labelWeight: label ? getComputedStyle(label).fontWeight : '',
+      thumbRatio: tr && tr.height ? +(tr.width / tr.height).toFixed(2) : 0,
+      thumbs: document.querySelectorAll('.ce-thumb').length,
+      realCards: document.querySelectorAll('.ce-thumb-inner .ly-card').length,
+    }
+  })
+  check('geometry', 'gallery-columns', gallery.cols === 3, `橱窗 ${gallery.cols} 列（应为 3）`)
+  check(
+    'geometry',
+    'gallery-label-size',
+    gallery.labelFont >= 13,
+    `分组标题字号 ${gallery.labelFont}px / 字重 ${gallery.labelWeight}（需 ≥13px）`,
+  )
+  check(
+    'geometry',
+    'gallery-thumb-ratio',
+    gallery.thumbRatio >= 2 && gallery.thumbRatio <= 2.6,
+    `缩略图长宽比 ${gallery.thumbRatio}（横向长方形，需 2.0–2.6）`,
+  )
+  check(
+    'geometry',
+    'gallery-thumbs-real',
+    gallery.realCards >= 10 && gallery.realCards <= gallery.thumbs,
+    `${gallery.thumbs} 个缩略图里已挂 ${gallery.realCards} 张真卡片（懒渲染，进视口才挂；需 ≥10 且不超过缩略图数）`,
+  )
+  await page.screenshot({ path: path.join(OUT, 'geometry-gallery.png') })
+  await page.keyboard.press('Escape')
+  await page.waitForTimeout(300)
 
   /* --- 标签关闭热区 --- */
   const closeBox = await page.evaluate(() => window.__box('#tabbar .tab-item .tb-close'))
@@ -730,7 +798,7 @@ async function runInteractive(browser) {
   check('interactive', 'dialog-focus-restore', restored.inEditor, `关闭后焦点落在 ${restored.role}（应回编辑器）`)
 
   /* --- 菜单层级：面板打开时菜单必须已关（z-index 倒挂） --- */
-  await openMenu(page, 'settings')
+  await openMenu(page, 'view')
   await page.keyboard.press('Control+Shift+P')
   await page.waitForTimeout(1300)
   const zorder = await page.evaluate(() => {

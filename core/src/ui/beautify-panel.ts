@@ -16,13 +16,26 @@
 
 import { CARD_SIZES, findSize, type CardSize } from '../export/card-themes'
 import { paginate, type CardPage, type SplitMode } from '../export/card-layout'
+import { decoHtml } from '../export/card-layout'
 import { buildZip, renderPagePreview, renderPagesToPdf, renderPagesToPng } from '../export/card-capture'
 import { saveBinary } from '../export/save-binary'
-import { BUILTIN_TEMPLATES, swatchOf } from '../export/template/builtin'
+import { BUILTIN_TEMPLATES, templateName } from '../export/template/builtin'
 import { BG_PREVIEW, BG_PREVIEW_SIZE, PARAM_SPECS, getPath, setPath, type ParamSpec } from '../export/template/params'
-import { exportTemplate, importTemplate, listUserTemplates, loadCurrent, sanitizeBgImage, saveCurrent, saveUserTemplates } from '../export/template/io'
+import {
+  exportTemplate,
+  importTemplate,
+  listUserTemplates,
+  loadCurrent,
+  sanitizeBgImage,
+  sanitizeStampImage,
+  saveCurrent,
+  saveUserTemplates,
+} from '../export/template/io'
+import { buildSamplePackage, exportPackage, importPackage } from '../export/template/pkg'
+import { compileTemplate, CARD_BASE_CSS, decorAttrs } from '../export/template/compile'
 import { FONT_PRESETS, BG_PRESETS, type CardTemplate } from '../export/template/types'
 import { t } from '../i18n'
+import { escapeHtml } from '../util'
 import { askText } from './ask'
 
 /** 参数表的 labelKey 是普通 string（模板可携带任意键），这里统一收口成 MessageKey */
@@ -97,6 +110,7 @@ export function createBeautifyPanel(deps: BeautifyDeps): BeautifyHandle {
 
   let refs: {
     root: HTMLElement
+    settings: HTMLElement
     img: HTMLImageElement
     pos: HTMLElement
     status: HTMLElement
@@ -105,6 +119,7 @@ export function createBeautifyPanel(deps: BeautifyDeps): BeautifyHandle {
     paramHost: HTMLElement
     coverInput: HTMLInputElement
     bgInput: HTMLInputElement
+    stampInput: HTMLInputElement
     fontSelect: HTMLSelectElement
   } | null = null
 
@@ -117,17 +132,71 @@ export function createBeautifyPanel(deps: BeautifyDeps): BeautifyHandle {
 
   /* ---------------- 模板画廊 ---------------- */
 
+  /**
+   * 模板缩略图 = **真卡片**（同一份 `CARD_BASE_CSS` + 该模板自己编译出的变量），
+   * 只是把字号/留白压到缩略图尺度。
+   *
+   * 为什么不把整页等比压扁：一张 720px 宽的卡片压到 240px 是 0.33 倍，
+   * 15px 正文只剩 5px，屏幕上就是一片灰糊 —— 20 套模板看起来都一样。
+   * 也不走 canvas 光栅化：28 套 × 每套一次 SVG→canvas，开面板要等好几秒，
+   * 而这里本来就是 DOM，直接画更快，还能随时跟着参数变。
+   */
+  function sampleHtml(tpl: CardTemplate): string {
+    const name = escapeHtml(templateName(tpl))
+    const body = escapeHtml(t('card.sampleBody'))
+    const quote = escapeHtml(t('card.sampleQuote'))
+    return (
+      `<div class="ly-card ly-sample" data-tpl="${tpl.id}"${decorAttrs(tpl)}` +
+      ` style="--ly-card-w:100%;--ly-card-h:100%;--c-lh:1.45">` +
+      `<i class="ly-bg"></i>${decoHtml(tpl)}` +
+      `<div class="ly-inner">` +
+      (tpl.metrics.headRule ? `<div class="ly-head"><span class="ly-doc">Lypora</span></div>` : '') +
+      `<div class="ly-body">` +
+      `<h2 class="ly-sample-h">${name}</h2>` +
+      `<p>${body}</p>` +
+      `<blockquote><p>${quote}</p></blockquote>` +
+      `</div></div></div>`
+    )
+  }
+
+  /** 所有模板（内置 + 我的）—— 懒渲染时按 id 回查 */
+  function allTemplates(): CardTemplate[] {
+    return [...BUILTIN_TEMPLATES, ...listUserTemplates()]
+  }
+
+  let io: IntersectionObserver | null = null
+
+  function observeSamples(root: HTMLElement): void {
+    io?.disconnect()
+    io = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          if (!e.isIntersecting) continue
+          const box = e.target as HTMLElement
+          const box2 = box.querySelector<HTMLElement>('.ce-thumb-inner')
+          const id = box.dataset.tpl
+          if (box2 && id && !box2.firstChild) {
+            const tpl = allTemplates().find((x) => x.id === id)
+            if (tpl) box2.innerHTML = sampleHtml(tpl)
+          }
+          io?.unobserve(box)
+        }
+      },
+      { root, rootMargin: '240px 0px' },
+    )
+    for (const b of Array.from(root.querySelectorAll<HTMLElement>('.ce-style[data-tpl]'))) io.observe(b)
+  }
+
   function templateButton(tpl: CardTemplate, mine: boolean): HTMLElement {
     const b = el('button', 'ce-style')
     b.type = 'button'
     b.dataset.tpl = tpl.id
-    b.title = `${tpl.name} · ${tpl.enName}`
-    const chip = el('span', 'ce-chip')
-    // 三色小样（纸 / 强调 / 墨）：v0.9.0 只有纸+强调两色斜切，
-    // 素纸与极简黑白在缩略图上长得一样，选不出"这套到底多深"
-    chip.style.background = swatchOf(tpl).css
-    const name = el('span', 'ce-style-name', tpl.name)
-    b.append(chip, name)
+    b.title = `${templateName(tpl)} · ${tpl.enName}`
+    const thumb = el('span', 'ce-thumb')
+    const inner = el('span', 'ce-thumb-inner')
+    thumb.appendChild(inner)
+    const name = el('span', 'ce-style-name', templateName(tpl))
+    b.append(thumb, name)
     if (mine) {
       const del = el('span', 'ce-del', '×')
       del.title = t('card.deleteTpl')
@@ -151,10 +220,23 @@ export function createBeautifyPanel(deps: BeautifyDeps): BeautifyHandle {
     return b
   }
 
+  /** 28 套模板的样式一次编译好塞进一个 <style>：缩略图靠 data-tpl 命中自己的变量块 */
+  function ensureSampleCss(templates: CardTemplate[]): void {
+    let st = document.getElementById('ce-sample-css') as HTMLStyleElement | null
+    if (!st) {
+      st = document.createElement('style')
+      st.id = 'ce-sample-css'
+      document.head.appendChild(st)
+    }
+    st.textContent = CARD_BASE_CSS + '\n' + templates.map((tpl) => compileTemplate(tpl)).join('\n')
+  }
+
   function renderGallery(): void {
     if (!refs) return
-    refs.gallery.replaceChildren(...BUILTIN_TEMPLATES.map((tpl) => templateButton(tpl, false)))
     const mine = listUserTemplates()
+    const all = [...BUILTIN_TEMPLATES, ...mine]
+    ensureSampleCss(all)
+    refs.gallery.replaceChildren(...BUILTIN_TEMPLATES.map((tpl) => templateButton(tpl, false)))
     refs.mineWrap.replaceChildren()
     refs.mineWrap.hidden = mine.length === 0
     if (mine.length) {
@@ -163,6 +245,7 @@ export function createBeautifyPanel(deps: BeautifyDeps): BeautifyHandle {
       grid.append(...mine.map((tpl) => templateButton(tpl, true)))
       refs.mineWrap.append(title, grid)
     }
+    observeSamples(refs.settings)
   }
 
   /* ---------------- 参数控件 ---------------- */
@@ -274,6 +357,26 @@ export function createBeautifyPanel(deps: BeautifyDeps): BeautifyHandle {
         seg.appendChild(b)
       }
       row.appendChild(seg)
+    } else if (spec.kind === 'text') {
+      // 页眉页脚这类自由文本：失焦/回车才提交，打字过程中不重排（每敲一个字都重排会卡）
+      const inp = el('input', 'ce-text') as HTMLInputElement
+      inp.type = 'text'
+      inp.value = String(value ?? '')
+      inp.maxLength = spec.maxLength ?? 40
+      if (spec.placeholderKey) inp.placeholder = tl(spec.placeholderKey)
+      inp.setAttribute('aria-label', tl(spec.labelKey))
+      const commit = () => {
+        const v = inp.value.trim()
+        if (v !== String(getPath(state.template, spec.path) ?? '')) void apply(v)
+      }
+      inp.onblur = commit
+      inp.onkeydown = (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault()
+          inp.blur()
+        }
+      }
+      row.appendChild(inp)
     }
     return row
   }
@@ -333,27 +436,94 @@ export function createBeautifyPanel(deps: BeautifyDeps): BeautifyHandle {
     return g
   }
 
+  /** 印章组：预设图形 + 位置 + 大小 + 自定义上传（透明 PNG） */
+  function renderStampGroup(labelKey: string): HTMLElement {
+    const g = el('div', 'ce-group')
+    g.dataset.group = 'stamp'
+    g.appendChild(el('div', 'ce-label', tl(labelKey)))
+
+    const on = el('div', 'ce-param')
+    on.appendChild(renderToggle(t('tpl.p.stamp'), state.template.decor.stamp, (v) => applyPath('decor.stamp', v)))
+    g.appendChild(on)
+
+    for (const path of ['decor.stampPreset', 'decor.stampPos', 'decor.stampSize']) {
+      const spec = PARAM_SPECS.find((s) => s.path === path)
+      if (spec) g.appendChild(renderParam(spec))
+    }
+
+    const row = el('div', 'ce-seg')
+    const up = el('button', 'ce-seg-btn', t('card.stampUpload')) as HTMLButtonElement
+    up.type = 'button'
+    up.dataset.act = 'stamp-upload'
+    up.onclick = () => refs?.stampInput.click()
+    const clr = el('button', 'ce-seg-btn', t('card.stampClear')) as HTMLButtonElement
+    clr.type = 'button'
+    clr.dataset.act = 'stamp-clear'
+    clr.disabled = !state.template.decor.stampImage
+    clr.onclick = () => applyPath('decor.stampImage', '', true)
+    row.append(up, clr)
+    g.appendChild(row)
+
+    if (state.template.decor.stampImage) {
+      const thumb = el('img', 'ce-bg-thumb') as HTMLImageElement
+      thumb.src = state.template.decor.stampImage
+      thumb.alt = ''
+      thumb.style.maxWidth = '120px'
+      g.appendChild(thumb)
+    }
+    return g
+  }
+
+  /** 单独的开关行（印章这类要跟在一组控件最前面，又不能进 PARAM_SPECS 顺序里） */
+  function renderToggle(label: string, value: boolean, onChange: (v: boolean) => void): HTMLElement {
+    const row = el('div', 'ce-param')
+    row.appendChild(el('label', 'ce-param-label', label))
+    const sw = el('button', 'ce-switch') as HTMLButtonElement
+    sw.type = 'button'
+    sw.classList.toggle('on', value)
+    sw.setAttribute('role', 'switch')
+    sw.setAttribute('aria-checked', String(value))
+    sw.onclick = () => {
+      const next = !sw.classList.contains('on')
+      sw.classList.toggle('on', next)
+      sw.setAttribute('aria-checked', String(next))
+      onChange(next)
+    }
+    row.appendChild(sw)
+    return row
+  }
+
   function renderParams(): void {
     if (!refs) return
-    const groups: { labelKey: string; paths: string[] }[] = [
+    const groups: { labelKey: string; paths: string[]; special?: 'bg' | 'stamp' }[] = [
       { labelKey: 'card.groupColor', paths: ['tokens.paper', 'tokens.ink', 'tokens.accent', 'tokens.codeBg'] },
       {
         labelKey: 'card.groupMetrics',
         paths: ['metrics.fontSize', 'metrics.lineHeight', 'metrics.titleSize', 'metrics.padX', 'metrics.radius'],
       },
       // paths 为空 = 用专用控件渲染（背景要缩略图，不能退化成一行文字 select）
-      { labelKey: 'card.groupBg', paths: [] },
+      { labelKey: 'card.groupBg', paths: [], special: 'bg' },
       {
         labelKey: 'card.groupDecor',
-        paths: ['decor.texture', 'decor.accent', 'decor.corner', 'decor.cover', 'decor.binding', 'decor.tape', 'decor.stamp'],
+        paths: ['decor.texture', 'decor.accent', 'decor.corner', 'decor.cover', 'decor.frame', 'decor.tape', 'decor.binding'],
       },
-      { labelKey: 'card.groupLayout', paths: ['metrics.headRule', 'metrics.pageNo'] },
+      // schema 4：引用框 / 项目符号 / 标题装饰 —— 这三项是"这套模板有没有性格"的关键
+      { labelKey: 'card.groupType', paths: ['decor.quote', 'decor.bullet', 'decor.title'] },
+      { labelKey: 'card.groupStamp', paths: [], special: 'stamp' },
+      {
+        labelKey: 'card.groupHeaderFooter',
+        paths: ['metrics.headRule', 'metrics.headText', 'metrics.headSide', 'metrics.pageNo', 'metrics.footText'],
+      },
     ]
     const host = refs.paramHost
     host.replaceChildren()
     for (const g of groups) {
-      if (!g.paths.length) {
+      if (g.special === 'bg') {
         host.appendChild(renderBgGroup(g.labelKey))
+        continue
+      }
+      if (g.special === 'stamp') {
+        host.appendChild(renderStampGroup(g.labelKey))
         continue
       }
       const section = el('div', 'ce-group')
@@ -417,7 +587,8 @@ export function createBeautifyPanel(deps: BeautifyDeps): BeautifyHandle {
     state.index = Math.min(Math.max(0, state.index), pages.length - 1)
     refs.pos.textContent = `${state.index + 1} / ${pages.length}`
     try {
-      const url = await renderPagePreview(pages[state.index], size, state.template, backdropOf(state.template))
+      // 预览用透明底 + 真圆角：圆角画在面板底色上才看得见（见 card-capture 的 keepRadius）
+      const url = await renderPagePreview(pages[state.index], size, state.template)
       if (token !== renderToken || !refs) return null
       refs.img.src = url
       return null
@@ -483,7 +654,8 @@ export function createBeautifyPanel(deps: BeautifyDeps): BeautifyHandle {
         setStatus(r.ok ? t('card.done') : r.canceled ? t('card.pageCount', { n: pages.length }) : t('card.failed'), r.ok ? 'ok' : r.canceled ? 'muted' : 'err')
         if (r.ok) toast(t('card.savedPdf', { path: r.path || `${baseName()}.pdf` }), 3200)
       } else {
-        const res = await renderPagesToPng(pages, size, state.template, backdrop)
+        // PNG 走透明底：圆角是真圆角，贴到任何背景上都不带白边
+        const res = await renderPagesToPng(pages, size, state.template, 'transparent')
         if (res.blobs.length === 1) {
           const r = await saveBinary(res.blobs[0], `${baseName()}-1.png`, 'image/png')
           if (r.ok) toast(t('card.savedPng', { path: r.path || `${baseName()}-1.png` }), 3200)
@@ -512,7 +684,7 @@ export function createBeautifyPanel(deps: BeautifyDeps): BeautifyHandle {
     if (busy || !pages.length) return
     busy = true
     try {
-      const res = await renderPagesToPng([pages[Math.min(state.index, pages.length - 1)]], size, state.template, backdropOf(state.template))
+      const res = await renderPagesToPng([pages[Math.min(state.index, pages.length - 1)]], size, state.template, 'transparent')
       const blob = res.blobs[0]
       if (typeof ClipboardItem !== 'undefined' && navigator.clipboard?.write) {
         await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })])
@@ -567,6 +739,11 @@ export function createBeautifyPanel(deps: BeautifyDeps): BeautifyHandle {
     const copy = structuredClone(state.template)
     copy.id = `mine-${Date.now().toString(36).slice(-5)}`
     copy.name = name
+    /* 名字是用户写的，就不要再让内置的多语言名压过它：
+       templateName() 优先取 names[locale]、其次 enName，两样都是内置那套的话，
+       卡片上永远是「素笺清墨」，用户在命名框里敲的新名字等于白敲。 */
+    copy.names = {}
+    copy.enName = name
     list.unshift(copy)
     saveUserTemplates(list)
     renderGallery()
@@ -597,15 +774,54 @@ export function createBeautifyPanel(deps: BeautifyDeps): BeautifyHandle {
     }
   }
 
-  function exportCurrent(): void {
-    const json = exportTemplate(state.template)
-    const blob = new Blob([json], { type: 'application/json' })
-    void saveBinary(blob, `${state.template.id}.lyt.json`, 'application/json')
+  /**
+   * 上传自定义印章：只收透明背景的图（PNG/WebP 才有 alpha），压到 480px 内。
+   * 不强制透明 —— 用户拿一张白底 jpg 来也让他用，只是白底会挡字，
+   * 面板里能一眼看出来，比弹个"格式不对"更有用。
+   */
+  async function onStampFile(file: File): Promise<void> {
+    try {
+      const url = await shrinkImage(file, 480, 0.9)
+      if (!url || !sanitizeStampImage(url)) {
+        toast(t('card.stampFailed'))
+        return
+      }
+      state.template = setPath(state.template, 'decor.stampImage', url)
+      saveCurrent(state.template)
+      // 上传了图就顺手把开关打开：否则"传了没反应"会再来一次
+      state.template = setPath(state.template, 'decor.stamp', true)
+      saveCurrent(state.template)
+      renderParams()
+      void recompute()
+      toast(t('card.stampApplied'))
+    } catch {
+      toast(t('card.stampFailed'))
+    }
   }
 
-  async function importFromFile(file: File): Promise<void> {    const text = await file.text()
+  /** 导出样式包（.zip：template.json + 背景图 + 印章图） */
+  async function exportCurrent(): Promise<void> {
+    try {
+      const { blob, name } = await exportPackage(state.template)
+      const r = await saveBinary(blob, name, 'application/zip')
+      if (r.ok) toast(t('card.pkgSaved', { path: r.path || name }), 3200)
+    } catch (err) {
+      toast(t('card.failed'))
+      console.error('[beautify] export package', err)
+    }
+  }
+
+  /** 下载内置范例包：帮助文档说"照这个改"，那总得有个能下载的东西 */
+  async function downloadSample(id: string): Promise<void> {
+    const { blob, name } = await buildSamplePackage(id)
+    const r = await saveBinary(blob, `sample-${id}.zip`, 'application/zip')
+    if (r.ok) toast(t('card.pkgSaved', { path: r.path || name }), 3200)
+  }
+
+  async function importFromFile(file: File): Promise<void> {
     const existing = listUserTemplates().map((x) => x.id)
-    const res = importTemplate(text, existing)
+    // .zip 样式包与旧版单文件 .lyt.json 都吃（内部按文件头分流）
+    const res = await importPackage(file, existing)
     if (!res.ok || !res.template) {
       toast(t('card.importFailed'))
       return
@@ -619,7 +835,7 @@ export function createBeautifyPanel(deps: BeautifyDeps): BeautifyHandle {
     renderGallery()
     syncControls()
     void recompute()
-    toast(t('card.imported', { name: res.template.name }))
+    toast(t('card.imported', { name: templateName(res.template) }))
   }
 
   /* ---------------- 骨架 ---------------- */
@@ -740,25 +956,32 @@ export function createBeautifyPanel(deps: BeautifyDeps): BeautifyHandle {
     const tplOps = el('div', 'ce-group')
     tplOps.appendChild(el('div', 'ce-label', t('card.templateOps')))
     const opRow = el('div', 'ce-seg')
-    const mkOp = (label: string, fn: () => void) => {
+    // data-act 给验收脚本按语义定位用（不靠按钮文案，切语言也不会断）
+    const mkOp = (act: string, label: string, fn: () => void) => {
       const b = el('button', 'ce-seg-btn', label)
       b.type = 'button'
+      b.dataset.act = act
       b.onclick = fn
       return b
     }
     opRow.append(
-      mkOp(t('card.reset'), resetTemplate),
-      mkOp(t('card.saveAsMine'), () => void saveAsMine()),
-      mkOp(t('card.exportTpl'), exportCurrent),
+      mkOp('tpl-reset', t('card.reset'), resetTemplate),
+      mkOp('tpl-save-mine', t('card.saveAsMine'), () => void saveAsMine()),
+      mkOp('tpl-export', t('card.exportTpl'), () => void exportCurrent()),
     )
-    const importBtn = mkOp(t('card.importTpl'), () => fileInput.click())
+    const importBtn = mkOp('tpl-import', t('card.importTpl'), () => fileInput.click())
     opRow.appendChild(importBtn)
+    const sampleBtn = mkOp('sample-pkg', t('card.samplePkg'), () => void downloadSample('ink'))
+    opRow.appendChild(sampleBtn)
     tplOps.appendChild(opRow)
+    // 样式包是什么、里面有什么 —— 不写这一行，用户只会看到"导出模板"却在找 .json
+    tplOps.appendChild(el('div', 'ce-hint', t('card.pkgHint')))
     settings.appendChild(tplOps)
 
     const fileInput = el('input') as HTMLInputElement
     fileInput.type = 'file'
-    fileInput.accept = '.json,application/json'
+    // 样式包 .zip 与旧版 .lyt.json 都要能选（accept 里带 .json 是为了老模板）
+    fileInput.accept = '.zip,.json,application/zip,application/json'
     fileInput.hidden = true
     fileInput.onchange = () => {
       const f = fileInput.files?.[0]
@@ -778,6 +1001,18 @@ export function createBeautifyPanel(deps: BeautifyDeps): BeautifyHandle {
       bgInput.value = ''
     }
     settings.appendChild(bgInput)
+
+    const stampInput = el('input') as HTMLInputElement
+    stampInput.type = 'file'
+    stampInput.accept = 'image/*'
+    stampInput.hidden = true
+    stampInput.dataset.act = 'stamp-file'
+    stampInput.onchange = () => {
+      const f = stampInput.files?.[0]
+      if (f) void onStampFile(f)
+      stampInput.value = ''
+    }
+    settings.appendChild(stampInput)
 
     body.appendChild(settings)
     box.appendChild(body)
@@ -814,7 +1049,20 @@ export function createBeautifyPanel(deps: BeautifyDeps): BeautifyHandle {
       }
     })
 
-    refs = { root, img, pos, status, gallery, mineWrap, paramHost, coverInput, bgInput, fontSelect: null as unknown as HTMLSelectElement }
+    refs = {
+      root,
+      settings,
+      img,
+      pos,
+      status,
+      gallery,
+      mineWrap,
+      paramHost,
+      coverInput,
+      bgInput,
+      stampInput,
+      fontSelect: null as unknown as HTMLSelectElement,
+    }
     return root
   }
 

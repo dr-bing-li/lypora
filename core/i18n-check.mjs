@@ -180,7 +180,8 @@ const SPOT = {
 
 // v0.8.0 起多了「设置」：图片引用方式是跨插入/渲染/导出的全局策略，值得一个顶级入口
 // v0.10.0：language 降进 settings 成为二级，顶上来的是 layout；总数仍是 9
-const MENU_IDS = ['file', 'edit', 'paragraph', 'format', 'view', 'theme', 'layout', 'settings', 'help']
+// v0.12.0：主题降进「显示」、设置降进「文件」，顶级 9 → 7
+const MENU_IDS = ['file', 'edit', 'paragraph', 'format', 'view', 'layout', 'help']
 
 async function collect(page) {
   return page.evaluate(async (menuIds) => {
@@ -212,22 +213,31 @@ async function collect(page) {
       await sleep(60)
       const pop = document.querySelector('.menu-drop')
       if (pop) {
-        const read = (host) =>
-          [...host.querySelectorAll('.menu-item')].map((b) => ({
-            mi: b.dataset.mi || '',
-            label: b.querySelector('.mi-label')?.textContent ?? '',
-            disabled: b.disabled,
-          }))
-        const flat = read(pop)
-        // v0.10.0 起有二级菜单了（设置 → 语言、排版 → 尺寸…），逐项展开再读一遍，
-        // 否则「语言」降级后 lang-system 之类的项在顶层根本采不到
-        for (const parent of [...pop.querySelectorAll('.menu-item.has-sub')]) {
-          parent.dispatchEvent(new MouseEvent('mouseenter'))
-          await sleep(70)
-          const sub = document.querySelector('.menu-drop.sub')
-          if (sub) flat.push(...read(sub))
+        // 用 Map 按 id（无 id 时按文案）去重：三层菜单里同一个项会被反复读到
+        const seen = new Map()
+        const read = (host) => {
+          for (const b of host.querySelectorAll('.menu-item')) {
+            const mi = b.dataset.mi || ''
+            const label = b.querySelector('.mi-label')?.textContent ?? ''
+            const key = mi || label
+            if (seen.has(key)) continue
+            seen.set(key, { mi, label, disabled: b.disabled })
+          }
         }
-        out.items[id] = flat
+        read(pop)
+        // v0.12.0 起菜单有三层（文件 → 设置 → 语言）：逐层把所有 has-sub 展开再读，
+        // 只展开一层会让 lang-* / settings-image-* 这些项永远采不到（漏翻也就查不出）
+        for (let pass = 0; pass < 4; pass++) {
+          const parents = [...document.querySelectorAll('.menu-drop .menu-item.has-sub')].filter((p) => p.isConnected)
+          if (!parents.length) break
+          for (const parent of parents) {
+            if (!parent.isConnected) continue
+            parent.dispatchEvent(new MouseEvent('mouseenter'))
+            await sleep(60)
+            for (const sub of document.querySelectorAll('.menu-drop.sub')) read(sub)
+          }
+        }
+        out.items[id] = [...seen.values()]
       }
       btn.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }))
       await sleep(40)
@@ -402,11 +412,15 @@ async function browserCheck(dicts) {
     const before = await page.evaluate(() => document.documentElement.lang)
     await page.evaluate(async () => {
       const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
-      // v0.10.0：语言降进「设置」成为二级菜单，靠 mouseenter 展开（与 Windows 原生菜单一致）
-      const btn = document.querySelector('#menubar-items .menu-root[data-menu="settings"]')
+      // v0.12.0：语言在「文件 → 设置 → 语言」三层里。顶级从 9 项降到 7 项
+      // （主题进「显示」、设置进「文件」），这一行就是那次改动的回归点。
+      const btn = document.querySelector('#menubar-items .menu-root[data-menu="file"]')
       btn.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }))
       await sleep(80)
-      const parent = document.querySelector('.menu-drop .menu-item[data-mi="settings-language"]')
+      const settings = document.querySelector('.menu-drop .menu-item[data-mi="file-settings"]')
+      settings?.dispatchEvent(new MouseEvent('mouseenter'))
+      await sleep(120)
+      const parent = document.querySelector('.menu-drop.sub .menu-item[data-mi="settings-language"]')
       parent?.dispatchEvent(new MouseEvent('mouseenter'))
       await sleep(150)
       document.querySelector('.menu-drop.sub .menu-item[data-mi="lang-ja"]')?.click()

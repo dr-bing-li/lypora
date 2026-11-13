@@ -6,7 +6,23 @@
  * 而不是"看着像个颜色就行"。这是本模块存在的主要理由。
  */
 
-import { TEMPLATE_SCHEMA, FONT_PRESETS, MONO_STACK, BG_PRESETS, BINDINGS, type CardTemplate, type TemplateDecor, type TemplateMetrics, type TemplateTokens } from './types'
+import {
+  TEMPLATE_SCHEMA,
+  FONT_PRESETS,
+  MONO_STACK,
+  BG_PRESETS,
+  BINDINGS,
+  BULLET_STYLES,
+  FRAME_STYLES,
+  QUOTE_STYLES,
+  STAMP_POSITIONS,
+  STAMP_PRESETS,
+  TITLE_MARKS,
+  type CardTemplate,
+  type TemplateDecor,
+  type TemplateMetrics,
+  type TemplateTokens,
+} from './types'
 import { ACCENTS, CORNERS, COVERS, TEXTURES } from './params'
 import { BUILTIN_TEMPLATES, builtinById } from './builtin'
 
@@ -53,20 +69,29 @@ export function sanitizeFontStack(input: unknown): string | null {
 }
 
 /**
- * 背景图校验：只收内联的位图 data URL。
+ * 图片校验：只收内联的位图 data URL。
  *
  * 为什么只认 `data:image/(png|jpeg|webp|gif);base64,`：
  *   ① 模板会进 localStorage（约 5MB 配额），外部 URL 看似省空间，实际导出时会变成
  *      一次跨域请求 —— 装版是 file://，直接 tainted，整张卡片 toDataURL 抛 SecurityError；
  *   ② `url()` 是 CSS 里最容易被注入的入口，白名单到"只允许 base64 位图"这一种形态，
  *      没有括号、引号、分号的构造空间。
- * 3MB 的 base64 约等于 2.2MB 原图，够 1200px 宽的背景用。
+ * 背景图上限 3.2MB 的 base64（约 2.2MB 原图，够 1200px 宽）；
+ * 印章是小图，单独给 600KB 的上限，避免一个印章把配额吃光。
  */
 export function sanitizeBgImage(input: unknown): string {
+  return sanitizeImage(input, 3_200_000)
+}
+
+export function sanitizeStampImage(input: unknown): string {
+  return sanitizeImage(input, 600_000)
+}
+
+function sanitizeImage(input: unknown, max: number): string {
   if (typeof input !== 'string') return ''
   const s = input.trim()
   if (!s) return ''
-  if (s.length > 3_200_000) return ''
+  if (s.length > max) return ''
   if (!/^data:image\/(png|jpeg|webp|gif);base64,[A-Za-z0-9+/=]+$/.test(s)) return ''
   return s
 }
@@ -75,6 +100,17 @@ function clampNum(v: unknown, min: number, max: number, fallback: number): numbe
   const n = typeof v === 'number' ? v : Number(v)
   if (!Number.isFinite(n)) return fallback
   return Math.min(max, Math.max(min, n))
+}
+
+/**
+ * 自由文本（页眉页脚）落进 HTML 前必须清洗：允许 `{doc}` 这类占位符，
+ * 但绝不允许 `< > { }` 之外的标签字符 —— 页眉是 innerHTML 拼进去的。
+ * 注意 `{}` 要留给占位符，所以只剔除尖括号与控制字符。
+ */
+function scrubText(v: unknown, max: number, fallback: string): string {
+  if (typeof v !== 'string') return fallback
+  // 只保留数字/字母/汉字/常见标点与占位符花括号
+  return v.replace(/[<>\\]/g, '').replace(/\s+/g, ' ').slice(0, max)
 }
 
 function pickEnum<T extends string>(v: unknown, allowed: readonly T[], fallback: T): T {
@@ -130,7 +166,10 @@ export function normalizeTemplate(raw: unknown, fallback: CardTemplate): CardTem
     titleSize: clampNum(mt.titleSize, ...RANGES.titleSize, fallback.metrics.titleSize),
     headRule: typeof mt.headRule === 'boolean' ? mt.headRule : fallback.metrics.headRule,
     pageNo: typeof mt.pageNo === 'boolean' ? mt.pageNo : fallback.metrics.pageNo,
-    brand: typeof mt.brand === 'string' ? mt.brand.replace(/[<>{}]/g, '').slice(0, 24) : fallback.metrics.brand,
+    brand: scrubText(mt.brand, 24, fallback.metrics.brand),
+    headText: scrubText(mt.headText, 40, fallback.metrics.headText),
+    headSide: scrubText(mt.headSide, 40, fallback.metrics.headSide),
+    footText: scrubText(mt.footText, 40, fallback.metrics.footText ?? ''),
   }
 
   const decor: TemplateDecor = {
@@ -144,6 +183,14 @@ export function normalizeTemplate(raw: unknown, fallback: CardTemplate): CardTem
     bgImage: sanitizeBgImage(dc.bgImage) || (fallback.decor.bgImage ?? ''),
     bgOpacity: clampNum(dc.bgOpacity, 0, 100, fallback.decor.bgOpacity ?? 100),
     binding: pickEnum(dc.binding, BINDINGS, fallback.decor.binding ?? 'none'),
+    quote: pickEnum(dc.quote, QUOTE_STYLES, fallback.decor.quote ?? 'bar'),
+    bullet: pickEnum(dc.bullet, BULLET_STYLES, fallback.decor.bullet ?? 'dot'),
+    title: pickEnum(dc.title, TITLE_MARKS, fallback.decor.title ?? 'none'),
+    frame: pickEnum(dc.frame, FRAME_STYLES, fallback.decor.frame ?? 'none'),
+    stampPreset: pickEnum(dc.stampPreset, STAMP_PRESETS, fallback.decor.stampPreset ?? 'seal'),
+    stampImage: sanitizeStampImage(dc.stampImage) || (fallback.decor.stampImage ?? ''),
+    stampSize: clampNum(dc.stampSize, 34, 140, fallback.decor.stampSize ?? 64),
+    stampPos: pickEnum(dc.stampPos, STAMP_POSITIONS, fallback.decor.stampPos ?? 'br'),
   }
 
   const code = {
@@ -163,11 +210,22 @@ export function normalizeTemplate(raw: unknown, fallback: CardTemplate): CardTem
   const id = typeof o.id === 'string' && /^[a-z0-9][a-z0-9-]{1,31}$/.test(o.id) ? o.id : fallback.id
   const name = typeof o.name === 'string' && o.name.trim() ? o.name.trim().slice(0, 24) : fallback.name
 
+  // 多语言名：只收短字符串，键限定在受支持的 locale 上（防止导入件塞一堆垃圾键）
+  const names: Record<string, string> = {}
+  const rawNames = (o.names && typeof o.names === 'object' ? o.names : {}) as Record<string, unknown>
+  for (const [k, v] of Object.entries(rawNames)) {
+    if (!/^(zh-CN|en|ja|ko|es|fr|de)$/.test(k)) continue
+    if (typeof v !== 'string') continue
+    const s = v.trim().slice(0, 40)
+    if (s) names[k] = s
+  }
+
   return {
     schema: TEMPLATE_SCHEMA,
     id,
     name,
     enName: typeof o.enName === 'string' ? o.enName.slice(0, 40) : fallback.enName,
+    ...(Object.keys(names).length ? { names } : {}),
     dark: typeof o.dark === 'boolean' ? o.dark : fallback.dark,
     tokens,
     metrics,

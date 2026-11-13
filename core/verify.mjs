@@ -160,12 +160,27 @@ async function clickMenuItem(index) {
   await page.waitForTimeout(300)
 }
 
-// ---------- 步骤 7：主题（走新菜单栏：主题 → Night） ----------
+/* v0.12.0：顶级「主题」并进了「显示」，主题列表落在第二层弹层里。
+   这里保持原调用点不变，只是把「开一级 + 点第 i 项」改成「开二级 + 点第 i 项」。 */
+async function openThemeMenu() {
+  await page.keyboard.press('Escape')
+  await page.waitForTimeout(100)
+  await page.locator('#menubar-items .menu-root[data-menu="view"]').click()
+  await page.waitForTimeout(200)
+  await page.locator('.menu-drop .menu-item[data-mi="view-theme"]').hover()
+  await page.waitForTimeout(320)
+}
+async function clickThemeItem(index) {
+  await page.locator('.menu-drop.sub .menu-item').nth(index).click()
+  await page.waitForTimeout(320)
+}
+
+// ---------- 步骤 7：主题（走新菜单栏：显示 → 主题 → Night） ----------
 const themeOrder = ['Github', 'Night', 'Pixyll', 'Whitey', 'Vue', 'Newsprint']
 const themeResult = {}
 for (let i = 0; i < themeOrder.length; i++) {
-  await openMenu('主题')
-  await clickMenuItem(i)
+  await openThemeMenu()
+  await clickThemeItem(i)
   themeResult[themeOrder[i]] = await page.evaluate(() => ({
     id: document.documentElement.dataset.theme,
     bg: getComputedStyle(document.body).backgroundColor,
@@ -173,15 +188,15 @@ for (let i = 0; i < themeOrder.length; i++) {
   }))
 }
 // 停在 Night 上截一张深色表格图
-await openMenu('主题')
-await clickMenuItem(1)
+await openThemeMenu()
+await clickThemeItem(1)
 await page.evaluate(() => (document.getElementById('editor-scroll').scrollTop = 0))
 await scrollUntil('.cm-table-widget table')
 await page.waitForTimeout(300)
 report.steps.theme = themeResult
 await page.screenshot({ path: `${OUT}/07-theme-night-table.png` })
-await openMenu('主题')
-await clickMenuItem(0)
+await openThemeMenu()
+await clickThemeItem(0)
 
 // ---------- 步骤 8：专注模式 ----------
 await page.evaluate(() => (document.getElementById('editor-scroll').scrollTop = 0))

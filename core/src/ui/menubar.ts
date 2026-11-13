@@ -49,28 +49,43 @@ export interface MenubarHandle {
 
 export function createMenubar(host: HTMLElement, getMenus: () => MenuDef[]): MenubarHandle {
   let openIndex = -1
-  let pop: HTMLElement | null = null
-  let subPop: HTMLElement | null = null
-  let subAnchor: HTMLElement | null = null
+  let rootPop: HTMLElement | null = null
+  /**
+   * 子菜单栈：depth 2 = 一级下拉的子菜单，3 = 再下一层。
+   *
+   * v0.11 及以前只有一个 `subPop` 变量 —— 于是「文件 → 设置 → 语言」这种三层菜单
+   * 一 hover 就把自己的父菜单删掉了（closeSub 把含 anchor 的层移除，anchor 脱离文档，
+   * 定位拿到全 0 的 rect）。v0.12.0 把 9 个顶级菜单收到 7 个，设置与主题都进了二级，
+   * 里面还带着「语言 / 显示模式」这两个二级，三层是必须支持的。
+   */
+  const subs: { depth: number; el: HTMLElement; anchor: HTMLElement }[] = []
 
-  const closeSub = () => {
-    subPop?.remove()
-    subPop = null
-    subAnchor = null
+  /** 关掉 depth ≥ n 的所有子菜单 */
+  const closeSubsFrom = (n: number) => {
+    for (let i = subs.length - 1; i >= 0; i--) {
+      if (subs[i].depth >= n) {
+        subs[i].el.remove()
+        subs.splice(i, 1)
+      }
+    }
   }
 
   const close = () => {
     openIndex = -1
-    closeSub()
-    pop?.remove()
-    pop = null
+    closeSubsFrom(2)
+    rootPop?.remove()
+    rootPop = null
     host.querySelectorAll('.menu-root').forEach((b) => b.classList.remove('open'))
   }
 
-  /** 建一个下拉层（顶层与二级共用同一套渲染，二级只是定位不同） */
-  const buildPop = (items: MenuEntry[], sub: boolean): HTMLElement => {
+  /**
+   * 建一个下拉层。`depth` 只用于判断"往哪一层叠"：
+   * 1 = 顶级下拉，2+ = 子菜单。层级不进 DOM（pop 都挂在 body 上定位），
+   * 所以只能靠这个数字自己记账。
+   */
+  const buildPop = (items: MenuEntry[], depth: number): HTMLElement => {
     const el = document.createElement('div')
-    el.className = sub ? 'menu-drop sub' : 'menu-drop'
+    el.className = depth === 1 ? 'menu-drop' : 'menu-drop sub'
 
     for (const it of items) {
       if (it.sep) {
@@ -114,15 +129,14 @@ export function createMenubar(host: HTMLElement, getMenus: () => MenuDef[]): Men
         arrow.innerHTML =
           '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3.5 10.5 8 6 12.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>'
         btn.appendChild(arrow)
-        btn.addEventListener('mouseenter', () => openSub(btn, it.items as MenuEntry[]))
+        btn.addEventListener('mouseenter', () => openSub(btn, it.items as MenuEntry[], depth))
         btn.addEventListener('click', () => {
           /* 父项点击不关闭菜单，避免手抖误关 */
         })
       } else {
         btn.addEventListener('mouseenter', () => {
-          // 只有"顶层下拉"里的兄弟项才收起二级；二级自己的项如果也走这里，
-          // 鼠标一进子菜单就会把子菜单关掉（自食其尾，实测菜单点不中）。
-          if (!sub && subAnchor && subAnchor !== btn) closeSub()
+          // 滑到同层的普通项上，收掉它下面所有层（含自己的兄弟分支）
+          closeSubsFrom(depth + 1)
         })
         btn.addEventListener('click', () => {
           close()
@@ -135,11 +149,13 @@ export function createMenubar(host: HTMLElement, getMenus: () => MenuDef[]): Men
     return el
   }
 
-  /** 二级菜单定位：优先贴父项右侧，越界则翻到左侧 */
-  const openSub = (anchor: HTMLElement, items: MenuEntry[]) => {
-    if (subAnchor === anchor) return
-    closeSub()
-    const el = buildPop(items, true)
+  /** 子菜单定位：优先贴父项右侧，越界则翻到左侧 */
+  const openSub = (anchor: HTMLElement, items: MenuEntry[], parentDepth: number) => {
+    const depth = parentDepth + 1
+    const same = subs.find((s) => s.depth === depth)
+    if (same && same.anchor === anchor) return
+    closeSubsFrom(depth)
+    const el = buildPop(items, depth)
     const r = anchor.getBoundingClientRect()
     const w = el.offsetWidth
     const h = el.offsetHeight
@@ -149,15 +165,14 @@ export function createMenubar(host: HTMLElement, getMenus: () => MenuDef[]): Men
     if (top + h > window.innerHeight - 6) top = Math.max(6, window.innerHeight - h - 6)
     el.style.left = `${left}px`
     el.style.top = `${top}px`
-    subPop = el
-    subAnchor = anchor
+    subs.push({ depth, el, anchor })
   }
 
   const renderPop = (rootBtn: HTMLElement, def: MenuDef) => {
-    closeSub()
-    pop?.remove()
-    const el = buildPop(def.items, false)
-    pop = el
+    closeSubsFrom(2)
+    rootPop?.remove()
+    const el = buildPop(def.items, 1)
+    rootPop = el
     const r = rootBtn.getBoundingClientRect()
     const w = el.offsetWidth
     el.style.left = `${Math.max(6, Math.min(window.innerWidth - w - 6, r.left))}px`
@@ -202,15 +217,16 @@ export function createMenubar(host: HTMLElement, getMenus: () => MenuDef[]): Men
   document.addEventListener('mousedown', (e) => {
     if (openIndex < 0) return
     const t = e.target as Node
-    if (pop?.contains(t) || subPop?.contains(t) || host.contains(t)) return
+    const inPop = rootPop?.contains(t) || subs.some((s) => s.el.contains(t))
+    if (inPop || host.contains(t)) return
     close()
   })
 
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape' || openIndex < 0) return
     e.preventDefault()
-    // Esc 逐级退：先收二级，再关顶层
-    if (subPop) closeSub()
+    // Esc 逐级退：先收最深一层子菜单，全收完再关顶层
+    if (subs.length) closeSubsFrom(subs[subs.length - 1].depth)
     else close()
   })
 

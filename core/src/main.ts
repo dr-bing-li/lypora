@@ -7,7 +7,7 @@ import { createEditorState, setEditorPlaceholder } from './editor/setup'
 import { previewSettings, refreshPreview } from './editor/live-preview'
 import { cmd } from './editor/commands'
 import { extractOutline, renderOutline, highlightOutline, type OutlineItem } from './ui/outline'
-import { createMenubar, type MenuDef, type MenubarHandle } from './ui/menubar'
+import { createMenubar, type MenuDef, type MenuEntry, type MenubarHandle } from './ui/menubar'
 import { createTabbar, type TabbarHandle, type TabbarItem } from './ui/tabbar'
 import { askSave } from './ui/confirm'
 import { HELP_DOCS, helpText, helpTitle, type HelpId } from './help'
@@ -1417,6 +1417,168 @@ function buildMenus(): MenuDef[] {
   // 一级「排版」菜单要画勾选：直接问面板要当前布局，不另存一份（两处真源必然漂）
   const layoutNow = beautify.getLayout()
 
+  /**
+   * 主题与设置从顶级降到二级（v0.12.0）。
+   *
+   * 顶级菜单原来是 9 个（文件/编辑/段落/格式/显示/主题/排版/设置/帮助），
+   * 而顶栏从 v0.11.2 起还要和标签条挤一行 —— 每一项都值 40–60px 宽度。
+   * 主题本质是"这一屏怎么画"，归「显示」；设置是"这台机器怎么工作"，归「文件」。
+   * 这是 Typora 自己的分法，用户的肌肉记忆也在这儿。
+   */
+  const themeItems: MenuEntry[] = [
+    ...BUILTIN_THEMES.map((th) => ({
+      id: `theme-${th.id}`,
+      label: th.label,
+      checked: cur === th.id,
+      action: () => applyTheme(th.id),
+    })),
+    ...(custom.length
+      ? ([
+          { sep: true },
+          ...custom.map((th) => ({
+            id: `theme-custom-${th.name}`,
+            label: th.name,
+            checked: cur === `custom:${th.name}`,
+            action: () => applyTheme(`custom:${th.name}`),
+          })),
+          { sep: true },
+          ...custom.map((th) => ({
+            id: `theme-del-${th.name}`,
+            label: th.name,
+            action: () => {
+              removeCustomTheme(th.name)
+              applyTheme('github')
+              toast(t('toast.themeDeleted', { name: th.name }))
+            },
+          })),
+        ] as MenuEntry[])
+      : []),
+    { sep: true },
+    {
+      // 手机版不提供主题导入：文件选择器拿到 .css 后没有稳定的存放位置，
+      // 且导入的是第三方主题时授权链说不清（见 docs/05 §3.2）
+      id: 'theme-import',
+      label: native ? t('theme.importCustomUnsupported') : t('theme.importCustom'),
+      disabled: native,
+      action: () => $<HTMLInputElement>('theme-file').click(),
+    },
+    {
+      id: 'theme-help',
+      label: t('theme.customHelp'),
+      action: () => {
+        void navigator.clipboard
+          ?.writeText(THEME_TEMPLATE)
+          .then(() => toast(t('toast.themeTemplateCopied'), 3200))
+          .catch(() => toast(t('toast.themeDocRef'), 3200))
+      },
+    },
+  ]
+
+  const settingsItems: MenuEntry[] = [
+    // 分两个可读的组：前两项是应用级偏好，后两项只管图片（审计 MENU-2）。
+    // 只有分隔线时，用户得点进去才知道是哪一类。
+    { group: t('settings.groupUi') },
+    {
+      // 多文档的呈现方式（v0.11.0）：仅标签 / 仅多窗口 / 两者并存。
+      // 放在设置里而不是「显示」菜单：它改变的是"文档怎么组织"，不是"这一屏怎么画"。
+      id: 'settings-display',
+      label: t('settings.displayMode'),
+      items: [
+        {
+          id: 'settings-display-tabs',
+          label: t('settings.displayTabs'),
+          checked: displayMode() === 'tabs',
+          action: () => setDisplayMode('tabs'),
+        },
+        {
+          id: 'settings-display-windows',
+          label: t('settings.displayWindows'),
+          checked: displayMode() === 'windows',
+          // 浏览器 / 手机壳里开不了真窗口，置灰并说明原因
+          disabled: !desktop()?.newWindow,
+          action: () => setDisplayMode('windows'),
+        },
+        {
+          id: 'settings-display-both',
+          label: t('settings.displayBoth'),
+          checked: displayMode() === 'both',
+          disabled: !desktop()?.newWindow,
+          action: () => setDisplayMode('both'),
+        },
+      ],
+    },
+    {
+      // 语言从顶级降到这里（v0.10.0）：语言是低频设置项，
+      // 和"图片怎么存"属于同一类"这台机器怎么工作"的偏好。
+      // 各语言一律用母语名显示，不翻译（否则找不到自己那一项）。
+      id: 'settings-language',
+      label: t('menu.language'),
+      items: [
+        {
+          id: 'lang-system',
+          label: t('language.followSystem'),
+          checked: pref === 'system',
+          action: () => applyLocale('system'),
+        },
+        { sep: true },
+        ...LANGUAGES.map((l) => ({
+          id: `lang-${l.id}`,
+          label: l.native,
+          checked: pref === l.id,
+          action: () => applyLocale(l.id),
+        })),
+      ],
+    },
+    { group: t('settings.groupImage') },
+    {
+      id: 'settings-image-ref',
+      label: t('settings.imageRef'),
+      items: [
+        {
+          id: 'settings-image-ref-file',
+          label: t('settings.imageRefFile'),
+          checked: getImageRefMode() === 'reference',
+          action: () => applyImageRefMode('reference'),
+        },
+        {
+          id: 'settings-image-ref-embed',
+          label: t('settings.imageRefEmbed'),
+          checked: getImageRefMode() === 'embed',
+          action: () => applyImageRefMode('embed'),
+        },
+      ],
+    },
+    {
+      // 父项不置灰：置灰的父项在菜单里连子菜单都展不开，用户就看不到"当前值是什么、
+      // 为什么失效"。让子项各自 disabled，父项仍可 hover 查看。
+      id: 'settings-image-path',
+      label: t('settings.imagePath'),
+      items: [
+        {
+          id: 'settings-image-path-copy',
+          label: t('imagePath.copy'),
+          checked: getImagePathMode() === 'copy',
+          disabled: getImageRefMode() === 'embed',
+          action: () => applyImagePathMode('copy'),
+        },
+        {
+          id: 'settings-image-path-relative',
+          label: t('imagePath.relative'),
+          checked: getImagePathMode() === 'relative',
+          disabled: getImageRefMode() === 'embed',
+          action: () => applyImagePathMode('relative'),
+        },
+        {
+          id: 'settings-image-path-absolute',
+          label: t('imagePath.absolute'),
+          checked: getImagePathMode() === 'absolute',
+          disabled: getImageRefMode() === 'embed',
+          action: () => applyImagePathMode('absolute'),
+        },
+      ],
+    },
+  ]
+
   return [
     {
       id: 'file',
@@ -1466,6 +1628,9 @@ function buildMenus(): MenuDef[] {
         },
         // 「美化输出」在 v0.10.0 升成一级菜单「排版」，不再挂在文件菜单下：
         // 它是输出层的独立板块（模板/背景/尺寸/分页），不属于"导出这份文件"。
+        { sep: true },
+        // v0.12.0：设置从顶级降到这里（主题降进「显示」）—— 顶级 9 → 7 项
+        { id: 'file-settings', label: t('menu.settings'), items: settingsItems },
       ],
     },
     {
@@ -1654,58 +1819,9 @@ function buildMenus(): MenuDef[] {
               { id: 'view-ime', label: t('view.virtualKeyboard'), action: () => void revealIme() },
             ] as MenuDef['items'])
           : []),
-      ],
-    },
-    {
-      id: 'theme',
-      label: t('menu.theme'),
-      items: [
-        ...BUILTIN_THEMES.map((th) => ({
-          id: `theme-${th.id}`,
-          label: th.label,
-          checked: cur === th.id,
-          action: () => applyTheme(th.id),
-        })),
-        ...(custom.length
-          ? ([
-              { sep: true },
-              ...custom.map((th) => ({
-                id: `theme-custom-${th.name}`,
-                label: th.name,
-                checked: cur === `custom:${th.name}`,
-                action: () => applyTheme(`custom:${th.name}`),
-              })),
-              { sep: true },
-              ...custom.map((th) => ({
-                id: `theme-del-${th.name}`,
-                label: th.name,
-                action: () => {
-                  removeCustomTheme(th.name)
-                  applyTheme('github')
-                  toast(t('toast.themeDeleted', { name: th.name }))
-                },
-              })),
-            ] as MenuDef['items'])
-          : []),
         { sep: true },
-        {
-          // 手机版不提供主题导入：文件选择器拿到 .css 后没有稳定的存放位置，
-          // 且导入的是第三方主题时授权链说不清（见 docs/05 §3.2）
-          id: 'theme-import',
-          label: native ? t('theme.importCustomUnsupported') : t('theme.importCustom'),
-          disabled: native,
-          action: () => $<HTMLInputElement>('theme-file').click(),
-        },
-        {
-          id: 'theme-help',
-          label: t('theme.customHelp'),
-          action: () => {
-            void navigator.clipboard
-              ?.writeText(THEME_TEMPLATE)
-              .then(() => toast(t('toast.themeTemplateCopied'), 3200))
-              .catch(() => toast(t('toast.themeDocRef'), 3200))
-          },
-        },
+        // v0.12.0：主题降进「显示」—— 它本来就是"这一屏怎么画"
+        { id: 'view-theme', label: t('menu.theme'), items: themeItems },
       ],
     },
     {
@@ -1741,115 +1857,6 @@ function buildMenus(): MenuDef[] {
           label: t('card.cover'),
           checked: layoutNow.withCover,
           action: () => beautify.setLayout({ withCover: !layoutNow.withCover }),
-        },
-      ],
-    },
-    {
-      // 「设置」独立成顶级菜单：图片引用方式是一个横跨"插入 / 渲染 / 导出"的全局策略，
-      // 塞进「格式 → 图片」会让人以为它只管那一个菜单项。
-      id: 'settings',
-      label: t('menu.settings'),
-      items: [
-        // 分两个可读的组：前两项是应用级偏好，后两项只管图片（审计 MENU-2）。
-        // 只有分隔线时，用户得点进去才知道是哪一类。
-        { group: t('settings.groupUi') },
-        {
-          // 多文档的呈现方式（v0.11.0）：仅标签 / 仅多窗口 / 两者并存。
-          // 放在设置里而不是「显示」菜单：它改变的是"文档怎么组织"，不是"这一屏怎么画"。
-          id: 'settings-display',
-          label: t('settings.displayMode'),
-          items: [
-            {
-              id: 'settings-display-tabs',
-              label: t('settings.displayTabs'),
-              checked: displayMode() === 'tabs',
-              action: () => setDisplayMode('tabs'),
-            },
-            {
-              id: 'settings-display-windows',
-              label: t('settings.displayWindows'),
-              checked: displayMode() === 'windows',
-              // 浏览器 / 手机壳里开不了真窗口，置灰并说明原因
-              disabled: !desktop()?.newWindow,
-              action: () => setDisplayMode('windows'),
-            },
-            {
-              id: 'settings-display-both',
-              label: t('settings.displayBoth'),
-              checked: displayMode() === 'both',
-              disabled: !desktop()?.newWindow,
-              action: () => setDisplayMode('both'),
-            },
-          ],
-        },
-        {
-          // 语言从顶级降到这里（v0.10.0）：顶级菜单已经有 9 个，语言是低频设置项，
-          // 和"图片怎么存"属于同一类"这台机器怎么工作"的偏好。
-          // 各语言一律用母语名显示，不翻译（否则找不到自己那一项）。
-          id: 'settings-language',
-          label: t('menu.language'),
-          items: [
-            {
-              id: 'lang-system',
-              label: t('language.followSystem'),
-              checked: pref === 'system',
-              action: () => applyLocale('system'),
-            },
-            { sep: true },
-            ...LANGUAGES.map((l) => ({
-              id: `lang-${l.id}`,
-              label: l.native,
-              checked: pref === l.id,
-              action: () => applyLocale(l.id),
-            })),
-          ],
-        },
-        { group: t('settings.groupImage') },
-        { id: 'settings-image-ref', 
-          label: t('settings.imageRef'),
-          items: [
-            {
-              id: 'settings-image-ref-file',
-              label: t('settings.imageRefFile'),
-              checked: getImageRefMode() === 'reference',
-              action: () => applyImageRefMode('reference'),
-            },
-            {
-              id: 'settings-image-ref-embed',
-              label: t('settings.imageRefEmbed'),
-              checked: getImageRefMode() === 'embed',
-              action: () => applyImageRefMode('embed'),
-            },
-          ],
-        },
-        {
-          // 父项不置灰：置灰的父项在菜单里连子菜单都展不开，用户就看不到"当前值是什么、
-          // 为什么失效"。让子项各自 disabled，父项仍可 hover 查看。
-          id: 'settings-image-path',
-          label: t('settings.imagePath'),
-          items: [
-            {
-              id: 'settings-image-path-copy',
-              label: t('imagePath.copy'),
-              checked: getImagePathMode() === 'copy',
-              disabled: getImageRefMode() === 'embed',
-              action: () => applyImagePathMode('copy'),
-            },
-            {
-              id: 'settings-image-path-relative',
-              label: t('imagePath.relative'),
-              checked: getImagePathMode() === 'relative',
-              disabled: getImageRefMode() === 'embed',
-              action: () => applyImagePathMode('relative'),
-            },
-            {
-              id: 'settings-image-path-absolute',
-              label: t('imagePath.absolute'),
-              checked: getImagePathMode() === 'absolute',
-              disabled: getImageRefMode() === 'embed',
-              action: () => applyImagePathMode('absolute'),
-            },
-          ],
         },
       ],
     },

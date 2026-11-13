@@ -37,7 +37,7 @@ const DOCK: Array<{ id: string; labelKey: MessageKey; icon: string; sheet?: stri
   { id: 'outline', labelKey: 'dock.outline', icon: '<path d="M3 4h4M3 8h7M3 12h10" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" fill="none"/>' },
   { id: 'export', labelKey: 'dock.export', icon: '<path d="M8 2.6v7.2M5.2 7l2.8 2.8L10.8 7" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M2.8 11v1.8h10.4V11" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>', sheet: 'file' },
   { id: 'layout', labelKey: 'dock.layout', icon: '<rect x="2.3" y="2.7" width="11.4" height="10.6" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M4.6 5.9h6.8M4.6 8h6.8M4.6 10.1h3.9" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" fill="none"/>' },
-  { id: 'theme', labelKey: 'dock.theme', icon: '<circle cx="8" cy="8" r="5.2" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M8 2.8v10.4a5.2 5.2 0 000-10.4z" fill="currentColor"/>', sheet: 'theme' },
+  { id: 'theme', labelKey: 'dock.theme', icon: '<circle cx="8" cy="8" r="5.2" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M8 2.8v10.4a5.2 5.2 0 000-10.4z" fill="currentColor"/>', sheet: 'view' },
   { id: 'menu', labelKey: 'dock.menu', icon: '<path d="M3 4.5h10M3 8h10M3 11.5h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"/>' },
 ]
 

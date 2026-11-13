@@ -74,10 +74,20 @@ async function inlineImages(root: HTMLElement): Promise<{ restore: () => void; b
 
 export interface CaptureOptions {
   scale: number
-  /** 卡片外的底色（圆角处会露出） */
+  /** 卡片外的底色（圆角处会露出）；'transparent' = 不填底色，导出带圆角透明边缘的 PNG */
   backdrop: string
   /** 当前模板编译出的样式（骨架 + 变量），必须与预览、测量用同一份 */
   css: string
+  /**
+   * 是否保留卡片圆角。
+   *
+   * v0.11 及以前这里**无条件把圆角归零**（注释说"PNG 是矩形交付物"），
+   * 于是「圆角(px)」滑块从 0 拉到 24 预览图一个像素都不变 —— 用户报的
+   * "调整圆角没有任何改动展示"，根因就在这一行，而不是 CSS 没写。
+   * 现在默认保留：预览与 PNG 用透明底色，圆角是真圆角（能贴到任何背景上）；
+   * 只有 PDF（JPEG 通道没有 alpha）需要底色兜住。
+   */
+  keepRadius?: boolean
 }
 
 export async function captureCard(fragmentHtml: string, size: CardSize, opts: CaptureOptions): Promise<HTMLCanvasElement> {
@@ -88,9 +98,11 @@ export async function captureCard(fragmentHtml: string, size: CardSize, opts: Ca
   document.body.appendChild(host)
 
   const card = host.querySelector('.ly-card') as HTMLElement
-  // 圆角在导出时会被底色裁出黑边，直接归零（PNG 是矩形交付物）
-  card.style.borderRadius = '0'
-  card.style.boxShadow = 'none'
+  // PDF / 需要整幅底面时才归零；预览与 PNG 保留圆角（见 CaptureOptions.keepRadius）
+  if (opts.keepRadius === false) {
+    card.style.borderRadius = '0'
+    card.style.boxShadow = 'none'
+  }
 
   const { restore, blocked } = await inlineImages(card)
   // 拉不到的图片（CORS / file:// 被拦）必须摘掉：留在 SVG 里会让 canvas 被标记
@@ -140,8 +152,11 @@ export async function captureCard(fragmentHtml: string, size: CardSize, opts: Ca
   canvas.height = Math.round(h * opts.scale)
   const ctx = canvas.getContext('2d')
   if (!ctx) throw new Error('canvas-2d-unavailable')
-  ctx.fillStyle = opts.backdrop
-  ctx.fillRect(0, 0, canvas.width, canvas.height)
+  // 'transparent' 不是真的颜色而是"不画"：保留 alpha，圆角边缘透出去
+  if (opts.backdrop !== 'transparent') {
+    ctx.fillStyle = opts.backdrop
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+  }
   ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
 
   restore()
@@ -346,7 +361,7 @@ export interface RenderResult {
   size: CardSize
 }
 
-/** 逐页渲染成 PNG（每页一个文件） */
+/** 逐页渲染成 PNG（每页一个文件）。透明底色 + 保留圆角：拿到的是能贴到任何背景上的圆角图 */
 export async function renderPagesToPng(
   pages: CardPage[],
   size: CardSize,
@@ -362,21 +377,37 @@ export async function renderPagesToPng(
   return { blobs, size }
 }
 
-/** 逐页渲染后拼成一份 PDF */
+/** 逐页渲染后拼成一份 PDF。JPEG 没有 alpha，圆角归零、底色兜满整页 */
 export async function renderPagesToPdf(pages: CardPage[], size: CardSize, tpl: CardTemplate, backdrop: string): Promise<Blob> {
   const css = stylesheetFor(tpl)
   const imgs: PdfImagePage[] = []
   for (const page of pages) {
-    const canvas = await captureCard(pageAsFragment(page, size, tpl), size, { scale: size.scale, backdrop, css })
+    const canvas = await captureCard(pageAsFragment(page, size, tpl), size, {
+      scale: size.scale,
+      backdrop,
+      css,
+      keepRadius: false,
+    })
     imgs.push({ jpeg: await canvasToJpeg(canvas), pxW: canvas.width, pxH: canvas.height })
   }
   return buildPdf(imgs, size.w * 0.75, size.h * 0.75)
 }
 
-/** 面板预览：低倍率出图，避免每次调参数都等 2 倍图 */
-export async function renderPagePreview(page: CardPage, size: CardSize, tpl: CardTemplate, backdrop: string): Promise<string> {
+/**
+ * 面板预览：透明底 + 真圆角（画在面板底色上，圆角才看得见）。
+ *
+ * 出图宽度按 800px 走（540 宽的版式约 1.48 倍），不再固定 320：
+ * 预览框在 1180px 面板里占 ~400 CSS px，2 倍屏要 800 设备像素才不糊。
+ * 320 宽时「圆角 24px」只剩 14 像素、回形针只有 18 像素宽，
+ * 用户会觉得"调了没反应"——不是没生效，是看不清。
+ */
+export async function renderPagePreview(page: CardPage, size: CardSize, tpl: CardTemplate): Promise<string> {
   const css = stylesheetFor(tpl)
-  const scale = Math.min(1, 320 / size.w)
-  const canvas = await captureCard(pageAsFragment(page, size, tpl), size, { scale, backdrop, css })
+  const scale = Math.min(2, 800 / size.w)
+  const canvas = await captureCard(pageAsFragment(page, size, tpl), size, {
+    scale,
+    backdrop: 'transparent',
+    css,
+  })
   return canvas.toDataURL('image/png')
 }
