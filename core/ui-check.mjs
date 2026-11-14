@@ -23,6 +23,8 @@ import { fileURLToPath } from 'node:url'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const EDGE = 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe'
+/** 关于页自称的版本必须等于它（打包真源）—— 见下面 about-version 那条断言 */
+const PKG_VERSION = JSON.parse(fs.readFileSync(path.join(HERE, 'package.json'), 'utf8')).version
 // 不删目录：宿主安全删除钩子对目录是 fail-closed（会卡到 ETIMEDOUT），用时间戳子目录
 const RUN = new Date().toISOString().replace(/[:.]/g, '-')
 const OUT = path.join(HERE, '..', 'artifacts', 'ui-check', RUN)
@@ -995,6 +997,28 @@ async function runRegression(browser) {
     }
   })
   check('regression', 'help-readonly', help.editable === 'false' && !help.leak, `只读=${help.editable}，源码泄漏=${help.leak}，表格 ${help.tables} 个`)
+
+  /*
+   * 关于页的版本与模板数。
+   *
+   * 这两处曾经是写死的：「当前版本 0.13.0」「28 套内置模板」，0.14.0 发版时没人回头改，
+   * 于是 0.14.1 的安装包里关于页还自称 0.13.0 —— 这是用户第一眼就能看见的东西，
+   * 却没有任何断言守着。现在正文走 {{version}} / {{templates}} 占位符
+   * （help/index.ts 的 expandHelpVars），这里断言"渲染出来的数"确实跟得上。
+   */
+  await openMenu(page, 'help')
+  await page.locator('.menu-drop .menu-item[data-mi="help-about"]').click()
+  await page.waitForTimeout(1200)
+  const about = await page.evaluate(() => {
+    const txt = document.querySelector('.cm-content')?.textContent || ''
+    return {
+      ver: (txt.match(/当前版本：\s*([0-9][0-9.]*)/) || [])[1] || '',
+      tpl: (txt.match(/([0-9]+) 套内置模板/) || [])[1] || '',
+      raw: txt.includes('{{'),
+    }
+  })
+  check('regression', 'about-version', about.ver === PKG_VERSION, `关于页写「${about.ver || '没找到'}」，package.json 是 ${PKG_VERSION}`)
+  check('regression', 'about-templates', Number(about.tpl) >= 28 && !about.raw, `关于页写 ${about.tpl || '没找到'} 套内置模板，占位符残留=${about.raw}`)
   await page.context().close()
 }
 

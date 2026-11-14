@@ -223,6 +223,28 @@ const grab = async (name) => {
 }
 
 /* ---------- B. 12 套模板 ---------- */
+/**
+ * 预览图重绘是异步的（每改一个参数都走一遍 card-capture），所以**不能靠固定 sleep**。
+ *
+ * v0.14.1 发版前这里踩了一次：`clickSeg('decor.binding','clip')` 之后固定等 1300ms，
+ * 那次回形针的重绘刚好慢过 1300ms，抓到的还是上一张（binding=none），于是
+ * 「回形针几乎没画出来（diff=0）」报了红 —— 而代码一行没改，复跑就绿了（0.0045）。
+ * 这种红比不测更糟：它教人"重跑一次就好"，真出问题时也会被当成抖动。
+ *
+ * 现在改成"等图上真的换了"：轮询 `.ce-img` 的 src，变了再抓；最多等 3s
+ * （有些操作本来就该产出同一张图，比如再点一次当前值，那时不等满也不该失败）。
+ */
+const imgSrc = () => page.evaluate(() => document.querySelector('.ce-img')?.src || '')
+const waitPaint = async (prev, timeout = 3000) => {
+  const t0 = Date.now()
+  for (;;) {
+    const cur = await imgSrc()
+    if (cur && cur !== prev) return cur
+    if (Date.now() - t0 > timeout) return cur
+    await page.waitForTimeout(120)
+  }
+}
+
 const ids = await page.$$eval('.ce-style[data-tpl]', (els) => els.map((e) => e.dataset.tpl))
 const shots = {}
 for (const id of ids) {
@@ -266,18 +288,26 @@ const bigShot = await grab('param-bigfont.png')
  * 于是"白线画白纸、纹理根本没画出来"照样通过 —— 假通过比没有测试更糟。
  */
 const texBase = await grab('texture-none.png')
-await page.evaluate(() => {
-  const btn = document.querySelector('.ce-param[data-path="decor.texture"] .ce-seg-btn[data-val="grid"]')
-  btn.click()
-})
-await page.waitForTimeout(1400)
+{
+  const before = await imgSrc()
+  await page.evaluate(() => {
+    const btn = document.querySelector('.ce-param[data-path="decor.texture"] .ce-seg-btn[data-val="grid"]')
+    btn.click()
+  })
+  await waitPaint(before)
+  await page.waitForTimeout(120)
+}
 const texShot = await grab('param-texture.png')
 
-await page.evaluate(() => {
-  const btn = document.querySelector('.ce-param[data-path="decor.texture"] .ce-seg-btn[data-val="none"]')
-  btn.click()
-})
-await page.waitForTimeout(1200)
+{
+  const before = await imgSrc()
+  await page.evaluate(() => {
+    const btn = document.querySelector('.ce-param[data-path="decor.texture"] .ce-seg-btn[data-val="none"]')
+    btn.click()
+  })
+  await waitPaint(before)
+  await page.waitForTimeout(120)
+}
 const texBack = await grab('texture-back.png')
 
 report.steps.params = {
@@ -296,13 +326,15 @@ if (texBase && texBack && texBase.sig !== texBack.sig) errors.push('纹理设回
 
 /* ---------- C2. 背景底纹 / 装订 / 自定义背景图 ---------- */
 const clickSeg = async (path, val) => {
+  const before = await imgSrc()
   await page.evaluate(
     ([p, v]) => {
       document.querySelector(`.ce-param[data-path="${p}"] .ce-seg-btn[data-val="${v}"]`)?.click()
     },
     [path, val],
   )
-  await page.waitForTimeout(1300)
+  await waitPaint(before)
+  await page.waitForTimeout(120)
 }
 
 await page.click('.ce-bg[data-bg="kraft"]')
@@ -419,6 +451,7 @@ const cornerInset = () =>
   })
 
 const setNum = async (p, v) => {
+  const before = await imgSrc()
   await page.evaluate(
     ([path2, val]) => {
       const input = document.querySelector(`.ce-param[data-path="${path2}"] input[type="range"]`)
@@ -428,7 +461,8 @@ const setNum = async (p, v) => {
     },
     [p, v],
   )
-  await page.waitForTimeout(1400)
+  await waitPaint(before)
+  await page.waitForTimeout(120)
 }
 
 await page.click('.ce-style[data-tpl="paper"]')

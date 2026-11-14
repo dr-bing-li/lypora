@@ -11,6 +11,7 @@
  */
 
 import { getLocale, type MessageKey } from '../i18n'
+import { BUILTIN_TEMPLATES } from '../export/template/builtin'
 
 import zhShortcuts from './zh/shortcuts.md?raw'
 import zhFeatures from './zh/features.md?raw'
@@ -64,9 +65,28 @@ export function helpTitle(id: HelpId): MessageKey {
   return doc ? doc.titleKey : 'help.about'
 }
 
+/**
+ * 帮助正文里的"会变的数字"用占位符，不写死。
+ *
+ * 关于页曾经写死「当前版本 0.13.0」与「28 套内置模板」，0.14.0 发版时没人回头改，
+ * 于是 0.14.1 的安装包里关于页还自称 0.13.0 —— 用户第一眼就看得见。版本号与模板数
+ * 本来就是构建期/运行期已知的值，让它们自己流进正文，比"记得改"可靠。
+ *
+ * 支持的占位符：`{{version}}`、`{{templates}}`。未知占位符原样保留（宁可显示难看，
+ * 也不要静默吃掉作者写的内容）。
+ */
+const HELP_VARS: Record<string, string> = {
+  version: __APP_VERSION__,
+  templates: String(BUILTIN_TEMPLATES.length),
+}
+
+function expandHelpVars(text: string): string {
+  return text.replace(/\{\{([a-z][\w-]*)\}\}/g, (all, key: string) => HELP_VARS[key] ?? all)
+}
+
 /** 按当前界面语言取正文；非中文一律走英文版 */
 export function helpText(id: HelpId): string {
   const doc = HELP_DOCS.find((d) => d.id === id)
   if (!doc) return ''
-  return getLocale() === 'zh-CN' ? doc.zh : doc.en
+  return expandHelpVars(getLocale() === 'zh-CN' ? doc.zh : doc.en)
 }

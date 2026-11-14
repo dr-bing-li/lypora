@@ -4,7 +4,7 @@
 
 ## Version
 
-- Current version: **0.13.0**
+- Current version: **{{version}}**
 - Licence: **MIT** (see `LICENSE`)
 - Repository: `github.com/dr-bing-li/lypora`
 
@@ -15,7 +15,7 @@ Lypora is **independently implemented**. It is not affiliated with, authorised b
 Menu grouping and shortcut conventions follow common practice across editors; that is interaction convention, not code. The implementation, data model and rendering pipeline are original:
 
 - Editor core: CodeMirror 6 with a custom decoration layer (`blockDecosField` for blocks, `livePreview` for inline).
-- Layout engine: in-house template system (templates are data + compiler + parameter table, 28 built-ins).
+- Layout engine: in-house template system (templates are data + compiler + parameter table, {{templates}} built-ins).
 - Theme adapter: custom two-way translation of selectors and CSS variables.
 
 ## Technology
