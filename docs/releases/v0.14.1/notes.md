@@ -86,3 +86,9 @@ status line now names the route and the reason, and that one line is enough for 
 **Upgrading.** Overwrite on all three desktop platforms; no config migration. Android versionCode 20 → 21,
 side-load over the old build. Exports still land in `Documents/Lypora`; the only behavioural change is that
 dismissing the share sheet no longer counts as a failure.
+
+---
+
+## 下载 / Downloads
+
+<!-- DOWNLOADS -->
