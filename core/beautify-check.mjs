@@ -1,5 +1,5 @@
 /**
- * 「排版」验收 —— 十组硬指标，任一不过即失败。
+ * 「排版」验收 —— 十一组硬指标，任一不过即失败。
  *
  *  A. 交互：一级菜单「排版」能开面板、33 套模板按钮齐全、20s 内出预览、Esc 能关。
  *  B. 模板：33 套逐一出图，且每张采样颜色数 > 8（防"白图假通过"）。
@@ -22,6 +22,9 @@
  *           黑金菱纹的黑底 + 满幅菱形网 + 顶部金条、橙光胶囊的收窄药丸（不是一条分隔线）、
  *           青蓝流线的**对角不等圆角**、米纸铅字的两层米色 + 点线分隔；
  *           外加一条回归：素笺清墨的标题不许被新字段污染。
+ *  C6. 导出健壮性（v0.14.1 安卓加固）：注入 data URI 失败后必须自动换路且产物
+ *           **逐字节不变**；全部通路失败必须按时报错、列出试过哪几条、不留渲染宿主；
+ *           失败之后再导出必须还能出图（busy 复位）。
  *  D. 模板进出：导出 .zip 样式包（template.json + README，带图时还有 bg.png）→
  *           再导入 → 成为当前模板；旧版单文件 .lyt.json 仍要能认（老模板不弃）。
  *  E. 离线：整场操作**零外部网络请求**（除本机 127.0.0.1 静态资源）。
@@ -30,6 +33,7 @@
  */
 
 import { chromium } from 'playwright-core'
+import crypto from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
 import zlib from 'node:zlib'
@@ -98,6 +102,11 @@ function pngSize(buf) {
   return { w: buf.readUInt32BE(16), h: buf.readUInt32BE(20) }
 }
 
+/** C6 用：产物逐字节比对（"降级不改变像素"这件事，比对比对比对更直接） */
+function sha256(file) {
+  return crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex')
+}
+
 const browser = await chromium.launch({ executablePath: EDGE, headless: true })
 const ctx = await browser.newContext({ viewport: { width: 1440, height: 960 }, locale: 'zh-CN', acceptDownloads: true })
 const page = await ctx.newPage()
@@ -107,8 +116,10 @@ page.on('request', (req) => {
   const u = req.url()
   if (!u.startsWith('http://127.0.0.1') && !u.startsWith('data:') && !u.startsWith('blob:') && !u.startsWith('file:')) external.push(u)
 })
+// 下面 C6 会**故意**制造渲染失败来验证错误路径，那几次 console.error 是预期内的
+let expectConsoleErrors = false
 page.on('console', (m) => {
-  if (m.type() === 'error') errors.push('[console] ' + m.text())
+  if (m.type() === 'error' && !expectConsoleErrors) errors.push('[console] ' + m.text())
 })
 page.on('pageerror', (e) => errors.push('[pageerror] ' + e.message))
 
@@ -1463,6 +1474,97 @@ else {
   if (pages < 1) errors.push('PDF 没有页')
   if (!text.includes('%%EOF')) errors.push('PDF 缺 EOF')
 }
+
+/* ---------- C6. 导出健壮性：安卓"卡在正在渲染"与"报失败"的两类成因 ---------- *
+ *
+ * 安卓上报的两个症状，成因都不是"模板写错了"，而是渲染管线的韧性：
+ *   ① 只有一条光栅化通路，一步不成立就永久挂起（没有超时）或直接失败；
+ *   ② 失败路径不收拾现场，试几次就把内存拖死；
+ *   ③ 分享面板被划走也报「导出失败」。
+ *
+ * 这里不去（也去不了）连真机，而是把这三个条件**在桌面复现**：
+ *   · 注入 data URI 失败 → 必须自动换路（blob/percent）且产物逐字节不变
+ *   · 注入全部失败      → 必须按时报错、说清试过哪几条、文档里不留残留节点
+ *   · 之后清掉注入      → 必须还能正常导出（busy 已复位）
+ * 第 2 条是这次改造的核心承诺：降级不该改变像素，否则"救回来"也没意义。
+ */
+const statusProbe = () =>
+  page.evaluate(() => {
+    const s = document.querySelector('.ce-status')
+    return { text: s?.textContent || '', title: s?.title || '', tone: s?.dataset.tone || '' }
+  })
+
+const exportPdfBytes = async (tag) => {
+  const dl = page.waitForEvent('download', { timeout: 90000 }).catch(() => null)
+  await page.click('.ce-btn[data-act="pdf"]')
+  const d = await dl
+  if (!d) return null
+  const f = path.join(OUT, `${tag}.pdf`)
+  await d.saveAs(f)
+  return { file: f, bytes: fs.statSync(f).size, sha: sha256(f) }
+}
+
+report.steps.c6 = {}
+// 主路径的状态栏诊断：这条 title 是用户报障时唯一能抄给我们的东西
+const mainStatus = await statusProbe()
+const mainTitle = mainStatus.title
+const kB = [...mainTitle.matchAll(/([\d.]+)KB/g)].map((m) => +m[1])
+report.steps.c6.diagnostic = { text: mainStatus.text, title: mainTitle }
+if (!/渲染路径\s+(data|blob|percent)\s+@[\d.]+×/.test(mainTitle)) errors.push('[健壮性] 状态栏没有渲染诊断（title）')
+if (kB.length < 2) errors.push('[健壮性] 诊断里没有 SVG→URI 的体积')
+else if (kB[1] > kB[0] * 1.45) errors.push(`[健壮性] URI 相对 SVG 膨胀 ${(kB[1] / kB[0]).toFixed(2)} 倍，超过 1.45（编码方式退化了？）`)
+
+// 基线：正常导出一份 PDF
+const pdfBase = await exportPdfBytes('c6-base')
+if (!pdfBase) errors.push('[健壮性] 基线 PDF 没导出')
+
+// ① 逼主路径失败：必须自动换路，产物必须逐字节一致
+await page.evaluate(() => localStorage.setItem('lypora:capture-probe', JSON.stringify({ fail: ['data'] })))
+const pdfAlt = await exportPdfBytes('c6-fallback')
+const altStatus = await statusProbe()
+report.steps.c6.fallback = {
+  base: pdfBase && pdfBase.sha,
+  alt: pdfAlt && pdfAlt.sha,
+  sameBytes: Boolean(pdfBase && pdfAlt && pdfBase.sha === pdfAlt.sha),
+  title: altStatus.title,
+}
+if (!pdfAlt) errors.push('[健壮性] data URI 注入失败后没导出（降级链没接上）')
+else if (pdfBase && pdfAlt.sha !== pdfBase.sha) errors.push('[健壮性] 降级路径产物与主路径不一致（像素被动过）')
+if (!/第\s*[2-4]\s*条路/.test(altStatus.title)) errors.push('[健壮性] 降级时诊断没说明"第几条路"')
+
+// ② 全部失败：必须按时报错、说清试过哪些路、不留残留
+expectConsoleErrors = true
+await page.evaluate(() =>
+  localStorage.setItem(
+    'lypora:capture-probe',
+    JSON.stringify({ fail: ['data', 'blob', 'percent', 'canvas'], timeoutMs: 400 }),
+  ),
+)
+const tFail = Date.now()
+await page.click('.ce-btn[data-act="pdf"]')
+const failed = await page
+  .waitForFunction(() => document.querySelector('.ce-status')?.dataset.tone === 'err', { timeout: 20000 })
+  .then(() => true)
+  .catch(() => false)
+const failMs = Date.now() - tFail
+const failStatus = await statusProbe()
+const leftovers = await page.evaluate(() => document.querySelectorAll('[data-ly-capture]').length)
+report.steps.c6.allFail = { settled: failed, ms: failMs, text: failStatus.text, title: failStatus.title, leftovers }
+if (!failed) errors.push('[健壮性] 全部通路失败后 20s 内没有报错（这就是"卡在正在渲染"的复现）')
+if (failMs > 15000) errors.push(`[健壮性] 全失败用了 ${failMs}ms 才报错，太久了`)
+if (!failStatus.text.includes('渲染失败')) errors.push('[健壮性] 失败状态没有"渲染失败"前缀')
+// 状态栏一行只放"第一条失败"（手机上是 nowrap + ellipsis），完整清单必须在 title 里
+if (!failStatus.text.includes('@')) errors.push('[健壮性] 状态栏没给出第一条失败通路')
+if ((failStatus.title.match(/@/g) || []).length < 3) errors.push('[健壮性] 诊断没列出试过哪几条路')
+if (leftovers !== 0) errors.push(`[健壮性] 失败后文档里残留 ${leftovers} 个渲染宿主（内存泄漏）`)
+
+// ③ 清掉注入后必须还能导出（busy 要复位，不然按钮就"死了"）
+await page.evaluate(() => localStorage.removeItem('lypora:capture-probe'))
+const pdfAgain = await exportPdfBytes('c6-again')
+report.steps.c6.recover = { ok: Boolean(pdfAgain), sameBytes: Boolean(pdfBase && pdfAgain && pdfBase.sha === pdfAgain.sha) }
+expectConsoleErrors = false
+if (!pdfAgain) errors.push('[健壮性] 失败一次之后再导出没有任何反应（busy 没复位）')
+else if (pdfBase && pdfAgain.sha !== pdfBase.sha) errors.push('[健壮性] 恢复导出后的产物与基线不一致')
 
 /* ---------- E. 离线审计 ---------- */
 report.steps.offline = { externalRequests: external.slice(0, 10), count: external.length }

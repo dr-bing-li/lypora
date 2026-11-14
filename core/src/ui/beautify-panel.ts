@@ -17,8 +17,8 @@
 import { CARD_SIZES, findSize, type CardSize } from '../export/card-themes'
 import { paginate, type CardPage, type SplitMode } from '../export/card-layout'
 import { decoHtml } from '../export/card-layout'
-import { buildZip, renderPagePreview, renderPagesToPdf, renderPagesToPng } from '../export/card-capture'
-import { saveBinary } from '../export/save-binary'
+import { buildZip, renderPagePreview, renderPagesToPdf, renderPagesToPng, type CaptureReport, type RenderHooks } from '../export/card-capture'
+import { saveBinary, type SaveBinaryResult } from '../export/save-binary'
 import { BUILTIN_TEMPLATES, templateName } from '../export/template/builtin'
 import { BG_PREVIEW, BG_PREVIEW_SIZE, PARAM_SPECS, headSpecs, ornSpecs, HEAD_LEVEL_LIST, getPath, setPath, type ParamSpec } from '../export/template/params'
 import {
@@ -765,6 +765,37 @@ export function createBeautifyPanel(deps: BeautifyDeps): BeautifyHandle {
     refs.status.dataset.tone = tone
   }
 
+  /**
+   * 渲染诊断，挂在状态栏的 title 上。
+   *
+   * 手机上「导出失败」以前只留一句英文错误码，事后完全没法判断是编码、超时还是
+   * 内存问题。现在每次渲染都把"走了哪条路、多大、多久、第几次尝试"留下来：
+   * 桌面悬停即见（手机 WebView 不弹 title，那边看状态栏那一行 + 控制台）。
+   */
+  function reportText(r: CaptureReport): string {
+    const kb = (n: number): string => `${(n / 1024).toFixed(0)}KB`
+    const sc = String(Number(r.scale.toFixed(2)))
+    return (
+      `渲染路径 ${r.strategy} @${sc}× · SVG ${kb(r.svgBytes)} → ${kb(r.urlBytes)}` +
+      ` · ${r.ms}ms${r.attempts > 1 ? ` · 第 ${r.attempts} 条路` : ''}`
+    )
+  }
+
+  /**
+   * 把 `card-render-failed [data@2:svg-load-timeout | blob@2:canvas-tainted | …]`
+   * 压成一行能塞进手机状态栏的短句。
+   *
+   * 手机上状态栏是 `nowrap + ellipsis`，整串诊断会被截掉大半，等于没说；
+   * 完整串放进 title（桌面悬停可见）并打到控制台，状态栏只留**第一条失败**——
+   * 那一条通常就是根因（后面几条只是同一原因的重复）。
+   */
+  function shortReason(msg: string): string {
+    const list = /\[([^\]]+)\]/.exec(msg)
+    if (!list) return msg.length > 48 ? `${msg.slice(0, 48)}…` : msg
+    const first = list[1].split('|')[0].trim()
+    return first.length > 48 ? `${first.slice(0, 48)}…` : first
+  }
+
   async function paintPreview(): Promise<string | null> {
     if (!refs) return null
     const token = ++renderToken
@@ -777,14 +808,20 @@ export function createBeautifyPanel(deps: BeautifyDeps): BeautifyHandle {
     refs.pos.textContent = `${state.index + 1} / ${pages.length}`
     try {
       // 预览用透明底 + 真圆角：圆角画在面板底色上才看得见（见 card-capture 的 keepRadius）
-      const url = await renderPagePreview(pages[state.index], size, state.template)
+      const url = await renderPagePreview(pages[state.index], size, state.template, {
+        onReport: (r) => {
+          if (refs) refs.status.title = reportText(r)
+        },
+      })
       if (token !== renderToken || !refs) return null
       refs.img.src = url
       return null
     } catch (err) {
       if (token !== renderToken) return null
       const msg = String((err as Error).message || err)
-      setStatus(msg, 'err')
+      setStatus(`${t('card.renderFailed')}：${shortReason(msg)}`, 'err')
+      // 上一张图成功时留下的诊断要换成这次的失败原因，否则 title 与状态栏自相矛盾
+      if (refs) refs.status.title = msg
       console.error('[beautify]', msg)
       return msg
     }
@@ -827,27 +864,61 @@ export function createBeautifyPanel(deps: BeautifyDeps): BeautifyHandle {
     return deps.getDocName().replace(/\.[^.]+$/, '') || 'lypora-card'
   }
 
+  /**
+   * 落盘结果 → 状态栏 + toast。
+   *
+   * 三种"没成功"必须分开说，否则用户会以为渲染崩了：
+   *   canceled → 安卓分享面板被划走，文件其实已经写进 Documents/Lypora
+   *   path     → 文件写好了但没能拉起分享面板（插件/权限问题）
+   *   其它     → 真的没存下来
+   * v0.14.0 之前这三种全都显示「导出失败」，用户据此判断"导出坏了"，方向完全跑偏。
+   */
+  function announceSave(r: SaveBinaryResult, okMsg: string): void {
+    if (r.ok) {
+      setStatus(t('card.done'), 'ok')
+      toast(okMsg, 3200)
+      return
+    }
+    if (r.canceled) {
+      setStatus(t('card.canceled'), 'muted')
+      return
+    }
+    setStatus(r.path ? t('card.saveFailed') : t('card.failed'), 'err')
+    toast(t('card.saveFailed'), 3600)
+  }
+
   async function doExport(kind: 'png' | 'pdf'): Promise<void> {
-    if (busy || !refs) return
+    if (!refs) return
+    if (busy) {
+      // 以前这里静默 return，连点两下看到的是"第二下完全没反应"
+      toast(t('card.busy'), 2000)
+      return
+    }
     if (!pages.length) {
       toast(t('card.empty'))
       return
     }
     busy = true
     setStatus(t('card.working'))
+    const hooks: RenderHooks = {
+      // 多页时把进度报出来：手机上最怕的就是"数字不动"，那跟死机没区别
+      onProgress: (done, total) => setStatus(total > 1 ? t('card.workingN', { done: done + 1, total }) : t('card.working')),
+      onReport: (r) => {
+        if (refs) refs.status.title = reportText(r)
+      },
+    }
     try {
       const backdrop = backdropOf(state.template)
       if (kind === 'pdf') {
-        const blob = await renderPagesToPdf(pages, size, state.template, backdrop)
+        const blob = await renderPagesToPdf(pages, size, state.template, backdrop, hooks)
         const r = await saveBinary(blob, `${baseName()}.pdf`, 'application/pdf')
-        setStatus(r.ok ? t('card.done') : r.canceled ? t('card.pageCount', { n: pages.length }) : t('card.failed'), r.ok ? 'ok' : r.canceled ? 'muted' : 'err')
-        if (r.ok) toast(t('card.savedPdf', { path: r.path || `${baseName()}.pdf` }), 3200)
+        announceSave(r, t('card.savedPdf', { path: r.path || `${baseName()}.pdf` }))
       } else {
         // PNG 走透明底：圆角是真圆角，贴到任何背景上都不带白边
-        const res = await renderPagesToPng(pages, size, state.template, 'transparent')
+        const res = await renderPagesToPng(pages, size, state.template, 'transparent', hooks)
         if (res.blobs.length === 1) {
           const r = await saveBinary(res.blobs[0], `${baseName()}-1.png`, 'image/png')
-          if (r.ok) toast(t('card.savedPng', { path: r.path || `${baseName()}-1.png` }), 3200)
+          announceSave(r, t('card.savedPng', { path: r.path || `${baseName()}-1.png` }))
         } else {
           const entries = await Promise.all(
             res.blobs.map(async (b, i) => ({
@@ -857,13 +928,16 @@ export function createBeautifyPanel(deps: BeautifyDeps): BeautifyHandle {
           )
           const zip = buildZip(entries)
           const r = await saveBinary(zip, `${baseName()}-cards.zip`, 'application/zip')
-          if (r.ok) toast(t('card.savedZip', { n: res.blobs.length }), 3600)
+          announceSave(r, t('card.savedZip', { n: res.blobs.length }))
         }
-        setStatus(t('card.done'), 'ok')
       }
     } catch (err) {
-      setStatus(String((err as Error).message || err), 'err')
-      toast(t('card.failed'))
+      // 渲染阶段失败：把"试过哪几条路"一并写出来，手机上没有控制台，状态栏是唯一线索
+      const msg = String((err as Error).message || err)
+      console.error('[beautify]', msg)
+      setStatus(`${t('card.renderFailed')}：${shortReason(msg)}`, 'err')
+      if (refs) refs.status.title = msg
+      toast(t('card.failed'), 3600)
     } finally {
       busy = false
     }

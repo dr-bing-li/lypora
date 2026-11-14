@@ -12,6 +12,30 @@
  * Lypora 里 CSS 由模板编译而来（`stylesheetFor(tpl)`），图片统一转 data URL，
  * 字体只使用系统字体栈 —— 这正是"完全离线"的物理前提。
  *
+ * ---------------------------------------------------------------------------
+ * v0.14.1 的 Android 加固（为什么这里比"能跑就行"多了一倍代码）
+ *
+ * 安卓上「排版 → 导出」出现过两种症状：一直停在「正在渲染…」，或者直接报失败。
+ * 逐个查下来是四个各自独立的坑，四个都得堵：
+ *
+ *   ① 一条路走到黑。整个光栅化只有「拼 SVG → 当图片加载 → 画进画布」这一条路，
+ *      任何一步不成立就彻底失败。而 WebView 对超长 data URI（实测带公式的卡片
+ *      SVG 394KB、URI 500KB 上下）的处理恰恰可能是**不 load 也不 error**：
+ *      Promise 永不 settle，于是永远「正在渲染…」，busy 一直是 true，
+ *      之后每次点导出都毫无反应。
+ *      → 不是换个编码就完事，而是备一条降级链，并且每步都套超时。
+ *   ② 图片取不回来也一样卡死：`fetch` 和 `img.decode()` 都没有超时，移动网络下
+ *      一次卡住就再也不会继续。→ 都加了上限。
+ *   ③ 失败路径不收拾现场：host 节点和临时改写的 img src 只在成功时还原。
+ *      手机内存本来就紧，试几次就把后续尝试一起拖死。→ 全部收进 try/finally。
+ *   ④ "空白也算成功"：WebView 有时会 load 成功但 drawImage 出来是全透明的。
+ *      → 逐点采样，空白就换下一条路，而不是交出一张白图。
+ *
+ * 于是这里不是一个方案，是一条**降级链**：base64 data URI → blob URL →
+ * percent data URI → 降倍率重画。每条路都有超时，失败就换下一条；
+ * 全失败才报错，并说明试过哪几条路。桌面永远走第一条，输出与 v0.14.0 逐字节一致
+ * （`beautify-check` 的 C6 用 sha256 比过）。
+ *
  * PDF 与 ZIP 都是自研写入器（DCTDecode 直通 / store 模式），不引第三方库。
  */
 
@@ -23,13 +47,90 @@ import type { CardTemplate } from './template/types'
 import { stylesheetFor } from './template/compile'
 
 /* ------------------------------------------------------------------ *
+ * 基础设施：超时 / 探针 / 字节编码
+ * ------------------------------------------------------------------ */
+
+/**
+ * 单步等待上限。桌面正常流程 200–600ms，6s 是"慢机器也够、真卡住也能自救"的分界。
+ * 见文件头 ① ②：没有超时的 await 在 WebView 里就是永久挂起。
+ */
+const STEP_TIMEOUT_MS = 6000
+
+/** 单张图片取回的上限（移动网络下取一张 3MB 图也要不了这么久） */
+const IMAGE_TIMEOUT_MS = 5000
+
+function withTimeout<T>(p: Promise<T>, ms: number, tag: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(tag)), ms)
+    p.then(
+      (v) => {
+        clearTimeout(timer)
+        resolve(v)
+      },
+      (e) => {
+        clearTimeout(timer)
+        reject(e)
+      },
+    )
+  })
+}
+
+/**
+ * 故障注入探针 —— 只给自动化验收用，正常用户永远不会写这条键。
+ *
+ * 为什么不放 window 上的全局变量：验收脚本只要在点导出**之前**写一条 localStorage
+ * 就行，产品里不用留任何全局开关；读不到就是空对象，零成本。
+ *   {"fail":["data"]}                   → 逼主路径失败，验证降级链真的能出图
+ *   {"fail":["data","blob","percent"]}  → 验证全失败时按时报错、不留垃圾节点
+ *   {"timeoutMs":300}                   → 把每步上限压短，让"卡住"用例几秒内跑完
+ * fail 的取值：data / blob / percent / canvas / encode，其中 canvas 让画布环节失败。
+ */
+interface CaptureProbe {
+  fail: string[]
+  timeoutMs: number
+}
+
+function readProbe(): CaptureProbe {
+  const def: CaptureProbe = { fail: [], timeoutMs: STEP_TIMEOUT_MS }
+  try {
+    const raw = localStorage.getItem('lypora:capture-probe')
+    if (!raw) return def
+    const o = JSON.parse(raw) as { fail?: unknown; timeoutMs?: unknown }
+    return {
+      fail: Array.isArray(o.fail) ? o.fail.filter((x): x is string => typeof x === 'string') : [],
+      timeoutMs: typeof o.timeoutMs === 'number' && o.timeoutMs > 0 ? o.timeoutMs : STEP_TIMEOUT_MS,
+    }
+  } catch {
+    return def
+  }
+}
+
+function bytesToBase64(bytes: Uint8Array): string {
+  // 分块拼接：整块 apply 到 String.fromCharCode 会在几十万字节时爆栈
+  let bin = ''
+  const CHUNK = 0x8000
+  for (let i = 0; i < bytes.length; i += CHUNK) bin += String.fromCharCode(...bytes.subarray(i, i + CHUNK))
+  return btoa(bin)
+}
+
+function base64ToBytes(b64: string): Uint8Array<ArrayBuffer> {
+  const bin = atob(b64)
+  // 显式 new ArrayBuffer：buffer 的类型得是 ArrayBuffer 才能直接当 BlobPart
+  const out = new Uint8Array(new ArrayBuffer(bin.length))
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i) & 0xff
+  return out
+}
+
+/* ------------------------------------------------------------------ *
  * 图片内联
  * ------------------------------------------------------------------ */
 
 async function imageToDataUrl(src: string): Promise<string | null> {
   if (!src || src.startsWith('data:')) return src || null
+  const ctrl = typeof AbortController === 'function' ? new AbortController() : null
+  const timer = ctrl ? setTimeout(() => ctrl.abort(), IMAGE_TIMEOUT_MS) : 0
   try {
-    const res = await fetch(src)
+    const res = await fetch(src, ctrl ? { signal: ctrl.signal } : undefined)
     if (!res.ok) return null
     const blob = await res.blob()
     return await new Promise<string>((resolve, reject) => {
@@ -40,6 +141,8 @@ async function imageToDataUrl(src: string): Promise<string | null> {
     })
   } catch {
     return null
+  } finally {
+    if (timer) clearTimeout(timer)
   }
 }
 
@@ -58,8 +161,15 @@ async function inlineImages(root: HTMLElement): Promise<{ restore: () => void; b
       else blocked.push(img)
     }),
   )
-  // 等解码完成，否则 foreignObject 里可能是空白占位
-  await Promise.all(imgs.map((img) => (img.decode ? img.decode().catch(() => undefined) : Promise.resolve())))
+  // 等解码完成，否则 foreignObject 里可能是空白占位。
+  // decode() 在图片本身坏掉时可能既不 resolve 也不 reject（WebView 常见），加超时兜住。
+  await Promise.all(
+    imgs.map((img) =>
+      img.decode
+        ? withTimeout(img.decode().catch(() => undefined), IMAGE_TIMEOUT_MS, 'image-decode-timeout').catch(() => undefined)
+        : Promise.resolve(),
+    ),
+  )
   return {
     blocked,
     restore: () => {
@@ -90,94 +200,325 @@ export interface CaptureOptions {
   keepRadius?: boolean
 }
 
-export async function captureCard(fragmentHtml: string, size: CardSize, opts: CaptureOptions): Promise<HTMLCanvasElement> {
-  // 离屏宿主：必须在文档里才能布局与加载图片
+export interface CaptureOutcome {
+  canvas: HTMLCanvasElement
+  report: CaptureReport
+}
+
+export interface CaptureReport {
+  /** 最终走通的那条路 */
+  strategy: 'data' | 'blob' | 'percent'
+  /** SVG 自身字节数（UTF-8） */
+  svgBytes: number
+  /** 真正交给浏览器解码的那串 URL 的长度 */
+  urlBytes: number
+  scale: number
+  /** 试了几条路才成功（1 = 主路径一次过） */
+  attempts: number
+  ms: number
+}
+
+/** 画布尺寸上限：WebView 上超过这个量级会直接给 null 上下文或画成空白 */
+const MAX_CANVAS_SIDE = 4096
+const MAX_CANVAS_AREA = 16 * 1024 * 1024
+
+function fitScale(w: number, h: number, want: number): number {
+  let s = want
+  while (s > 0.3 && (w * s > MAX_CANVAS_SIDE || h * s > MAX_CANVAS_SIDE || w * s * h * s > MAX_CANVAS_AREA)) {
+    s = Math.round(s * 90) / 100
+  }
+  return s
+}
+
+/**
+ * SVG → data URI。
+ *
+ * 主路径用 base64，不是因为"更小"——实测同一张带公式的卡片，
+ * base64 把 394KB 的 SVG 变成 525KB（恒定 1.33 倍），
+ * percent 只变成 444KB（样式里大部分字符不用转义，只有 `{}();:#%` 这些要）。
+ * 选它是因为**形式最干净**：base64 的字符集里没有 `%`、没有裸 `#`、没有引号，
+ * 不吃各版本 WebView 对 URI 解析的边角差异；而 percent 对中文正文是 3 倍/字，
+ * 纯文字卡片反而更大。两条都留着，谁先能用谁上（见降级链）。
+ */
+function svgToDataUrl(svg: string, percent: boolean): string {
+  if (percent) return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg)
+  return 'data:image/svg+xml;base64,' + bytesToBase64(new TextEncoder().encode(svg))
+}
+
+function loadSvgImage(url: string, timeoutMs: number, svgForDiag: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.decoding = 'sync'
+    let settled = false
+    const timer = setTimeout(() => {
+      if (settled) return
+      settled = true
+      // 断开还没结束的解码，别让它在后台继续啃内存
+      try {
+        img.src = ''
+      } catch {
+        /* 忽略 */
+      }
+      reject(new Error('svg-load-timeout'))
+    }, timeoutMs)
+    img.onload = () => {
+      if (settled) return
+      settled = true
+      clearTimeout(timer)
+      resolve(img)
+    }
+    img.onerror = () => {
+      if (settled) return
+      settled = true
+      clearTimeout(timer)
+      // 定位用：SVG 加载失败时把 XML 解析器的报错带出来
+      let diag = ''
+      try {
+        const doc = new DOMParser().parseFromString(svgForDiag, 'image/svg+xml')
+        const pe = doc.querySelector('parsererror')
+        diag = pe ? (pe.textContent || '').replace(/\s+/g, ' ').slice(0, 200) : 'no-parsererror'
+      } catch (e) {
+        diag = String(e)
+      }
+      reject(new Error(`svg-load-error (${svgForDiag.length}B): ${diag}`))
+    }
+    img.src = url
+  })
+}
+
+function drawToCanvas(img: HTMLImageElement, w: number, h: number, scale: number, backdrop: string): HTMLCanvasElement {
+  const cw = Math.round(w * scale)
+  const ch = Math.round(h * scale)
+  if (!cw || !ch) throw new Error('canvas-empty')
+  const canvas = document.createElement('canvas')
+  canvas.width = cw
+  canvas.height = ch
+  const ctx = canvas.getContext('2d')
+  if (!ctx) throw new Error('canvas-2d-unavailable')
+  // 'transparent' 不是真的颜色而是"不画"：保留 alpha，圆角边缘透出去
+  if (backdrop !== 'transparent') {
+    ctx.fillStyle = backdrop
+    ctx.fillRect(0, 0, cw, ch)
+  }
+  ctx.drawImage(img, 0, 0, cw, ch)
+  return canvas
+}
+
+/**
+ * 交出来的到底是画好的卡片，还是一张全透明空图？顺便验一次画布有没有被污染。
+ *
+ * 两件事合在一个函数里，是因为它们用的是同一个动作（getImageData）：
+ *   · 污染：blob URL 作 <img> 源时 Chromium 会把画布标脏，之后 toBlob/toDataURL
+ *     直接抛 SecurityError。**必须在这里发现**——否则 PDF 那条路（底色不透明、
+ *     不做空白判断）会带着脏画布走到底，在编码阶段才炸，降级链就白设了。
+ *   · 空白：WebView 上 onload 成功但 drawImage 出白图是真实存在的（解码器被回收、
+ *     foreignObject 光栅化失败都这样），只看 onload 就会把白图当成功结果存下来。
+ *
+ * checkBlank 只在透明底色（PNG / 预览）时才为 true：填了底色的画布"永远不空"，
+ * 那是兜底色不是卡片，判断了也没有意义。
+ */
+function assertPainted(canvas: HTMLCanvasElement, checkBlank: boolean): void {
+  const ctx = canvas.getContext('2d')
+  if (!ctx) throw new Error('canvas-2d-unavailable')
+  const xs = [0.5, 0.25, 0.75]
+  const ys = [0.5, 0.25, 0.75]
+  let painted = false
+  for (const fy of ys) {
+    for (const fx of xs) {
+      let d: Uint8ClampedArray
+      try {
+        d = ctx.getImageData(Math.floor(canvas.width * fx), Math.floor(canvas.height * fy), 1, 1).data
+      } catch {
+        throw new Error('canvas-tainted')
+      }
+      if (d[3] > 8) painted = true
+    }
+  }
+  if (!painted && checkBlank) throw new Error('canvas-blank')
+}
+
+export async function captureCard(fragmentHtml: string, size: CardSize, opts: CaptureOptions): Promise<CaptureOutcome> {
+  const t0 = performance.now()
+  const probe = readProbe()
+
+  // 离屏宿主：必须在文档里才能布局与加载图片。
+  // data-ly-capture 是给验收/排障用的标记：导出失败后文档里不该留下任何一块
+  // （曾经失败路径不收拾，试几次就把手机内存拖死，见文件头 ③）
   const host = document.createElement('div')
+  host.dataset.lyCapture = '1'
   host.style.cssText = 'position:fixed;left:-30000px;top:0;pointer-events:none;opacity:0'
   host.innerHTML = `<style>${opts.css}</style>${fragmentHtml}`
   document.body.appendChild(host)
 
-  const card = host.querySelector('.ly-card') as HTMLElement
-  // PDF / 需要整幅底面时才归零；预览与 PNG 保留圆角（见 CaptureOptions.keepRadius）
-  if (opts.keepRadius === false) {
-    card.style.borderRadius = '0'
-    card.style.boxShadow = 'none'
-  }
+  let restore = (): void => undefined
+  let blobUrl = ''
 
-  const { restore, blocked } = await inlineImages(card)
-  // 拉不到的图片（CORS / file:// 被拦）必须摘掉：留在 SVG 里会让 canvas 被标记
-  // 为 tainted，toDataURL 直接抛 SecurityError，整张卡片报废
-  for (const img of blocked) img.remove()
-
-  const w = size.w
-  const h = size.h
-  const xhtml = new XMLSerializer().serializeToString(card)
-
-  // 公式样式必须跟着走：KaTeX 的 HTML 没有 CSS 就退化成"平铺文字"
-  // （∫₀¹ 会变成 ∫01，上标全部掉到基线上）。没有公式就不塞，省 360KB。
-  const mathCss = fragmentHtml.includes('class="katex') ? KATEX_CSS : ''
-
-  /*
-   * 样式必须包 CDATA。
-   *
-   * SVG 是被 XML 解析器读的，`<style>` 里出现一个裸的小于号（CSS 注释里写
-   * 「ol 的 start 属性」时很自然会写成尖括号形式）就会被当成标签开头，
-   * 报 "Unexpected token inside qualified name" —— 整张卡片渲染失败，
-   * 而且只在导出/预览时炸，编辑器里看不出来。v0.13.0 就踩了这一下。
-   * `]]>` 在 CSS 里不存在，仍按规范切成两段 CDATA 兜住。
-   */
-  const cssText = (opts.css + mathCss).replace(/]]>/g, ']]]]><![CDATA[>')
-
-  const svg =
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">` +
-    `<foreignObject x="0" y="0" width="100%" height="100%">` +
-    `<div xmlns="http://www.w3.org/1999/xhtml" style="width:${w}px;height:${h}px">` +
-    `<style><![CDATA[${cssText}]]></style>${xhtml}` +
-    `</div></foreignObject></svg>`
-
-  // 必须用 data URI：blob: 作为 <img> 源时 Chromium 会把画到 canvas 的结果标成
-  // tainted，toDataURL 抛 SecurityError（实测 Edge/Chromium 均如此）
-  const svgUrl = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg)
-
-  const img = new Image()
-  img.decoding = 'sync'
-  await new Promise<void>((resolve, reject) => {
-    img.onload = () => resolve()
-    img.onerror = () => {
-      // 定位用：SVG 加载失败时把 XML 解析器的报错带出来
-      let diag = ''
-      try {
-        const doc = new DOMParser().parseFromString(svg, 'image/svg+xml')
-        const pe = doc.querySelector('parsererror')
-        diag = pe ? (pe.textContent || '').replace(/\s+/g, ' ').slice(0, 240) : 'no-parsererror'
-      } catch (e) {
-        diag = String(e)
-      }
-      reject(new Error(`card-svg-load-failed (${svg.length}B): ${diag}`))
+  try {
+    const card = host.querySelector('.ly-card') as HTMLElement | null
+    if (!card) throw new Error('card-missing')
+    // PDF / 需要整幅底面时才归零；预览与 PNG 保留圆角（见 CaptureOptions.keepRadius）
+    if (opts.keepRadius === false) {
+      card.style.borderRadius = '0'
+      card.style.boxShadow = 'none'
     }
-    img.src = svgUrl
-  })
 
-  const canvas = document.createElement('canvas')
-  canvas.width = Math.round(w * opts.scale)
-  canvas.height = Math.round(h * opts.scale)
-  const ctx = canvas.getContext('2d')
-  if (!ctx) throw new Error('canvas-2d-unavailable')
-  // 'transparent' 不是真的颜色而是"不画"：保留 alpha，圆角边缘透出去
-  if (opts.backdrop !== 'transparent') {
-    ctx.fillStyle = opts.backdrop
-    ctx.fillRect(0, 0, canvas.width, canvas.height)
+    const inlined = await inlineImages(card)
+    restore = inlined.restore
+    // 拉不到的图片（CORS / file:// 被拦）必须摘掉：留在 SVG 里会让 canvas 被标记
+    // 为 tainted，toDataURL 直接抛 SecurityError，整张卡片报废
+    for (const img of inlined.blocked) img.remove()
+
+    const w = size.w
+    const h = size.h
+    const xhtml = new XMLSerializer().serializeToString(card)
+
+    // 公式样式必须跟着走：KaTeX 的 HTML 没有 CSS 就退化成"平铺文字"
+    // （∫₀¹ 会变成 ∫01，上标全部掉到基线上）。没有公式就不塞，省 360KB。
+    const mathCss = fragmentHtml.includes('class="katex') ? KATEX_CSS : ''
+
+    /*
+     * 样式必须包 CDATA。
+     *
+     * SVG 是被 XML 解析器读的，`<style>` 里出现一个裸的小于号（CSS 注释里写
+     * 「ol 的 start 属性」时很自然会写成尖括号形式）就会被当成标签开头，
+     * 报 "Unexpected token inside qualified name" —— 整张卡片渲染失败，
+     * 而且只在导出/预览时炸，编辑器里看不出来。v0.13.0 就踩了这一下。
+     * `]]>` 在 CSS 里不存在，仍按规范切成两段 CDATA 兜住。
+     */
+    const cssText = (opts.css + mathCss).replace(/]]>/g, ']]]]><![CDATA[>')
+
+    const svg =
+      `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">` +
+      `<foreignObject x="0" y="0" width="100%" height="100%">` +
+      `<div xmlns="http://www.w3.org/1999/xhtml" style="width:${w}px;height:${h}px">` +
+      `<style><![CDATA[${cssText}]]></style>${xhtml}` +
+      `</div></foreignObject></svg>`
+
+    const svgBytes = new TextEncoder().encode(svg).length
+    const base = fitScale(w, h, opts.scale)
+
+    /*
+     * 降级链。同一个 SVG 换"怎么交给解码器"，最后再降倍率重画：
+     *   data(base64) 起步 —— 形式最干净也不污染画布，桌面永远走这条
+     *   blob URL    —— WebView 偶发不认超长 data URI 时的正解（若把画布标脏，
+     *                  assertPainted 的 getImageData 会抛，自然落到下一条）
+     *   percent     —— 老编码，兜底"base64 解析失败"这种更少见的情形
+     *   0.65 倍     —— 前三条都失败时，问题通常在画布/内存而不是编码
+     * 每条路都有自己的超时；全失败才抛，错误里带"试过哪几条"。
+     */
+    const plans: Array<{ strategy: CaptureReport['strategy']; scale: number; percent?: boolean }> = [
+      { strategy: 'data', scale: base },
+      { strategy: 'blob', scale: base },
+      { strategy: 'percent', scale: base, percent: true },
+      { strategy: 'data', scale: Math.max(0.3, Math.round(base * 65) / 100) },
+    ]
+
+    const failures: string[] = []
+    // 全部通路都画出"空白"时的保底：留着第一张，链路走完还没好就用它。
+    // 不这么做的话，把纸张色清成透明（`∅`）的模板会被判成"渲染失败"——
+    // 一张真的透明卡片，和"画不出来"在图上是同一件事，只能由人决定。
+    let blankOutcome: CaptureOutcome | null = null
+    for (let i = 0; i < plans.length; i++) {
+      const plan = plans[i]
+      if (probe.fail.includes(plan.strategy) || probe.fail.includes('canvas')) {
+        failures.push(`${plan.strategy}@${plan.scale}:injected`)
+        continue
+      }
+      try {
+        let url: string
+        if (plan.strategy === 'blob') {
+          if (!blobUrl) blobUrl = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }))
+          url = blobUrl
+        } else {
+          url = svgToDataUrl(svg, Boolean(plan.percent))
+        }
+        const img = await loadSvgImage(url, probe.timeoutMs, svg)
+        const canvas = drawToCanvas(img, w, h, plan.scale, opts.backdrop)
+        const report: CaptureReport = {
+          strategy: plan.strategy,
+          svgBytes,
+          urlBytes: url.length,
+          scale: plan.scale,
+          attempts: i + 1,
+          ms: Math.round(performance.now() - t0),
+        }
+        // 污染检查每次都要做（PDF 的底色不透明，丢了这一步脏画布会一路走到编码阶段才炸）
+        try {
+          assertPainted(canvas, opts.backdrop === 'transparent')
+        } catch (e) {
+          const why = String((e as Error).message || e)
+          // 只把"空白"当可容忍情形；被污染的画布编不出来，必须换路
+          if (why === 'canvas-blank') blankOutcome ??= { canvas, report }
+          throw new Error(why)
+        }
+        return { canvas, report }
+      } catch (err) {
+        const msg = String((err as Error).message || err)
+        failures.push(`${plan.strategy}@${plan.scale}:${msg}`)
+      }
+    }
+    if (blankOutcome) return blankOutcome
+    throw new Error(`card-render-failed [${failures.join(' | ')}]`)
+  } finally {
+    // 失败路径也必须收拾干净：host 里挂着一整张卡片 + 一份全量样式，
+    // 留在文档里就是实打实的内存泄漏（手机内存紧，试几次就把后续尝试拖死）
+    try {
+      restore()
+    } catch {
+      /* 忽略 */
+    }
+    host.remove()
+    if (blobUrl) {
+      const u = blobUrl
+      // 留一拍再回收：紧跟着 revoke 有可能打断还在进行的解码
+      setTimeout(() => URL.revokeObjectURL(u), 1000)
+    }
   }
-  ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
-
-  restore()
-  host.remove()
-  return canvas
 }
 
 export function canvasToBlob(canvas: HTMLCanvasElement, type = 'image/png', quality = 0.94): Promise<Blob> {
   return new Promise((resolve, reject) => {
-    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('canvas-encode-failed'))), type, quality)
+    let settled = false
+    const probe = readProbe()
+
+    /** toBlob 失败/超时/回 null 时的兜底：toDataURL 是同步编码，能救回一部分 WebView */
+    const fallback = (why: Error): void => {
+      try {
+        const url = canvas.toDataURL(type, quality)
+        const comma = url.indexOf(',')
+        if (comma < 0) return reject(why)
+        resolve(new Blob([base64ToBytes(url.slice(comma + 1))], { type }))
+      } catch {
+        reject(why)
+      }
+    }
+
+    if (probe.fail.includes('encode')) {
+      settled = true
+      fallback(new Error('canvas-encode-injected'))
+      return
+    }
+
+    const timer = setTimeout(() => {
+      if (settled) return
+      settled = true
+      fallback(new Error('canvas-encode-timeout'))
+    }, probe.timeoutMs)
+
+    try {
+      canvas.toBlob((b) => {
+        if (settled) return
+        settled = true
+        clearTimeout(timer)
+        // WebView 在内存吃紧时会"成功回调但给 null"，不能当成成功
+        if (b && b.size) resolve(b)
+        else fallback(new Error('canvas-encode-failed'))
+      }, type, quality)
+    } catch (e) {
+      settled = true
+      clearTimeout(timer)
+      fallback(e as Error)
+    }
   })
 }
 
@@ -372,35 +713,89 @@ export interface RenderResult {
   size: CardSize
 }
 
+/** 逐页渲染时的回调：面板用它显示「正在渲染 2/5…」，并把渲染诊断挂到状态栏提示上 */
+export interface RenderHooks {
+  onProgress?: (done: number, total: number) => void
+  onReport?: (report: CaptureReport) => void
+}
+
+/**
+ * 让出一帧。
+ *
+ * 多页导出是"连续几秒的同步重活"，中间不让帧的话浏览器根本没机会重绘状态栏 ——
+ * 用户看到的永远是进入时那一行「正在渲染…」，跟卡死一模一样（手机尤其明显，
+ * 还可能触发 ANR）。每页之间让一拍，进度数字才真的会动。
+ */
+function nextFrame(): Promise<void> {
+  return new Promise<void>((resolve) => {
+    const timer = setTimeout(resolve, 48)
+    if (typeof requestAnimationFrame === 'function' && !document.hidden) {
+      requestAnimationFrame(() => {
+        clearTimeout(timer)
+        setTimeout(resolve, 0)
+      })
+    }
+  })
+}
+
+/** 画布用完立刻还内存：多页导出时上一页的 1080×1440 不该陪跑到最后一页 */
+function releaseCanvas(canvas: HTMLCanvasElement): void {
+  canvas.width = 0
+  canvas.height = 0
+}
+
 /** 逐页渲染成 PNG（每页一个文件）。透明底色 + 保留圆角：拿到的是能贴到任何背景上的圆角图 */
 export async function renderPagesToPng(
   pages: CardPage[],
   size: CardSize,
   tpl: CardTemplate,
   backdrop: string,
+  hooks?: RenderHooks,
 ): Promise<RenderResult> {
   const css = stylesheetFor(tpl)
   const blobs: Blob[] = []
-  for (const page of pages) {
-    const canvas = await captureCard(pageAsFragment(page, size, tpl), size, { scale: size.scale, backdrop, css })
-    blobs.push(await canvasToBlob(canvas, 'image/png'))
+  for (let i = 0; i < pages.length; i++) {
+    hooks?.onProgress?.(i, pages.length)
+    await nextFrame()
+    const out = await captureCard(pageAsFragment(pages[i], size, tpl), size, { scale: size.scale, backdrop, css })
+    hooks?.onReport?.(out.report)
+    try {
+      blobs.push(await canvasToBlob(out.canvas, 'image/png'))
+    } finally {
+      releaseCanvas(out.canvas)
+    }
   }
+  hooks?.onProgress?.(pages.length, pages.length)
   return { blobs, size }
 }
 
 /** 逐页渲染后拼成一份 PDF。JPEG 没有 alpha，圆角归零、底色兜满整页 */
-export async function renderPagesToPdf(pages: CardPage[], size: CardSize, tpl: CardTemplate, backdrop: string): Promise<Blob> {
+export async function renderPagesToPdf(
+  pages: CardPage[],
+  size: CardSize,
+  tpl: CardTemplate,
+  backdrop: string,
+  hooks?: RenderHooks,
+): Promise<Blob> {
   const css = stylesheetFor(tpl)
   const imgs: PdfImagePage[] = []
-  for (const page of pages) {
-    const canvas = await captureCard(pageAsFragment(page, size, tpl), size, {
+  for (let i = 0; i < pages.length; i++) {
+    hooks?.onProgress?.(i, pages.length)
+    await nextFrame()
+    const out = await captureCard(pageAsFragment(pages[i], size, tpl), size, {
       scale: size.scale,
       backdrop,
       css,
       keepRadius: false,
     })
-    imgs.push({ jpeg: await canvasToJpeg(canvas), pxW: canvas.width, pxH: canvas.height })
+    hooks?.onReport?.(out.report)
+    try {
+      imgs.push({ jpeg: await canvasToJpeg(out.canvas), pxW: out.canvas.width, pxH: out.canvas.height })
+    } finally {
+      releaseCanvas(out.canvas)
+    }
   }
+  hooks?.onProgress?.(pages.length, pages.length)
   return buildPdf(imgs, size.w * 0.75, size.h * 0.75)
 }
 
@@ -412,13 +807,23 @@ export async function renderPagesToPdf(pages: CardPage[], size: CardSize, tpl: C
  * 320 宽时「圆角 24px」只剩 14 像素、回形针只有 18 像素宽，
  * 用户会觉得"调了没反应"——不是没生效，是看不清。
  */
-export async function renderPagePreview(page: CardPage, size: CardSize, tpl: CardTemplate): Promise<string> {
+export async function renderPagePreview(
+  page: CardPage,
+  size: CardSize,
+  tpl: CardTemplate,
+  hooks?: RenderHooks,
+): Promise<string> {
   const css = stylesheetFor(tpl)
   const scale = Math.min(2, 800 / size.w)
-  const canvas = await captureCard(pageAsFragment(page, size, tpl), size, {
+  const out = await captureCard(pageAsFragment(page, size, tpl), size, {
     scale,
     backdrop: 'transparent',
     css,
   })
-  return canvas.toDataURL('image/png')
+  hooks?.onReport?.(out.report)
+  try {
+    return out.canvas.toDataURL('image/png')
+  } finally {
+    releaseCanvas(out.canvas)
+  }
 }

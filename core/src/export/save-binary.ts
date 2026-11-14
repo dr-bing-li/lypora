@@ -39,6 +39,14 @@ export interface SaveBinaryResult {
   /** 失败原因是用户主动取消（不该弹错误提示） */
   canceled?: boolean
   path?: string
+  /**
+   * 失败发生在哪一步。手机上有必要分清楚：
+   *   canceled → 分享面板被划走，文件其实已经写好了
+   *   share    → 写好了但拉不起分享面板（目标 App 缺失、权限被拦）
+   *   write    → 连文件都没写进去
+   * 这三种在 v0.14.0 之前都显示「导出失败」，用户只能猜。
+   */
+  reason?: 'canceled' | 'write' | 'share'
 }
 
 export async function saveBinary(blob: Blob, filename: string, mime: string): Promise<SaveBinaryResult> {
@@ -47,9 +55,9 @@ export async function saveBinary(blob: Blob, filename: string, mime: string): Pr
     try {
       const buf = new Uint8Array(await blob.arrayBuffer())
       const r = await bridge.saveBinary(buf, filename, mime)
-      return r ? { ok: true, path: r.path } : { ok: false, canceled: true }
+      return r ? { ok: true, path: r.path } : { ok: false, canceled: true, reason: 'canceled' }
     } catch {
-      return { ok: false }
+      return { ok: false, reason: 'write' }
     }
   }
 
@@ -57,9 +65,11 @@ export async function saveBinary(blob: Blob, filename: string, mime: string): Pr
     try {
       const b64 = await toBase64(blob)
       const r = await shareBinary(filename, b64, mime)
-      return r.ok ? { ok: true, path: r.path } : { ok: false }
+      // 插件在"分享面板被关掉"时是 reject 而不是 resolve —— 文件已经落盘，
+      // 这种情况必须报成"取消"，不能报成失败（见 native.ts shareBinary）
+      return { ok: r.ok, canceled: r.reason === 'canceled', path: r.path, reason: r.reason }
     } catch {
-      return { ok: false }
+      return { ok: false, reason: 'write' }
     }
   }
 
@@ -74,6 +84,6 @@ export async function saveBinary(blob: Blob, filename: string, mime: string): Pr
     setTimeout(() => URL.revokeObjectURL(url), 8000)
     return { ok: true }
   } catch {
-    return { ok: false }
+    return { ok: false, reason: 'write' }
   }
 }

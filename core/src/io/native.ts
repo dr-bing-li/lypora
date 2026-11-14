@@ -148,27 +148,40 @@ export async function shareFile(
  * 二进制落盘 + 分享（PNG / PDF / ZIP 用）。
  * Capacitor 的 Filesystem 只认 UTF-8 文本或 base64，所以二进制统一走 base64，
  * 不传 encoding —— 传了 UTF8 会把图片写成一堆替换字符。
+ *
+ * 为什么要区分 reason：Android 的 Share 插件在**用户划走分享面板**时会
+ * `call.reject("Share canceled")`（见 @capacitor/share 的 activityResult），
+ * 而文件在 reject 之前就已经写进 Documents 了。旧代码把这种情况一律当失败，
+ * 于是用户看到「导出失败」去重试，其实第一次就已经成功。这里把"写失败 / 拉不起
+ * 分享 / 用户取消"三种分开报上去，路径也带上，取消时也能告诉用户文件在哪。
  */
 export async function shareBinary(
   name: string,
   base64: string,
   mime: string,
-): Promise<{ ok: boolean; path?: string }> {
-  if (!isNative()) return { ok: false }
+): Promise<{ ok: boolean; path?: string; reason?: 'canceled' | 'write' | 'share' }> {
+  if (!isNative()) return { ok: false, reason: 'share' }
+  let uri = ''
+  const file = safeName(name)
   try {
     await ensureDir()
-    const file = safeName(name)
     await Filesystem.writeFile({
       path: joinPath(file),
       data: base64,
       directory: Directory.Documents,
       recursive: true,
     })
-    const uri = await Filesystem.getUri({ path: joinPath(file), directory: Directory.Documents })
-    await Share.share({ title: file, url: uri.uri, dialogTitle: t('dock.export') })
-    return { ok: true, path: uri.uri }
+    const got = await Filesystem.getUri({ path: joinPath(file), directory: Directory.Documents })
+    uri = got.uri
   } catch {
-    return { ok: false }
+    return { ok: false, reason: 'write' }
+  }
+  try {
+    await Share.share({ title: file, url: uri, dialogTitle: t('dock.export') })
+    return { ok: true, path: uri }
+  } catch (e) {
+    const msg = String((e as Error)?.message || e)
+    return { ok: false, path: uri, reason: /cancel/i.test(msg) ? 'canceled' : 'share' }
   }
 }
 
