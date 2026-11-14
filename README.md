@@ -8,23 +8,24 @@
 
 ![Lypora 界面 / Lypora screenshot](docs/images/lypora.png)
 
-> **v0.14.0** — The heading stops being text and becomes a **shape**. Four new templates follow an idea taken
-> from the free themes of [md2card](https://md2card.cn/zh/editor) — *Art Deco*, *Amber Capsule*, *Cyan Flow*,
-> *Cream Typewriter* — and they forced six new heading fields (**alternate radius**, **block shadow**,
-> **weight**, **tracking**, **leading mark**, **mark colour**) plus a full-width **top bar**.
-> **33 templates**, **46 parameters**, style packages at **schema 6**.
-> Every new field defaults to drawing nothing, so the 29 older templates stay pixel-identical — that claim is
-> asserted, not assumed. One acceptance assertion used to pass by luck: a 1px rule is a 680px-wide "colour band"
-> too, so the capsule measured 84.9% against an 85% threshold while actually occupying 32%; bands are now grouped
-> by row contiguity before width is taken.
-> The direction itself is md2card's work, and for card design it remains the better tool — more themes, finer
-> control. **If a well-made card is the goal, use [md2card](https://md2card.cn/zh/editor) directly**; these
-> templates exist so that wanting one quick card doesn't push you out of the editor.
-> Android 10+: [`apk`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.0/Lypora-0.14.0-android.apk) ·
-> Windows x64: [`zip`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.0/Lypora-0.14.0-win-x64.zip) ·
-> macOS: [`arm64`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.0/Lypora-0.14.0-macos-arm64.tar.gz) / [`x64`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.0/Lypora-0.14.0-macos-x64.tar.gz) ·
-> Linux: [`deb`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.0/lypora_0.14.0_amd64.deb) / [`rpm`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.0/lypora-0.14.0-1.x86_64.rpm) /
-> [`AppImage`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.0/Lypora-0.14.0-linux-x64.AppImage) / [`tar.gz`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.0/Lypora-0.14.0-linux-x64.tar.gz) ·
+> **v0.14.1** — Export survives a phone. On Android, exporting PNG or PDF from the layout panel used to stall on
+> "Rendering…" or fail outright. Four independent causes: the rasteriser had a single route and **no timeout**
+> (a WebView can silently ignore an oversized data URI, and the promise then never settles); image fetching had
+> no ceiling either; failures left the offscreen host and rewritten `img.src` behind; and dismissing the share
+> sheet was reported as a failure although the file **had already been written**.
+> Now a four-step degradation chain — base64 data URI → blob URL → percent data URI → redraw at 0.65× — six
+> seconds each, with the canvas checked on **every** route (a `blob:` source taints it in Chromium), `try/finally`
+> cleanup, per-page progress, and three distinct outcomes for cancel / write failure / share failure.
+> Desktop output is **byte-identical to 0.14.0**, asserted with sha256, not eyeballed.
+> Card templates still follow an idea taken from the free themes of
+> [md2card](https://md2card.cn/zh/editor) — and for card design itself md2card remains the better tool, with more
+> themes and finer control. **If a well-made card is the goal, use [md2card](https://md2card.cn/zh/editor)
+> directly**; these templates exist so that wanting one quick card doesn't push you out of the editor.
+> Android 10+: [`apk`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.1/Lypora-0.14.1-android.apk) ·
+> Windows x64: [`zip`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.1/Lypora-0.14.1-win-x64.zip) ·
+> macOS: [`arm64`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.1/Lypora-0.14.1-macos-arm64.tar.gz) / [`x64`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.1/Lypora-0.14.1-macos-x64.tar.gz) ·
+> Linux: [`deb`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.1/lypora_0.14.1_amd64.deb) / [`rpm`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.1/lypora-0.14.1-1.x86_64.rpm) /
+> [`AppImage`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.1/Lypora-0.14.1-linux-x64.AppImage) / [`tar.gz`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.1/Lypora-0.14.1-linux-x64.tar.gz) ·
 > [all releases](https://github.com/dr-bing-li/lypora/releases)
 
 ```bash
@@ -34,6 +35,30 @@ cd core && npm install && npm run build
 # 2. run it locally
 npm run preview        # http://127.0.0.1:4173
 ```
+
+### What changed in v0.14.1
+
+- **One route, no timeout, dead button.** `captureCard` awaited `img.onload` and nothing else. When a WebView
+  ignores an oversized data URI it neither loads nor errors, so the promise never settles: the status bar stays
+  on "Rendering…" and `busy` never clears, which makes every later tap return silently. Every step now has a
+  ceiling — image fetch, image decode, SVG load — and the whole thing moved onto a degradation chain.
+- **The chain.** `data(base64)` → `blob:` URL → `percent` data URI → redraw at 0.65×, 6s each. Only when all four
+  fail does it throw, and the error names the attempts (`card-render-failed [data@2:… | blob@2:… | …]`).
+- **The canvas is checked on every route.** A `blob:` URL taints the canvas in Chromium and `toBlob` throws
+  SecurityError; the PDF route paints an opaque backdrop and used to skip the blank check, so a tainted canvas
+  would only explode at the encoder — which would have made the fallback chain pointless. Nine `getImageData`
+  probes now separate "fully transparent" from "tainted".
+- **Failures clean up.** Host node, rewritten `img.src`, blob URLs and the `busy` flag all live in `try/finally`.
+- **Cancel is not failure.** `@capacitor/share` rejects when the sheet is dismissed, but the file is already in
+  `Documents/Lypora`. The panel now reports "saved, not shared" instead of "export failed".
+- **Progress and diagnosis.** Per-page "Rendering 2/5" and a status-bar `title` carrying route, bytes, elapsed
+  time and attempt count — readable by long-press on a phone, which is what makes a field report actionable.
+- **Two blemishes fixed.** The "star" bullet no longer shows the raw key `tpl.bullet.star` (all seven locales,
+  480 → 486 entries), and the two help pages rewritten in 0.14.0 are finally bundled.
+- **`beautify-check` 10 → 11 groups.** The new C6 group injects faults through a localStorage probe:
+  an injected failure on the base64 route still produces a PDF whose sha256 matches the baseline **byte for
+  byte**; an all-routes failure turns the status red in ~50ms and leaves `[data-ly-capture]` count at 0; clearing
+  the probe exports again with the same hash.
 
 ### What changed in v0.14.0
 
@@ -65,7 +90,8 @@ npm run preview        # http://127.0.0.1:4173
   (≥12 contiguous rows) before the widest row is taken, and height is measured on a vertical strip instead —
   white glyphs cut the run into pieces, so a 69px capsule used to read as 18 rows.
 
-See [`docs/releases/v0.14.0/notes.md`](docs/releases/v0.14.0/notes.md) for the full bilingual changelog.
+See [`docs/releases/v0.14.1/notes.md`](docs/releases/v0.14.1/notes.md) for the full bilingual changelog of this
+release, and [`docs/releases/v0.14.0/notes.md`](docs/releases/v0.14.0/notes.md) for the style layer it builds on.
 ### Deployment
 
 **A. Browser / PWA (any static host)**
@@ -340,20 +366,23 @@ Lypora 是一个即时渲染的 Markdown 编辑器。你在编辑区里写 Markd
 
 ### 下载
 
-最新版本：**[v0.14.0](https://github.com/dr-bing-li/lypora/releases/tag/v0.14.0)** · 全部构建见
+最新版本：**[v0.14.1](https://github.com/dr-bing-li/lypora/releases/tag/v0.14.1)** · 全部构建见
 [Releases 页面](https://github.com/dr-bing-li/lypora/releases)。
 
-> **v0.14.0 改了什么：** 标题不再只是字，而是一块**图形**。四套新模板的**灵感来自
-> [md2card](https://md2card.cn/zh/editor) 的免费样式**——黑金菱纹、橙光胶囊、青蓝流线、米纸铅字，
-> 模板 **29 → 33 套**。它们逼出六个新标题字段：**对角圆角**、
-> **块投影**（无/轻/光晕）、**字重**、**字距**、**前置标记**（竖条/菱形）与**标记色**，外加一条**顶部通栏
-> 色条**。参数 **44 → 46 项**（每级标题 12 → 18 项，面板 107 → 118 个控件），样式包升到 **schema 6**。
-> 所有新字段默认"不画"，29 套老模板逐像素不变——这条有断言守着。验收里还揪出一个**险过**的假通过：
-> 一条 1px 的浅色分隔线也是"有色横带"，胶囊因此被量成卡宽的 84.9%（阈值 85%）而实际只占 32%；
-> 现在先按"连续行拼块"再取最宽行。灵感归灵感、实现归实现：这四套是用我们自己的 schema 重新画的。
-> 不过做卡片这件事，**md2card 比我们专业得多**（主题更多、版式控制更细）—— 真要做好看的卡片，
-> **建议直接去用它**；这里的模板只是让你写东西时顺手能出一张，不替代它。完整双语说明见
-> [`docs/releases/v0.14.0/notes.md`](docs/releases/v0.14.0/notes.md)。
+> **v0.14.1 改了什么：** 安卓上「排版 → 导出 PNG / PDF」会停在「正在渲染…」或直接报失败，这一版把它修掉。
+> 四个独立成因：光栅化只有一条路且**全程没有超时**（WebView 会静默忽略超长 data URI，Promise 永不 settle，
+> `busy` 卡住后按钮看着像死了）；取图同样无限等；失败时离屏宿主与改写过的 `img.src` 不还原；分享面板
+> 被划走时 `@capacitor/share` 抛错，**文件其实已经落盘**却报成「导出失败」。
+> 现在是一条四级降级链 —— base64 data URI → blob URL → percent data URI → 0.65 倍重画，每步 6 秒，
+> **每条路都验画布**（`blob:` 在 Chromium 会标脏画布，而 PDF 那条路原来看不出这个问题），
+> 全部 `try/finally`，逐页显示进度，落盘结果分「取消 / 写失败 / 分享失败」三种。
+> 桌面像素输出与 0.14.0 **逐字节相同**，这一点用 sha256 断言，不靠肉眼。
+> 模板方向的灵感归灵感：那几套样式是从 [md2card](https://md2card.cn/zh/editor) 的免费样式**借鉴的灵感**，
+> 用我们自己的 schema 重新画的；而做卡片这件事，**md2card 比我们专业得多**（主题更多、版式控制更细）——
+> 真要做好看的卡片，**建议直接去用它**，这里的模板只是让你写东西时顺手能出一张。
+> 0.14.0 的样式层（33 套 / 46 项 / schema 6）与完整双语说明见
+> [`docs/releases/v0.14.0/notes.md`](docs/releases/v0.14.0/notes.md)，本版说明见
+> [`docs/releases/v0.14.1/notes.md`](docs/releases/v0.14.1/notes.md)。
 
 | 文件 | 平台 | 格式 | 大小 | SHA256 |
 |---|---|---|---|---|
