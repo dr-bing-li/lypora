@@ -20,14 +20,15 @@ It takes over the whole editor area (the menu bar stays). Three columns, left to
 - **Export / import style package**: see "Style packages" below.
 - Importing a template whose id already exists appends a suffix; built-ins are never overwritten.
 
-## Parameters (46 in 12 groups)
+## Parameters (46 items)
 
 | Group | Items |
 | --- | --- |
 | Colour | paper, ink, muted, accent, code background, quote background, quote rule |
 | Metrics | body size, line height, title size, side padding, corner radius |
 | Toggles | header rule, page numbers |
-| Background | 9 texture presets (none / kraft / lined / grid / dots / watercolour / fibre / mesh / perforated / lattice) or your own image, plus opacity |
+| Background | 7 paper presets (kraft / ruled / grid / dots / watercolour / xuan paper / mesh glow) + your own image + opacity |
+| Texture & decoration | 9 textures (grain / grid / dots / ruled / fibre / halo / stripe / sprockets / lattice), accent mark (left / top / corner), corner treatment (fold / round cut), 5 outer frames, tape, binding |
 | Typography | 6 quote styles, 7 bullet styles, 5 title marks, 5 outer frames |
 | Stamp | on/off, 4 presets (round Chinese seal, square seal, strip, handwritten signature), corner position, size |
 | Header & footer | free text for header-left, header-right and footer |
