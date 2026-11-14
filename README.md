@@ -386,14 +386,14 @@ Lypora 是一个即时渲染的 Markdown 编辑器。你在编辑区里写 Markd
 
 | 文件 | 平台 | 格式 | 大小 | SHA256 |
 |---|---|---|---|---|
-| [`lypora_0.14.1_amd64.deb`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.1/lypora_0.14.1_amd64.deb) | Debian 11+ / Ubuntu 20.04+ / 深度 / 麒麟 | 系统包，`sudo apt install ./…deb` | 81.0 MiB | ab30771a…a9ea39 |
-| [`lypora-0.14.1-1.x86_64.rpm`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.1/lypora-0.14.1-1.x86_64.rpm) | Fedora 32+ / RHEL 9+ / openSUSE | 系统包，`sudo dnf install ./…rpm` | 105.0 MiB | 587856d8…804a94 |
-| [`Lypora-0.14.1-linux-x64.AppImage`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.1/Lypora-0.14.1-linux-x64.AppImage) | 任意 x86-64 发行版 | 单文件，`chmod +x` 后直接跑 | 96.8 MiB | 6153776d…96fe3c |
-| [`Lypora-0.14.1-linux-x64.tar.gz`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.1/Lypora-0.14.1-linux-x64.tar.gz) | 任意 x86-64 发行版（glibc ≥ 2.31） | tar.gz + `install.sh`（per-user，不要 root） | 104.4 MiB | 527db394…3992f1 |
-| [`Lypora-0.14.1-win-x64.zip`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.1/Lypora-0.14.1-win-x64.zip) | Windows 10/11 x64 | 便携版 ZIP，解压即用 | 111.8 MiB | db9d556a…224529 |
-| [`Lypora-0.14.1-macos-arm64.tar.gz`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.1/Lypora-0.14.1-macos-arm64.tar.gz) | macOS 11+（Apple Silicon） | `.app` bundle，ad-hoc 签名 | 98.6 MiB | f14c8048…82c995 |
-| [`Lypora-0.14.1-macos-x64.tar.gz`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.1/Lypora-0.14.1-macos-x64.tar.gz) | macOS 11+（Intel） | `.app` bundle，ad-hoc 签名 | 103.0 MiB | 5a17c139…927a9b |
-| [`Lypora-0.14.1-android.apk`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.1/Lypora-0.14.1-android.apk) | Android 10+（API 29+） | APK，debug 签名，直接侧载 | 13.7 MiB | e1fe52c1…d7d5b8 |
+| [`lypora_0.14.1_amd64.deb`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.1/lypora_0.14.1_amd64.deb) | Debian 11+ / Ubuntu 20.04+ / 深度 / 麒麟 | 系统包，`sudo apt install ./…deb` | 81.0 MiB | 1101da02…8a18fe |
+| [`lypora-0.14.1-1.x86_64.rpm`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.1/lypora-0.14.1-1.x86_64.rpm) | Fedora 32+ / RHEL 9+ / openSUSE | 系统包，`sudo dnf install ./…rpm` | 105.0 MiB | f8381022…916c0d |
+| [`Lypora-0.14.1-linux-x64.AppImage`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.1/Lypora-0.14.1-linux-x64.AppImage) | 任意 x86-64 发行版 | 单文件，`chmod +x` 后直接跑 | 96.8 MiB | f0ed5687…2464ae |
+| [`Lypora-0.14.1-linux-x64.tar.gz`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.1/Lypora-0.14.1-linux-x64.tar.gz) | 任意 x86-64 发行版（glibc ≥ 2.31） | tar.gz + `install.sh`（per-user，不要 root） | 104.4 MiB | 1ed034da…0a8079 |
+| [`Lypora-0.14.1-win-x64.zip`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.1/Lypora-0.14.1-win-x64.zip) | Windows 10/11 x64 | 便携版 ZIP，解压即用 | 111.8 MiB | 4f7e4c0f…7572b0 |
+| [`Lypora-0.14.1-macos-arm64.tar.gz`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.1/Lypora-0.14.1-macos-arm64.tar.gz) | macOS 11+（Apple Silicon） | `.app` bundle，ad-hoc 签名 | 98.6 MiB | 66dd6b6c…0877da |
+| [`Lypora-0.14.1-macos-x64.tar.gz`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.1/Lypora-0.14.1-macos-x64.tar.gz) | macOS 11+（Intel） | `.app` bundle，ad-hoc 签名 | 103.0 MiB | 38a2cf13…25653d |
+| [`Lypora-0.14.1-android.apk`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.1/Lypora-0.14.1-android.apk) | Android 10+（API 29+） | APK，debug 签名，直接侧载 | 13.7 MiB | 8e5f93d1…34ef10 |
 | [`SHA256SUMS.txt`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.1/SHA256SUMS.txt) | 任意 | 全部产物的校验清单（8 条） | 见文件 | — |
 
 deb / rpm 会装进 `/opt/lypora`，附带 `/usr/bin/lypora` 命令、应用菜单项和 8 档图标，`apt remove` /
