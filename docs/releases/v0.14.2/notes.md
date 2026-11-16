@@ -128,4 +128,14 @@ side-load over the old build.
 
 ## 下载 / Downloads
 
-<!-- DOWNLOADS -->
+| 文件 / File | 平台 / Platform | 格式 / Format | 大小 / Size | SHA256 |
+|---|---|---|---|---|
+| `Lypora-0.14.2-android.apk` | Android 10+（API 29+） | APK（debug 签名，直接安装）<br>APK, debug-signed, sideload | 13.7 MiB | `5129318f1a5a59c9bdd9f94e57b9fa7406440708944b94d72da4b3009de5e332` |
+| `Lypora-0.14.2-linux-x64.AppImage` | 任意 x86-64 发行版 | 单文件，免安装<br>Single file, no install | 96.8 MiB | `981acdf846fb8244bf9b56cd2f72aad306ba0ced0636383d6e644330e534b570` |
+| `Lypora-0.14.2-linux-x64.tar.gz` | 任意 x86-64 发行版（glibc ≥ 2.31） | tar.gz + `install.sh`（per-user） | 104.4 MiB | `96b7151eb5b0b5af411c328b4b5f84191ebed414d02d1afd2eb373e7e26fc645` |
+| `Lypora-0.14.2-macos-arm64.tar.gz` | macOS 11+ / Apple Silicon | `.app` bundle（ad-hoc 签名） | 98.6 MiB | `4fa0358772262be169ba343802e3a1b43bcac14bf21e854faa16617eee95a210` |
+| `Lypora-0.14.2-macos-x64.tar.gz` | macOS 11+ / Intel | `.app` bundle（ad-hoc 签名） | 103.0 MiB | `49e900ed1e14f4e5b7d643093dfbb1ff8029768df55cc8b27ef12649b3776ed3` |
+| `Lypora-0.14.2-win-x64.zip` | Windows 10/11 x64 | 便携版 ZIP（解压即用）<br>Portable ZIP — unzip and run | 111.8 MiB | `ca3d6274e7a35cf844996f497a2137dd7216ff08fae3756fb93a93c82268b33f` |
+| `lypora-0.14.2-1.x86_64.rpm` | Fedora 32+ / RHEL 9+ / openSUSE | 系统包（`dnf install`） | 105.0 MiB | `9678a88cf371784561bb243a7d8e2113cdde5c6339d77ba38adc387fef8e9195` |
+| `lypora_0.14.2_amd64.deb` | Debian 11+ / Ubuntu 20.04+ / 深度 / 麒麟 | 系统包（`apt install`） | 81.0 MiB | `f5f2b85b58bcd291b444c29594fa19fdf9b7fa2d3f6f8681b431ca6f00da5829` |
+
