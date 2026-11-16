@@ -34,7 +34,7 @@ import {
 import { buildSamplePackage, exportPackage, importPackage } from '../export/template/pkg'
 import { compileTemplate, CARD_BASE_CSS, decorAttrs } from '../export/template/compile'
 import { FONT_PRESETS, BG_PRESETS, type CardTemplate } from '../export/template/types'
-import { t } from '../i18n'
+import { has, t, type MessageKey } from '../i18n'
 import { escapeHtml } from '../util'
 import { askText } from './ask'
 
@@ -98,6 +98,74 @@ function saveLayout(s: State): void {
 
 /** 深色模板的背板色：圆角被归零前，边缘露出的颜色 */
 const backdropOf = (tpl: CardTemplate): string => (tpl.dark ? '#12141a' : '#ffffff')
+
+/* ------------------------------------------------------------------ *
+ * 悬停说明（v0.14.2）
+ *
+ * 参数表有 60 多个控件，标签只能写出"是什么"，写不出"调了会怎样"。
+ * 说明放在 `tip.*` 词表里，键名由 labelKey 直接推出来（`tpl.h.bg` → `tip.h.bg`、
+ * `card.splitAuto` → `tip.splitAuto`），所以加控件时只要补一条词条，不用再改面板。
+ *
+ * 为什么不用原生 title：原生提示要 1 秒以上才出、样式不可控、在 Windows 上还会
+ * 跟随鼠标漂移；面板本身是 600px 宽的窄栏，长句提示需要换行与定位。
+ * 这里只用一个 fixed 定位的元素，hover 420ms 后出现在控件上方。
+ * ------------------------------------------------------------------ */
+function tipOf(key: string): string {
+  const k = `tip.${key.replace(/^(?:tpl|card)\./, '')}`
+  return has(k) ? t(k as MessageKey) : ''
+}
+
+let tipEl: HTMLDivElement | null = null
+
+function showTip(anchor: HTMLElement, text: string): void {
+  if (!tipEl) {
+    tipEl = document.createElement('div')
+    tipEl.className = 'ce-tip'
+    tipEl.setAttribute('role', 'tooltip')
+    document.body.appendChild(tipEl)
+  }
+  tipEl.textContent = text
+  tipEl.classList.add('on')
+  const r = anchor.getBoundingClientRect()
+  const tw = tipEl.offsetWidth
+  const th = tipEl.offsetHeight
+  // 优先放上方；上方不够就放下方；左右夹在视口内
+  const top = r.top - th - 8 >= 8 ? r.top - th - 8 : r.bottom + 8
+  const left = Math.max(8, Math.min(window.innerWidth - tw - 8, r.left))
+  tipEl.style.left = `${left}px`
+  tipEl.style.top = `${top}px`
+}
+
+function hideTip(): void {
+  tipEl?.classList.remove('on')
+}
+
+/**
+ * 给一行/一个按钮挂说明：悬停 420ms 出现，移开即收。
+ *
+ * `tapEl` 只给手机用：触屏没有 hover，点标签看一次说明。
+ * **不能**把点击监听挂到整行上 —— 那样一按滑块就被 preventDefault，拖不动了。
+ */
+function bindTip(el: HTMLElement, text: string, tapEl?: HTMLElement | null): void {
+  if (!text) return
+  let timer = 0
+  el.addEventListener('mouseenter', () => {
+    window.clearTimeout(timer)
+    timer = window.setTimeout(() => showTip(el, text), 420)
+  })
+  el.addEventListener('mouseleave', () => {
+    window.clearTimeout(timer)
+    hideTip()
+  })
+  if (tapEl) {
+    tapEl.addEventListener('click', (e) => {
+      if (!window.matchMedia('(hover: none)').matches) return
+      e.preventDefault()
+      if (tipEl?.classList.contains('on')) hideTip()
+      else showTip(el, text)
+    })
+  }
+}
 
 export function createBeautifyPanel(deps: BeautifyDeps): BeautifyHandle {
   let mask: HTMLElement | null = null
@@ -256,6 +324,19 @@ export function createBeautifyPanel(deps: BeautifyDeps): BeautifyHandle {
   /** 统一写入口：改字段 → 存 → 防抖重排（背景/装订等专用控件也走这里） */
   function applyPath(path: string, value: unknown, rebuild = false): void {
     state.template = setPath(state.template, path, value)
+    /*
+     * 气泡/气球/徽标是"带字的形状"：切过去而字还是空的时候给一个占位词。
+     * 不给的话用户看到的就是一块纯色块，第一反应是"这个形状坏了"。
+     * 只在该字段为空时补，用户自己改过的字不会被覆盖。
+     */
+    const m = /^decor\.ornaments\.(\d+)\.shape$/.exec(path)
+    if (m && (value === 'say' || value === 'balloon' || value === 'badge')) {
+      const textPath = `decor.ornaments.${m[1]}.text`
+      if (!String(getPath(state.template, textPath) ?? '').trim()) {
+        state.template = setPath(state.template, textPath, t('tpl.orn.defText'))
+        rebuild = true
+      }
+    }
     saveCurrent(state.template)
     if (rebuild) renderParams()
     window.clearTimeout(debounce)
@@ -268,6 +349,8 @@ export function createBeautifyPanel(deps: BeautifyDeps): BeautifyHandle {
     row.dataset.path = spec.path
     const label = el('label', 'ce-param-label', tl(spec.labelKey))
     row.appendChild(label)
+    // 说明：桌面悬停整行，手机点标签（见 bindTip 的注释）
+    bindTip(row, tipOf(spec.labelKey), label)
 
     const value = getPath(state.template, spec.path)
 
@@ -276,23 +359,34 @@ export function createBeautifyPanel(deps: BeautifyDeps): BeautifyHandle {
     if (spec.kind === 'color') {
       const wrap = el('div', 'ce-color')
       const raw = String(value ?? '')
-      const pick = el('input') as HTMLInputElement
-      pick.type = 'color'
-      pick.value = raw ? toHex6(raw) : '#ffffff'
-      pick.oninput = () => void apply(pick.value)
       // 空字符串是有语义的（标题底色空 = 不铺底、面板底色空 = 不画白卡），
       // 而色板控件表达不了"空"，所以码位直接写「—」并另给一枚清除键
       const code = el('span', 'ce-hex', raw ? raw.slice(0, 18) : '—')
+      let clr: HTMLButtonElement | null = null
+      const pick = el('input') as HTMLInputElement
+      pick.type = 'color'
+      pick.value = raw ? toHex6(raw) : '#ffffff'
+      /*
+       * 选色后必须就地把码位和清除键同步过来。
+       * 颜色分支走的是 apply() → applyPath()，它**不重渲染参数行**（只有形状/背景这类
+       * 需要重建控件的情况才 renderParams），于是行里的 DOM 永远停在"进来时"的样子：
+       * 码位还是「—」、∅ 还是 disabled —— 用户选完色反而清不掉了（0.14.2 验收实测）。
+       */
+      pick.oninput = () => {
+        code.textContent = pick.value
+        if (clr) clr.disabled = false
+        void apply(pick.value)
+      }
       wrap.appendChild(pick)
       if (spec.clearable) {
-        const clr = el('button', 'ce-mini', '∅') as HTMLButtonElement
+        clr = el('button', 'ce-mini', '∅') as HTMLButtonElement
         clr.type = 'button'
         clr.title = t('card.clearColor')
         clr.dataset.act = 'clear-color'
         clr.disabled = !raw
         clr.onclick = () => {
           code.textContent = '—'
-          clr.disabled = true
+          clr!.disabled = true
           void apply('')
         }
         // 清除键放在色板与码位之间：码位（.ce-hex）必须留在最右，
@@ -371,12 +465,14 @@ export function createBeautifyPanel(deps: BeautifyDeps): BeautifyHandle {
         b.type = 'button'
         b.dataset.val = opt.value
         // 用字符串比较：numeric 下拉的值存进模板后是数字，而 option 的 value 永远是字符串
-        b.classList.toggle('on', String(opt.value) === String(value))
+        const cur = spec.asBool ? (value ? '1' : '0') : String(value)
+        b.classList.toggle('on', String(opt.value) === cur)
         b.onclick = () => {
           for (const sib of Array.from(seg.children)) sib.classList.remove('on')
           b.classList.add('on')
           // 数字型下拉（字重）要转回 number：'0' 是 truthy，写下去会变成 `font-weight: 0`
-          void apply(spec.numeric ? Number(opt.value) : opt.value)
+          // 布尔型（底色范围）同理：'0' 必须转成 false
+          void apply(spec.numeric ? Number(opt.value) : spec.asBool ? opt.value === '1' : opt.value)
         }
         seg.appendChild(b)
       }
@@ -467,7 +563,9 @@ export function createBeautifyPanel(deps: BeautifyDeps): BeautifyHandle {
     g.appendChild(el('div', 'ce-label', tl(labelKey)))
 
     const on = el('div', 'ce-param')
-    on.appendChild(renderToggle(t('tpl.p.stamp'), state.template.decor.stamp, (v) => applyPath('decor.stamp', v)))
+    on.appendChild(
+      renderToggle(t('tpl.p.stamp'), state.template.decor.stamp, (v) => applyPath('decor.stamp', v), 'tpl.p.stamp'),
+    )
     g.appendChild(on)
 
     for (const path of ['decor.stampPreset', 'decor.stampPos', 'decor.stampSize']) {
@@ -499,8 +597,11 @@ export function createBeautifyPanel(deps: BeautifyDeps): BeautifyHandle {
   }
 
   /** 单独的开关行（印章这类要跟在一组控件最前面，又不能进 PARAM_SPECS 顺序里） */
-  function renderToggle(label: string, value: boolean, onChange: (v: boolean) => void): HTMLElement {    const row = el('div', 'ce-param')
-    row.appendChild(el('label', 'ce-param-label', label))
+  function renderToggle(label: string, value: boolean, onChange: (v: boolean) => void, tipKey?: string): HTMLElement {
+    const row = el('div', 'ce-param')
+    const lab = el('label', 'ce-param-label', label)
+    row.appendChild(lab)
+    if (tipKey) bindTip(row, tipOf(tipKey), lab)
     const sw = el('button', 'ce-switch') as HTMLButtonElement
     sw.type = 'button'
     sw.classList.toggle('on', value)
@@ -1154,6 +1255,7 @@ export function createBeautifyPanel(deps: BeautifyDeps): BeautifyHandle {
     gTpl.appendChild(el('div', 'ce-label', t('card.templates')))
     const gallery = el('div', 'ce-styles')
     gTpl.appendChild(gallery)
+    bindTip(gTpl, tipOf('card.templates'))
     settings.appendChild(gTpl)
 
     const mineWrap = el('div', 'ce-group')
@@ -1173,6 +1275,7 @@ export function createBeautifyPanel(deps: BeautifyDeps): BeautifyHandle {
         syncSegs()
         void recompute()
       }
+      bindTip(b, tipOf(s.labelKey))
       sizes.appendChild(b)
     }
     gSize.appendChild(sizes)
@@ -1182,9 +1285,9 @@ export function createBeautifyPanel(deps: BeautifyDeps): BeautifyHandle {
     gMode.appendChild(el('div', 'ce-label', t('card.split')))
     const modes = el('div', 'ce-seg')
     for (const m of [
-      { id: 'auto', label: t('card.splitAuto') },
-      { id: 'rule', label: t('card.splitRule') },
-      { id: 'none', label: t('card.splitNone') },
+      { id: 'auto', label: t('card.splitAuto'), tip: 'card.splitAuto' },
+      { id: 'rule', label: t('card.splitRule'), tip: 'card.splitRule' },
+      { id: 'none', label: t('card.splitNone'), tip: 'card.splitNone' },
     ] as const) {
       const b = el('button', 'ce-seg-btn', m.label)
       b.type = 'button'
@@ -1195,6 +1298,7 @@ export function createBeautifyPanel(deps: BeautifyDeps): BeautifyHandle {
         syncSegs()
         void recompute()
       }
+      bindTip(b, tipOf(m.tip))
       modes.appendChild(b)
     }
     gMode.appendChild(modes)
@@ -1210,6 +1314,7 @@ export function createBeautifyPanel(deps: BeautifyDeps): BeautifyHandle {
       saveLayout(state)
       void recompute()
     }
+    bindTip(coverRow, tipOf('card.cover'))
     settings.appendChild(coverRow)
 
     const paramHost = el('div', 'ce-params')
@@ -1339,6 +1444,8 @@ export function createBeautifyPanel(deps: BeautifyDeps): BeautifyHandle {
   }
 
   function close(): void {
+    // 说明浮层挂在 body 上：面板关掉它不会跟着消失，必须显式收
+    hideTip()
     if (mask) mask.remove()
     mask = null
     refs = null

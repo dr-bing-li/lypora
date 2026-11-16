@@ -502,8 +502,28 @@ function starPath(points: number, outer: number, inner: number): string {
 }
 
 /** 单个贴纸的内联 SVG：颜色走变量，导出时随 foreignObject 一起被浏览器画出来 */
+/**
+ * 贴纸上的字用什么颜色。
+ *
+ * 规则：有描边就用描边色（波普那枚「蓝底黑边黑字」的 POP! 就是这么来的），
+ * 没描边就按填充色的亮度自己选 —— 浅粉/浅黄底上写白字是彻底看不见的，
+ * 而这套面板的默认填充就是模板的强调色，谁也不知道用户会挑多浅的颜色。
+ */
+function ornInk(o: { fill: string; stroke: string }): string {
+  if (o.stroke) return o.stroke
+  const m = /^#([0-9a-f]{6})$/i.exec(o.fill || '')
+  if (!m) return '#ffffff'
+  const n = parseInt(m[1], 16)
+  const r = (n >> 16) & 255
+  const g = (n >> 8) & 255
+  const b = n & 255
+  // 感知亮度（Rec.601 权重足够区分「浅色纸」与「饱和色」两类，不必转 LAB）
+  return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.66 ? '#1a1d21' : '#ffffff'
+}
+
 function ornGlyph(o: { shape: string; fill: string; stroke: string }): string {
   const fill = o.fill || 'var(--c-accent)'
+  const ink = ornInk(o)
   const stroke = o.stroke ? ` stroke="${o.stroke}" stroke-width="4" stroke-linejoin="round"` : ''
   if (o.shape === 'star4') {
     return `<svg viewBox="0 0 100 100"><path d="${starPath(4, 48, 16)}" fill="${fill}"${stroke}/></svg>`
@@ -521,7 +541,34 @@ function ornGlyph(o: { shape: string; fill: string; stroke: string }): string {
     return (
       '<svg viewBox="0 0 100 100">' +
       `<circle cx="50" cy="50" r="47" fill="${fill}"${stroke}/>` +
-      '<circle cx="50" cy="50" r="38" fill="none" stroke="currentColor" stroke-width="2.5" opacity="0.55"/>' +
+      `<circle cx="50" cy="50" r="38" fill="none" stroke="${ink}" stroke-width="2.5" opacity="0.55"/>` +
+      '</svg>'
+    )
+  }
+  /*
+   * 对话气泡：一块圆角矩形 + 左下角的小尾巴，走一条闭合路径。
+   * 尾巴不能单独画一个三角形再叠上去 —— 两段描边在接缝处会多一条横线。
+   * 气泡占上方 72%，下面的 28% 留给尾巴，所以文字要往上挪（见 compile.ts）。
+   */
+  if (o.shape === 'say') {
+    return (
+      '<svg viewBox="0 0 100 100">' +
+      '<path d="M26 6 H74 A20 20 0 0 1 94 26 V52 A20 20 0 0 1 74 72 H46 L30 94 L27 72 H26 ' +
+      `A20 20 0 0 1 6 52 V26 A20 20 0 0 1 26 6 Z" fill="${fill}"${stroke}/>` +
+      '</svg>'
+    )
+  }
+  /*
+   * 气球：椭圆 + 下方的打结小三角 + 左上角一道高光。
+   * 高光是"气球是鼓的"唯一线索，去掉就只剩一个椭圆，跟墨点分不出来。
+   */
+  if (o.shape === 'balloon') {
+    return (
+      '<svg viewBox="0 0 100 100">' +
+      `<ellipse cx="50" cy="44" rx="41" ry="38" fill="${fill}"${stroke}/>` +
+      `<path d="M43 82 h14 l-7 13 z" fill="${fill}"${o.stroke ? ` stroke="${o.stroke}" stroke-width="3" stroke-linejoin="round"` : ''}/>` +
+      '<path d="M28 30 C34 16 50 10 62 14" fill="none" stroke="rgba(255,255,255,0.55)" ' +
+      'stroke-width="6" stroke-linecap="round"/>' +
       '</svg>'
     )
   }
@@ -533,12 +580,11 @@ function ornHtml(tpl: CardTemplate): string {
   if (!list.length) return ''
   return list
     .map((o) => {
-      // 文字的色取描边色：波普那枚 POP! 徽标就是"蓝底 + 黑描边 + 黑字"，
-      // 再开一个 textColor 字段只会让面板多一行没人调的控件
+      // 文字的色取描边色；没描边时按填充亮度自动选深/浅（见 ornInk）
       // --o-size 里直接乘缩放系数（--o-k）：宽/高/字号三处都引它，一处改完全跟着缩
       const style =
         `--o-size:calc(${o.size}px * var(--o-k, 1));--o-rot:${o.rotate}deg;` +
-        `--o-bleed:${o.bleed}px;--o-text:${o.stroke || '#ffffff'}`
+        `--o-bleed:${o.bleed}px;--o-text:${ornInk(o)}`
       const text = o.text ? `<b>${escapeHtml(o.text)}</b>` : ''
       return (
         `<i class="ly-orn" data-shape="${o.shape}" data-pos="${o.pos}" style="${style}" aria-hidden="true">` +
@@ -549,45 +595,102 @@ function ornHtml(tpl: CardTemplate): string {
 }
 
 /**
- * 回形针与订书钉的形状。
+ * 装订件的图形（0.14.2 按真实物件重画）。
  *
  * v0.11 及以前是「三个 CSS 边框拼的」：`border: 2.6px + border-bottom-color: transparent`
- * 拼出来的其实是个缺底的口袋，形状与位置都不对（用户一眼看出"显示错误"）。
- * 这里是真正画出线材路径的 SVG，随卡片一起进 foreignObject，缩放不糊、导出不丢。
+ * 拼出来的其实是个缺底的口袋，形状与位置都不对。v0.12 换成 SVG 路径，但仍有
+ * 三处"一眼假"：回形针是一条平灰线、订书钉把两条腿画在纸面上（钉子在纸上是
+ * 贴着的，不是浮着的）、没有长尾夹。这一版按三个物件的真实形态重画：
+ *
+ *   回形针：0.9mm 钢丝。正面看是「外圈长 U + 顶部小 U + 内线收在 2/3」。
+ *           金属质感靠同一条路径叠三层：基准灰、右下暗边、左上高光 —— 相当于
+ *           给线材画了圆柱截面，而不是描一条灰度恒定的线。
+ *   订书钉：钉冠是 1.2mm 宽的扁带，正面**只有这一条**露在纸面上；两条腿穿进
+ *           纸里，纸面留下的是两端的小孔和钉冠下沿一道浅影。
+ *   长尾夹：黑色夹体（上宽下窄、顶部一道卷边）+ 两根折叠下来的钢丝手柄。
  */
 function bindSvg(kind: string): string {
   if (kind === 'clip') {
     /*
      * 一根线走完回形针：左外线下 → 底部大 U → 右外线上 → 顶部小 U → 内线向下「收在中段」。
      *
-     * 内线必须比外圈短：v0.12 初版让它一路画到 y=74，越过了底部大 U（y=70），
-     * 视觉上就是一根多余的尾巴 —— 真回形针的内圈是短的，收在 2/3 处才像。
+     * 内线必须比外圈短：v0.12 初版让它一路画到底部大 U 之外，视觉上就是一根多余的尾巴 ——
+     * 真回形针的内圈收在 2/3 处。
      */
+    const wire = 'M7 9 V71 a11.4 11.4 0 0 0 22.8 0 V15 a5.4 5.4 0 0 0 -10.8 0 V54'
     return (
-      '<svg viewBox="0 0 26 72" aria-hidden="true">' +
-      '<path d="M5 6 V58 a8 8 0 0 0 16 0 V14 a4 4 0 0 0 -8 0 V50" fill="none" stroke="rgba(118,124,132,0.95)" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>' +
-      // 线材高光：同一条路径向外偏 1.4，压一条半透明白，线才有「金属圆柱」的厚度
-      '<path d="M3.6 6 V58 a9.4 9.4 0 0 0 18.8 0 V14 a5.4 5.4 0 0 0 -10.8 0 V50" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="1.1" stroke-linecap="round"/>' +
+      '<svg viewBox="0 0 37 88" aria-hidden="true">' +
+      `<path d="${wire}" fill="none" stroke="#9aa3ad" stroke-width="2.9" stroke-linecap="round" stroke-linejoin="round"/>` +
+      // 暗边压向右下、高光提向左上：两者都不与基准线同心，才有"圆柱"的错觉
+      `<path d="${wire}" transform="translate(0.55 0.9)" fill="none" stroke="rgba(44,51,60,0.5)" stroke-width="1.15" stroke-linecap="round" stroke-linejoin="round"/>` +
+      `<path d="${wire}" transform="translate(-0.55 -0.75)" fill="none" stroke="rgba(255,255,255,0.9)" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"/>` +
       '</svg>'
     )
   }
   if (kind === 'staple') {
     /*
-     * 订书钉是「扁金属带」不是「铁丝」：v0.12 初版用三条等宽 stroke 画的，
-     * 腿长 9、冠宽 38，比例 1:4 → 出来就是一个「⊓」括号字符。
-     *
-     * 真实 24/6 钉：冠 11.7mm、腿 6mm ≈ 1:2，所以这里冠 40、腿 18。
-     * 用填充路径画带状截面（不是描边），腿根压两个暗点表示"扎进纸里"。
+     * 只画钉冠。真实 24/6 钉：冠宽 11.7mm、线材 1.2mm × 0.7mm —— 扁带，
+     * 不是圆铁丝，所以用填充矩形 + 上亮下暗的渐变，而不是 stroke。
+     * 两端各压一个小孔：腿从那里穿下去，这是"钉进纸里"唯一的可见证据。
      */
     return (
-      '<svg viewBox="0 0 48 26" aria-hidden="true">' +
+      '<svg viewBox="0 0 48 16" aria-hidden="true">' +
       '<defs><linearGradient id="ly-staple-g" x1="0" y1="0" x2="0" y2="1">' +
-      '<stop offset="0" stop-color="#a3aab3"/><stop offset="0.4" stop-color="#7b828c"/><stop offset="1" stop-color="#5f666f"/>' +
+      '<stop offset="0" stop-color="#c7ced6"/><stop offset="0.4" stop-color="#8f97a1"/><stop offset="1" stop-color="#606770"/>' +
       '</linearGradient></defs>' +
-      '<path d="M4 4.6 h40 v17.2 h-4.4 V8.6 H8.4 v13.2 H4 Z" fill="url(#ly-staple-g)"/>' +
-      '<path d="M6.2 5.9 h35.6" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="1.1" stroke-linecap="round"/>' +
-      '<circle cx="6.2" cy="21.4" r="1.5" fill="rgba(0,0,0,0.3)"/>' +
-      '<circle cx="41.8" cy="21.4" r="1.5" fill="rgba(0,0,0,0.3)"/>' +
+      // 接触影只有一条：钉冠把纸压出一点点凹，纸面上就是 1px 的浅影。
+      // 画宽了就变成"钉冠下面还垫了一条"，像个小板凳。
+      '<rect x="5" y="8.1" width="38" height="1.6" rx="0.8" fill="rgba(40,44,50,0.13)"/>' +
+      '<rect x="3" y="3.4" width="42" height="4.8" rx="2.4" fill="url(#ly-staple-g)"/>' +
+      '<rect x="5" y="4.2" width="38" height="1.1" rx="0.55" fill="rgba(255,255,255,0.62)"/>' +
+      // 两端下折的暗：腿从这里穿进纸里，正面只剩一点点弯折的阴影
+      '<rect x="4.4" y="6.9" width="2.8" height="1.7" rx="0.85" fill="rgba(30,34,40,0.34)"/>' +
+      '<rect x="40.8" y="6.9" width="2.8" height="1.7" rx="0.85" fill="rgba(30,34,40,0.34)"/>' +
+      '</svg>'
+    )
+  }
+  if (kind === 'binder') {
+    /*
+     * 长尾夹按实物画。上一版的毛病是**比例和手柄走向都不对**：
+     * 夹体画成 36×73 的瘦高条、两根钢丝从顶上一路绕到底，围成一个圈 ——
+     * 那是"文件夹夹子"，不是长尾夹。
+     *
+     * 真实长尾夹夹在纸上时看到的是：一条横着的卷边（手柄的转轴）、下面一块
+     * **接近方形**的深色夹体（上宽下窄，下沿是咬着纸的钳口）、以及**折下来
+     * 垂在纸面上**的一根 U 形钢丝（两端挂在卷边两端，弯在夹体下方）。
+     * 所以这里：卷边 58×14、夹体 50→40 宽 54 高、手柄是一条开口朝上的 U。
+     */
+    return (
+      '<svg viewBox="0 0 96 116" aria-hidden="true">' +
+      '<defs>' +
+      '<linearGradient id="ly-binder-body" x1="0" y1="0" x2="1" y2="0">' +
+      '<stop offset="0" stop-color="#3d444c"/><stop offset="0.3" stop-color="#242a30"/><stop offset="1" stop-color="#0f1317"/>' +
+      '</linearGradient>' +
+      '<linearGradient id="ly-binder-roll" x1="0" y1="0" x2="0" y2="1">' +
+      '<stop offset="0" stop-color="#6a737d"/><stop offset="0.45" stop-color="#333a41"/><stop offset="1" stop-color="#12171c"/>' +
+      '</linearGradient>' +
+      '</defs>' +
+      // 手柄：开口朝上的 U（两端挂在卷边两端，弯在夹体下方），三层错位出金属圆柱感
+      (() => {
+        // 折下来的手柄贴着夹体两腋走（x 26 / 70），弯在钳口下方 —— 画在夹体**之前**，
+        // 被夹体挡住的部分正好不可见，露出来的就是"夹体下方挂着一只 U"
+        const wire = 'M26 28 V72 C26 96 34 110 48 110 C62 110 70 96 70 72 V28'
+        return (
+          `<path d="${wire}" fill="none" stroke="#c3c9d1" stroke-width="4.6" stroke-linecap="round" stroke-linejoin="round"/>` +
+          `<path d="${wire}" transform="translate(0.7 1)" fill="none" stroke="rgba(38,45,53,0.55)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>` +
+          `<path d="${wire}" transform="translate(-0.7 -0.8)" fill="none" stroke="rgba(255,255,255,0.85)" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>`
+        )
+      })() +
+      // 夹体：上宽 50 → 下宽 40，下沿圆弧是钳口（咬着纸的那一侧）
+      '<path d="M23 30 H73 L70 74 Q69.5 83 64 83 H32 Q26.5 83 26 74 Z" fill="url(#ly-binder-body)"/>' +
+      // 卷边（转轴）：比夹体略宽，顶部一道亮线表现圆柱
+      '<rect x="19" y="16" width="58" height="15" rx="7.5" fill="url(#ly-binder-roll)"/>' +
+      '<rect x="23.5" y="18.4" width="49" height="2" rx="1" fill="rgba(255,255,255,0.36)"/>' +
+      // 夹体中线的折痕 + 左侧反光
+      '<path d="M48 36 V79" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="1.4"/>' +
+      '<path d="M27.5 34 L30.5 34 L27.5 72" fill="none" stroke="rgba(255,255,255,0.14)" stroke-width="2.6" stroke-linecap="round"/>' +
+      // 钳口下沿压出的一道深色投影：夹子和纸接触的地方总要暗一点
+      '<path d="M26.5 74 V77 Q26.5 83 32 83 H64 Q69.5 83 69.5 77 V74" fill="none" stroke="rgba(0,0,0,0.34)" stroke-width="2"/>' +
       '</svg>'
     )
   }

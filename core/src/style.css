@@ -2116,7 +2116,9 @@ body.col-resizing * {
  * 13px / 600 权重 / 正文色，靠颜色与字重分层，不靠"缩小"。
  * 去掉 text-transform：28 套模板名是多语言的，德语大写会整行变宽。 */
 .ce-label {
-  font-size: 13px;
+  /* 14px / 600：用户报"11px 的分组标题在 1040px 面板里读不起眼"（v0.9 已提到 13px），
+     再来一轮是因为一行里塞了 18 个参数、分组标题是唯一的导航锚点。 */
+  font-size: 14px;
   font-weight: 600;
   letter-spacing: 0.01em;
   color: var(--fg);
@@ -2449,8 +2451,8 @@ body.col-resizing * {
   display: flex;
   align-items: center;
   gap: 10px;
-  min-height: 26px;
-  font-size: 12px;
+  min-height: 30px;
+  font-size: 12.5px;
   color: var(--fg-muted);
   /* 8 个纹理选项在 390px 宽下放不下一行：允许换行，别把按钮挤出面板 */
   flex-wrap: wrap;
@@ -2460,9 +2462,11 @@ body.col-resizing * {
   min-width: 0;
 }
 .ce-param-label {
-  flex: 0 0 82px;
-  font-size: 11.5px;
-  color: var(--fg-muted);
+  /* 11.5 → 13px，并把颜色从 --fg-muted 提到 --fg：光加 1px 不够，
+     小字发灰才是"看不清改的是哪一项"的主因。层级靠字重与字号拉，不靠降低对比度。 */
+  flex: 0 0 96px;
+  font-size: 13px;
+  color: var(--fg);
 }
 .ce-color {
   display: flex;
@@ -2593,6 +2597,33 @@ body.col-resizing * {
   font-size: 11.5px;
   line-height: 1.5;
   color: var(--fg-chrome-dim);
+}
+
+/* 悬停说明的浮层（v0.14.2）。
+ * 用 fixed 而不是绝对定位：面板的 .ce-settings 是滚动容器，
+ * 绝对定位的提示会被 overflow 裁掉一半。颜色取反（深底浅字）是为了
+ * 在"卡片预览"旁边也读得清 —— 提示经常压在预览图上。 */
+.ce-tip {
+  position: fixed;
+  z-index: 9999;
+  max-width: 264px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  background: var(--fg);
+  color: var(--bg);
+  font-size: 12.5px;
+  line-height: 1.5;
+  letter-spacing: 0;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.22);
+  opacity: 0;
+  transform: translateY(2px);
+  transition: opacity 0.12s ease, transform 0.12s ease;
+  pointer-events: none;
+  white-space: normal;
+}
+.ce-tip.on {
+  opacity: 1;
+  transform: none;
 }
 
 /* ---- schema 5「艺术层」的控件 ---- */

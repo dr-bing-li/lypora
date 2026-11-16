@@ -20,6 +20,7 @@ import {
   HEAD_RULES,
   HR_STYLES,
   LIST_NOS,
+  ORNAMENT_POSITIONS,
   ORNAMENT_SHAPES,
   PANEL_SHADOWS,
   QUOTE_STYLES,
@@ -56,6 +57,13 @@ export interface ParamSpec {
    * 会绕过 `if (weight)` 的判断，真的写出 `font-weight: 0`。
    */
   numeric?: boolean
+  /**
+   * 下拉框的值写回模板时转成布尔。
+   * 「底色范围：通栏 / 仅文字」本质是个开关，但用开关表达时只有一个没头没尾的
+   * 拨钮，用户不知道哪个状态是哪个；两选一的下拉/分段按钮能直接把两个状态叫出名字。
+   * option 的 value 只能是字符串，所以写回时这里转回 true/false。
+   */
+  asBool?: boolean
 }
 
 export const TEXTURES = ['none', 'grain', 'grid', 'dots', 'ruled', 'fiber', 'halo', 'stripe', 'perf', 'lattice'] as const
@@ -73,6 +81,7 @@ export const HR_STYLE_LIST = HR_STYLES
 export const HEAD_RULE_LIST = HEAD_RULES
 export const LIST_NO_LIST = LIST_NOS
 export const ORN_SHAPES = ORNAMENT_SHAPES
+export const ORN_POS = ORNAMENT_POSITIONS
 export const BOXES = SURFACE_BOXES
 export const PICS = SURFACE_IMAGES
 
@@ -221,6 +230,23 @@ export function headSpecs(lv: HeadLevel): ParamSpec[] {
   return [
     { path: `${p}.bg`, kind: 'color', labelKey: 'tpl.h.bg', clearable: true },
     { path: `${p}.fg`, kind: 'color', labelKey: 'tpl.h.fg', clearable: true },
+    /*
+     * 底色范围：通栏 / 仅文字。
+     *
+     * v0.14 及以前是一个叫「收窄」的开关，语义藏在"收窄什么"里，用户找不到，
+     * 也读不出两个状态各是什么。字段仍是 `inline`（schema 6 不再加字段，
+     * 让已经导出的 .zip 样式包继续可用），只是把布尔改成两选一。
+     */
+    {
+      path: `${p}.inline`,
+      kind: 'select',
+      asBool: true,
+      labelKey: 'tpl.h.span',
+      options: [
+        { value: '0', labelKey: 'tpl.hspan.full' },
+        { value: '1', labelKey: 'tpl.hspan.text' },
+      ],
+    },
     { path: `${p}.padX`, kind: 'number', labelKey: 'tpl.p.padX', min: 0, max: 40, step: 1, unit: 'px' },
     { path: `${p}.padY`, kind: 'number', labelKey: 'tpl.h.padY', min: 0, max: 24, step: 1, unit: 'px' },
     { path: `${p}.radius`, kind: 'number', labelKey: 'tpl.p.radius', min: 0, max: 24, step: 1, unit: 'px' },
@@ -248,7 +274,6 @@ export function headSpecs(lv: HeadLevel): ParamSpec[] {
     { path: `${p}.rule`, kind: 'select', labelKey: 'tpl.h.rule', options: enumOpts('tpl.hrule', HEAD_RULES) },
     { path: `${p}.caps`, kind: 'toggle', labelKey: 'tpl.h.caps' },
     { path: `${p}.italic`, kind: 'toggle', labelKey: 'tpl.h.italic' },
-    { path: `${p}.inline`, kind: 'toggle', labelKey: 'tpl.h.inline' },
     {
       path: `${p}.align`,
       kind: 'select',
@@ -266,7 +291,7 @@ export function ornSpecs(idx: number): ParamSpec[] {
   const p = `decor.ornaments.${idx}`
   return [
     { path: `${p}.shape`, kind: 'select', labelKey: 'tpl.orn.shape', options: enumOpts('tpl.ornshape', ORNAMENT_SHAPES) },
-    { path: `${p}.pos`, kind: 'select', labelKey: 'tpl.orn.pos', options: enumOpts('tpl.pos', STAMP_POSITIONS) },
+    { path: `${p}.pos`, kind: 'select', labelKey: 'tpl.orn.pos', options: enumOpts('tpl.pos', ORNAMENT_POSITIONS) },
     { path: `${p}.size`, kind: 'number', labelKey: 'tpl.orn.size', min: 24, max: 160, step: 2, unit: 'px' },
     { path: `${p}.rotate`, kind: 'number', labelKey: 'tpl.orn.rotate', min: -45, max: 45, step: 1, unit: '°' },
     { path: `${p}.bleed`, kind: 'number', labelKey: 'tpl.orn.bleed', min: 0, max: 40, step: 1, unit: 'px' },

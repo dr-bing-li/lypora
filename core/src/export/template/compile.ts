@@ -248,14 +248,21 @@ const DECOR_CSS = `
   background-repeat: repeat-y;
 }
 .ly-card[data-bind="clip"] .ly-bind {
-  top: 2px; left: 50%; width: 30px; height: 78px;
-  transform: translateX(-50%) rotate(-13deg);
-  filter: drop-shadow(1.2px 2.2px 1.6px rgba(0, 0, 0, 0.3));
+  top: 3px; left: 50%; width: 31px; height: 74px;
+  transform: translateX(-50%) rotate(-10deg);
+  filter: drop-shadow(1.6px 2.6px 2.2px rgba(0, 0, 0, 0.32));
 }
+/* 订书钉是扁的：投影只有贴纸那么薄，画成"浮起"就假了 */
 .ly-card[data-bind="staple"] .ly-bind {
-  top: 10px; left: 50%; width: 44px; height: 24px;
-  transform: translateX(-50%) rotate(-6deg);
-  filter: drop-shadow(0.8px 1.6px 1.2px rgba(0, 0, 0, 0.28));
+  top: 11px; left: 50%; width: 46px; height: 15px;
+  transform: translateX(-50%) rotate(-5deg);
+  filter: drop-shadow(0 1.2px 0.8px rgba(0, 0, 0, 0.22));
+}
+/* 长尾夹夹在左上角的纸边上（右手用惯了都往左夹），比正中间自然 */
+.ly-card[data-bind="binder"] .ly-bind {
+  top: 1px; left: 34px; width: 60px; height: 70px;
+  transform: rotate(-6deg);
+  filter: drop-shadow(1.4px 2.4px 2px rgba(0, 0, 0, 0.3));
 }
 
 /* ---- 角饰贴纸（schema 5）----
@@ -277,6 +284,12 @@ const DECOR_CSS = `
 .ly-card .ly-orn[data-pos="tr"] { top: calc(var(--o-bleed, 0px) * -1); right: calc(var(--o-bleed, 0px) * -1); }
 .ly-card .ly-orn[data-pos="bl"] { bottom: calc(var(--o-bleed, 0px) * -1); left: calc(var(--o-bleed, 0px) * -1); }
 .ly-card .ly-orn[data-pos="br"] { bottom: calc(var(--o-bleed, 0px) * -1); right: calc(var(--o-bleed, 0px) * -1); }
+/* 四边中点：居中那一半用 translateX/Y 把自身宽度让出来（rotate 仍由变量控制，
+ * 所以 transform 必须写全，不能用 translate 简写覆盖掉用户设的角度） */
+.ly-card .ly-orn[data-pos="tc"] { top: calc(var(--o-bleed, 0px) * -1); left: 50%; transform: translateX(-50%) rotate(var(--o-rot, 0deg)); }
+.ly-card .ly-orn[data-pos="bc"] { bottom: calc(var(--o-bleed, 0px) * -1); left: 50%; transform: translateX(-50%) rotate(var(--o-rot, 0deg)); }
+.ly-card .ly-orn[data-pos="ml"] { left: calc(var(--o-bleed, 0px) * -1); top: 50%; transform: translateY(-50%) rotate(var(--o-rot, 0deg)); }
+.ly-card .ly-orn[data-pos="mr"] { right: calc(var(--o-bleed, 0px) * -1); top: 50%; transform: translateY(-50%) rotate(var(--o-rot, 0deg)); }
 .ly-card .ly-orn svg { display: block; width: 100%; height: 100%; overflow: visible; }
 /* 徽标上的字：字号跟着贴纸大小走，写死 px 在 40px 的小徽标上会溢出 */
 .ly-card .ly-orn b {
@@ -292,6 +305,17 @@ const DECOR_CSS = `
   color: var(--o-text, #ffffff);
   transform: rotate(var(--o-text-rot, 0deg));
 }
+/* 气泡/气球的字：图形只占上 3/4，字要跟着往上收；6 个汉字一行放不进 88% 宽的气泡，
+ * 所以允许折行（中日韩的 min-content 是一字，flex 项能自己缩下来） */
+.ly-card .ly-orn[data-shape="say"] b,
+.ly-card .ly-orn[data-shape="balloon"] b {
+  padding: 0 11%;
+  font-size: calc(var(--o-size, 64px) * 0.19);
+  line-height: 1.12;
+  text-align: center;
+}
+.ly-card .ly-orn[data-shape="say"] b { inset: 0 0 15% 0; }
+.ly-card .ly-orn[data-shape="balloon"] b { inset: 0 0 24% 0; }
 
 /* ---- 支撑面三态（schema 5）----
  * 只调"包裹感"，不改字号与行高 —— 后者属于 metrics，混在一起会让分页算不准。 */
@@ -987,6 +1011,12 @@ function headCss(t: CardTemplate): string {
       // display:table 让色块收窄到文字宽度（居中时再配 auto 外边距）
       d.push('display: table')
       if (h.align === 'center') d.push('margin-left: auto', 'margin-right: auto')
+      /*
+       * 「仅文字」时给一点左右内边距：色块既然只包住字，字贴着块边就是"没做完"。
+       * 用户自己设了 padX 就听用户的 —— 只在 padX=0 时兜一个 0.42em（跟着字号走，
+       * 副标题小字也不会显得空）。这个兜底只作用于 inline 模式，老模板一个像素不动。
+       */
+      if (!h.padX) d.push('padding-left: 0.42em', 'padding-right: 0.42em')
     }
     // 前置标记：竖条 / 菱形。用 ::before 画，和 background 上的下划线互不占用
     if (h.mark === 'bar' || h.mark === 'diamond') {

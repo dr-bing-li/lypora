@@ -20,6 +20,7 @@ import {
   HEAD_RULES,
   HR_STYLES,
   LIST_NOS,
+  ORNAMENT_POSITIONS,
   ORNAMENT_SHAPES,
   PANEL_SHADOWS,
   QUOTE_STYLES,
@@ -206,7 +207,7 @@ function normalizeOrnaments(raw: unknown, fb: OrnamentSpec[]): OrnamentSpec[] {
     const o = (item && typeof item === 'object' ? item : {}) as Record<string, unknown>
     out.push({
       shape: pickEnum(o.shape, ORNAMENT_SHAPES, 'star5'),
-      pos: pickEnum(o.pos, STAMP_POSITIONS, 'tl'),
+      pos: pickEnum(o.pos, ORNAMENT_POSITIONS, 'tl'),
       size: clampNum(o.size, 24, 160, 64),
       rotate: clampNum(o.rotate, -45, 45, 0),
       fill: optColor(o.fill, '#ff2e63'),

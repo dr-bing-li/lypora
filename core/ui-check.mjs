@@ -855,6 +855,54 @@ async function runLayout(browser) {
     return { n: rights.length, distinct: uniq.length, spread: Math.max(...rights) - Math.min(...rights) }
   })
   check('layout', 'value-column-align', !!aligned && aligned.spread <= 2, aligned ? `${aligned.n} 个数值，右边缘 ${aligned.distinct} 种位置，跨度 ${aligned.spread}px（需 ≤2）` : '找不到数值列')
+
+  /* --- 面板文案不许露出键名（v0.14.2：`card.groupOrn` 曾原样显示） --- */
+  const raw = await page.evaluate(() => {
+    const txt = document.querySelector('.ce')?.innerText || ''
+    return (txt.match(/\b(?:card|tpl)\.[a-zA-Z0-9.]+/g) || []).slice(0, 6)
+  })
+  check('layout', 'no-raw-keys', raw.length === 0, raw.length ? `面板露出键名：${raw.join(', ')}` : '面板里没有裸键名')
+
+  /* --- 字号：分组标题与参数标签要能一眼分清（用户报"太小，看不出改的是哪项"） --- */
+  const fs2 = await page.evaluate(() => {
+    const g = document.querySelector('.ce-label')
+    const p = document.querySelector('.ce-param-label')
+    const cs = (e) => (e ? getComputedStyle(e) : null)
+    return {
+      group: g ? parseFloat(cs(g).fontSize) : 0,
+      param: p ? parseFloat(cs(p).fontSize) : 0,
+      paramW: p ? Math.round(p.getBoundingClientRect().width) : 0,
+    }
+  })
+  check(
+    'layout',
+    'label-type-scale',
+    fs2.group >= 14 && fs2.param >= 13 && fs2.paramW >= 90,
+    `分组标题 ${fs2.group}px / 参数标签 ${fs2.param}px（列宽 ${fs2.paramW}px）；门槛 14 / 13 / 90`,
+  )
+
+  /* --- 悬停说明：每个参数行都要能说清"这一项是干什么的" --- */
+  await page.hover('.ce-param[data-path="metrics.fontSize"]')
+  await page.waitForTimeout(900)
+  const tip = await page.evaluate(() => {
+    const el = document.querySelector('.ce-tip')
+    if (!el) return null
+    const r = el.getBoundingClientRect()
+    return { text: (el.textContent || '').trim(), on: el.classList.contains('on'), w: Math.round(r.width), h: Math.round(r.height) }
+  })
+  check(
+    'layout',
+    'param-tooltip',
+    !!tip && tip.on && tip.text.length >= 6 && tip.h > 0,
+    tip ? `提示「${tip.text}」（${tip.w}×${tip.h}px，显示=${tip.on}）` : '悬停没有出现说明',
+  )
+
+  /* --- 每个参数行都要有说明可挂（缺词条的话 hover 出不来） --- */
+  const tipCoverage = await page.evaluate(() => {
+    const rows = [...document.querySelectorAll('.ce-param[data-path]')]
+    return { rows: rows.length }
+  })
+  check('layout', 'param-rows', tipCoverage.rows >= 40, `参数行 ${tipCoverage.rows} 个（需 ≥40）`)
   await page.screenshot({ path: path.join(OUT, 'layout-desktop.png') })
   await page.context().close()
 }

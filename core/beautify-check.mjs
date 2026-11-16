@@ -584,7 +584,7 @@ if (thumbStats.mounted < thumbStats.total * 0.6) {
   errors.push(`缩略图只挂上 ${thumbStats.mounted}/${thumbStats.total} 张`)
 }
 if (thumbStats.overflow > 0) errors.push(`有 ${thumbStats.overflow} 张缩略图内容溢出卡片`)
-if (thumbStats.labelFont !== '13px') errors.push(`分组标题字号应为 13px，实测 ${thumbStats.labelFont}`)
+if (thumbStats.labelFont !== '14px') errors.push(`分组标题字号应为 14px，实测 ${thumbStats.labelFont}`)
 if (!/^[\u4e00-\u9fa5]{4}$/.test(thumbStats.firstName)) {
   errors.push(`模板名不是四字词：${thumbStats.firstName}`)
 }
@@ -1332,6 +1332,389 @@ for (const lv of ['h1', 'h2']) {
   if (h.bgImage !== 'none') errors.push(`[样式层] 素笺清墨 ${lv} 冒出背景图（${h.bgImage.slice(0, 40)}）`)
   if (h.track !== 'normal') errors.push(`[样式层] 素笺清墨 ${lv} 被改了字距（${h.track}）`)
   // 字重不校验：基础样式给 h1=700 / h2=800，那是模板之外的全局规则，不是新字段写出来的
+}
+
+/* ---------- C7. 面板可读性与新控件（v0.14.2） ---------- */
+
+/**
+ * 在预览图里找一类颜色的包围盒。
+ *
+ * `band` 是每个通道的 [min,max]，不是"离某个颜色多近" —— 这里要找的是
+ * 「用户自己设的那块底色」「那枚贴纸」，它们的色值是本次现设的，
+ * 用固定参照色反而不稳（模板的强调色会变）。
+ */
+const colorBox = async (file, band, region = null) => {
+  const b64 = fs.readFileSync(path.join(OUT, file)).toString('base64')
+  return page.evaluate(
+    async ([d, band2, region2]) => {
+      const img = new Image()
+      img.src = 'data:image/png;base64,' + d
+      await img.decode()
+      const c = document.createElement('canvas')
+      c.width = img.naturalWidth
+      c.height = img.naturalHeight
+      const g = c.getContext('2d')
+      g.drawImage(img, 0, 0)
+      const px = g.getImageData(0, 0, c.width, c.height).data
+      const r0 = region2 ? region2[0] : 0
+      const r1 = region2 ? region2[1] : c.width
+      const r2 = region2 ? region2[2] : 0
+      const r3 = region2 ? region2[3] : c.height
+      let x0 = 1e9
+      let y0 = 1e9
+      let x1 = -1
+      let y1 = -1
+      let n = 0
+      for (let y = r2; y < r3; y++) {
+        for (let x = r0; x < r1; x++) {
+          const i = (y * c.width + x) * 4
+          const r = px[i]
+          const gg = px[i + 1]
+          const b = px[i + 2]
+          if (r >= band2[0][0] && r <= band2[0][1] && gg >= band2[1][0] && gg <= band2[1][1] && b >= band2[2][0] && b <= band2[2][1]) {
+            n++
+            if (x < x0) x0 = x
+            if (x > x1) x1 = x
+            if (y < y0) y0 = y
+            if (y > y1) y1 = y
+          }
+        }
+      }
+      return n ? { n, x0, y0, x1, y1, w: x1 - x0 + 1, h: y1 - y0 + 1, W: c.width, H: c.height } : { n: 0, W: c.width, H: c.height }
+    },
+    [b64, band, region],
+  )
+}
+
+const RED = [
+  [200, 255],
+  [20, 110],
+  [60, 150],
+]
+const METAL = [
+  [95, 215],
+  [100, 220],
+  [105, 225],
+]
+const DARK = [
+  [0, 95],
+  [0, 95],
+  [0, 100],
+]
+
+// 关掉封面页，否则 h1 的形态变化量不到（封面用的是 .ly-title 不是 h1）
+await page.evaluate(() => {
+  const cb = document.querySelector('.ce-check input')
+  if (cb && cb.checked) cb.click()
+})
+await page.waitForTimeout(1400)
+
+const shotAfter = async (name, mutate) => {
+  const prev = await imgSrc()
+  await mutate()
+  await waitPaint(prev, 6000)
+  return grab(name)
+}
+
+/* ① 底色范围：通栏 vs 仅文字 */
+await shotAfter('c7-bg-full.png', async () => {
+  await page.evaluate(() => {
+    const inp = document.querySelector('.ce-param[data-path="decor.headings.h1.bg"] input[type="color"]')
+    inp.value = '#ff2e63'
+    inp.dispatchEvent(new Event('input', { bubbles: true }))
+  })
+})
+const fullBox = await colorBox('c7-bg-full.png', RED)
+await shotAfter('c7-bg-text.png', async () => {
+  await page.evaluate(() => {
+    document.querySelector('.ce-param[data-path="decor.headings.h1.inline"] .ce-seg-btn[data-val="1"]').click()
+  })
+})
+const textBox = await colorBox('c7-bg-text.png', RED)
+report.steps.bgSpan = { full: fullBox.w, text: textBox?.w, fullN: fullBox.n, textN: textBox?.n }
+if (!fullBox.n) errors.push('[可读性] 给 h1 设了底色却在预览里找不到那块颜色')
+else if (!textBox?.n) errors.push('[可读性] 切到「仅文字」后底色块消失（不是收窄，是没了）')
+else {
+  if (!(textBox.w < fullBox.w * 0.75)) errors.push(`[可读性] 「仅文字」没有收窄（通栏 ${fullBox.w}px / 仅文字 ${textBox.w}px）`)
+  if (textBox.w < 40) errors.push(`[可读性] 「仅文字」的色块只剩 ${textBox.w}px，文字被压没了`)
+  // 通栏必须贴住版心两侧：宽度接近正文行宽（±10%）
+  if (!(fullBox.w > fullBox.W * 0.7)) errors.push(`[可读性] 通栏底色没铺满整行（${fullBox.w} / ${fullBox.W}）`)
+}
+
+/* ② 贴纸：新形状 + 四边落点 */
+
+// 先把①那块红底色收掉 —— 否则它是整张卡里最红的东西，下面每个「找红色包围盒」
+// 都会量到它（实测就量出「左中贴纸 x=59、中心 y=149」，那其实是 h1 的高亮块）
+await shotAfter('c7-bg-clear.png', async () => {
+  await page.evaluate(() => {
+    document.querySelector('.ce-param[data-path="decor.headings.h1.bg"] [data-act="clear-color"]').click()
+  })
+})
+
+const ornColor = async (path, hex) => {
+  const prev = await imgSrc()
+  const ok = await page.evaluate(
+    ([p, v]) => {
+      const inp = document.querySelector(`.ce-param[data-path="${p}"] input[type="color"]`)
+      if (!inp) return false
+      inp.value = v
+      inp.dispatchEvent(new Event('input', { bubbles: true }))
+      return true
+    },
+    [path, hex],
+  )
+  if (!ok) throw new Error(`面板里找不到颜色控件 ${path}`)
+  await waitPaint(prev, 6000)
+  await page.waitForTimeout(150)
+}
+
+await page.evaluate(() => document.querySelector('[data-act="orn-add"]').click())
+await page.waitForTimeout(1200)
+// 贴纸自带填充色随模板变，量红色前先把它按死，免得量到模板强调色
+await ornColor('decor.ornaments.0.fill', '#ff2e63')
+// 用「找不到控件就抛」的严格版：`clickSeg` 里是 `?.click()`，控件改名后会静默空转，
+// 于是整组断言拿同一张图互相比、全绿通过 —— 这正是本项目踩过的假通过。
+const ornSeg = async (path, val) => {
+  const prev = await imgSrc()
+  const ok = await page.evaluate(
+    ([p, v]) => {
+      const b = document.querySelector(`.ce-param[data-path="${p}"] .ce-seg-btn[data-val="${v}"]`)
+      if (!b) return false
+      b.click()
+      return true
+    },
+    [path, val],
+  )
+  if (!ok) throw new Error(`面板里找不到控件 ${path} = ${val}`)
+  await waitPaint(prev, 6000)
+  await page.waitForTimeout(150)
+}
+// 贴纸「尺寸」是数值输入（range + number），不是分段按钮 —— 别拿 ornSeg 点它
+const ornNum = async (path, val) => {
+  const prev = await imgSrc()
+  const ok = await page.evaluate(
+    ([p, v]) => {
+      const inp = document.querySelector(`.ce-param[data-path="${p}"] input[type="range"]`)
+      if (!inp) return false
+      inp.value = String(v)
+      inp.dispatchEvent(new Event('input', { bubbles: true }))
+      return true
+    },
+    [path, val],
+  )
+  if (!ok) throw new Error(`面板里找不到数值控件 ${path}`)
+  await waitPaint(prev, 6000)
+  await page.waitForTimeout(150)
+}
+
+await ornNum('decor.ornaments.0.size', 80) // 放大到能量得准
+await ornSeg('decor.ornaments.0.pos', 'ml')
+await ornSeg('decor.ornaments.0.shape', 'star5')
+await page.waitForTimeout(400)
+await grab('c7-orn-ml.png')
+const boxL = await colorBox('c7-orn-ml.png', RED)
+await ornSeg('decor.ornaments.0.pos', 'bc')
+const ornB = await grab('c7-orn-bc.png')
+const boxB = await colorBox('c7-orn-bc.png', RED)
+
+report.steps.ornEdge = {
+  left: boxL.n ? { x0: boxL.x0, cy: Math.round((boxL.y0 + boxL.y1) / 2), H: boxL.H } : null,
+  bottom: boxB.n ? { y1: boxB.y1, H: boxB.H } : null,
+}
+if (!boxL.n) errors.push('[贴纸] 贴到左中后预览里找不到它')
+else {
+  if (boxL.x0 > 10) errors.push(`[贴纸] 「左中」没贴到左边（左边界 x=${boxL.x0}）`)
+  const cy = (boxL.y0 + boxL.y1) / 2
+  if (Math.abs(cy - boxL.H / 2) > boxL.H * 0.08) errors.push(`[贴纸] 「左中」没有垂直居中（中心 y=${Math.round(cy)} / 卡高 ${boxL.H}）`)
+}
+if (!boxB.n) errors.push('[贴纸] 贴到下中后预览里找不到它')
+else if (boxB.H - boxB.y1 > 24) errors.push(`[贴纸] 「下中」没贴到下边（离底 ${boxB.H - boxB.y1}px）`)
+
+// 两种带字的形状：要真的画出图形（与星形不同），且能显示文字
+await ornSeg('decor.ornaments.0.pos', 'mr')
+await ornSeg('decor.ornaments.0.shape', 'say')
+await page.waitForTimeout(500)
+const sayShot = await grab('c7-orn-say.png')
+const sayBox = await colorBox('c7-orn-say.png', RED)
+await ornSeg('decor.ornaments.0.shape', 'balloon')
+await page.waitForTimeout(500)
+const balShot = await grab('c7-orn-balloon.png')
+const balBox = await colorBox('c7-orn-balloon.png', RED)
+// 只比颜色集合（sig）是不够的：两种形状用的是同一 fill / 同一字色，色集天然相同。
+// 量和弦图改的是几何，只有逐像素比才看得出来。
+const shapeDiff = sayShot && balShot ? await diffRatio('c7-orn-say.png', 'c7-orn-balloon.png') : 0
+const ornText = await page.evaluate(() => {
+  const inp = document.querySelector('.ce-param[data-path="decor.ornaments.0.text"] input.ce-text')
+  return inp ? inp.value : ''
+})
+report.steps.ornShapes = {
+  say: sayBox.n ? { w: sayBox.w, h: sayBox.h } : null,
+  balloon: balBox.n ? { w: balBox.w, h: balBox.h } : null,
+  text: ornText,
+  sayVsBalloon: shapeDiff,
+}
+if (!sayBox.n) errors.push('[贴纸] 对话气泡没画出来')
+if (!balBox.n) errors.push('[贴纸] 气球没画出来')
+if (!(shapeDiff > 0.002)) errors.push(`[贴纸] 气泡与气球的图形几乎一样（像素差 ${(shapeDiff * 100).toFixed(2)}%）`)
+if (!ornText) errors.push('[贴纸] 切到带字的形状后文字框是空的（应自动补一个占位词）')
+
+// 收尾：删掉这枚贴纸，别把后面的断言带偏
+await page.evaluate(() => document.querySelector('[data-act="orn-del"]').click())
+await page.waitForTimeout(800)
+
+/* ③ 装订件：长尾夹要真有那一块黑色夹体；订书钉是扁带不是方括号 */
+
+/**
+ * 两张预览图的差异包围盒。
+ *
+ * 装订件不能靠「颜色落在金属灰区间」去框 —— 纸纹、抗锯齿、灰字都会落进去，
+ * 实测回形针被框成 5:1 的宽带（那是整张卡）。真正的判据是
+ * 「选了装订 vs 不装订，哪几个像素变了」，变化区域就是那件东西本身。
+ */
+const diffBox = async (fileA, fileB, region = null, minD = 18) => {
+  const a = fs.readFileSync(path.join(OUT, fileA)).toString('base64')
+  const b = fs.readFileSync(path.join(OUT, fileB)).toString('base64')
+  return page.evaluate(
+    async ([da, db, region2, mD]) => {
+      const load = async (d) => {
+        const img = new Image()
+        img.src = 'data:image/png;base64,' + d
+        await img.decode()
+        return img
+      }
+      const ia = await load(da)
+      const ib = await load(db)
+      if (ia.naturalWidth !== ib.naturalWidth || ia.naturalHeight !== ib.naturalHeight) {
+        return { n: 0, sizeMismatch: true, W: ia.naturalWidth, H: ia.naturalHeight }
+      }
+      const W = ia.naturalWidth
+      const H = ia.naturalHeight
+      const c = document.createElement('canvas')
+      c.width = W
+      c.height = H
+      const g = c.getContext('2d')
+      const pix = async (img) => {
+        g.clearRect(0, 0, W, H)
+        g.drawImage(img, 0, 0)
+        return g.getImageData(0, 0, W, H).data
+      }
+      const pa = await pix(ia)
+      const pb = await pix(ib)
+      const r0 = region2 ? region2[0] : 0
+      const r1 = region2 ? region2[1] : W
+      const r2 = region2 ? region2[2] : 0
+      const r3 = region2 ? region2[3] : H
+      let x0 = 1e9
+      let y0 = 1e9
+      let x1 = -1
+      let y1 = -1
+      let n = 0
+      for (let y = r2; y < r3; y++) {
+        for (let x = r0; x < r1; x++) {
+          const i = (y * W + x) * 4
+          const d =
+            Math.abs(pa[i] - pb[i]) + Math.abs(pa[i + 1] - pb[i + 1]) + Math.abs(pa[i + 2] - pb[i + 2])
+          if (d > mD) {
+            n++
+            if (x < x0) x0 = x
+            if (x > x1) x1 = x
+            if (y < y0) y0 = y
+            if (y > y1) y1 = y
+          }
+        }
+      }
+      if (!n) return { n: 0, W, H }
+      // 中线厚度：只看正中那 10% 列（而且只用强度过阈的墨），
+      // 装订件是带旋转的（-5°），外接框高度会被 `w*sin(θ)` 撑大 —— 量中线才得到"这条带有多厚"
+      const cx0 = Math.round(x0 + (x1 - x0) * 0.45)
+      const cx1 = Math.round(x0 + (x1 - x0) * 0.55)
+      let cy0 = 1e9
+      let cy1 = -1
+      for (let y = y0; y <= y1; y++) {
+        for (let x = cx0; x <= cx1; x++) {
+          const i = (y * W + x) * 4
+          const d =
+            Math.abs(pa[i] - pb[i]) + Math.abs(pa[i + 1] - pb[i + 1]) + Math.abs(pa[i + 2] - pb[i + 2])
+          if (d > mD) {
+            if (y < cy0) cy0 = y
+            if (y > cy1) cy1 = y
+            break
+          }
+        }
+      }
+      const colH = cy1 >= cy0 ? cy1 - cy0 + 1 : 0
+      return { n, x0, y0, x1, y1, w: x1 - x0 + 1, h: y1 - y0 + 1, colH, W, H }
+    },
+    [a, b, region, minD],
+  )
+}
+
+await clickSeg('decor.binding', 'none')
+const noBind = await grab('c7-bind-none.png')
+const IMG_W = noBind?.w ?? 800
+// 横向一律取整幅：长尾夹靠左，回形针/订书钉是 translateX(-50%) 居中放的 ——
+// 早先把区域写成 x<260，居中的那两件直接落在量测区外，diff 恒为 0
+const noBindDark = await colorBox('c7-bind-none.png', DARK, [0, IMG_W, 0, 260])
+
+await clickSeg('decor.binding', 'binder')
+const binderShot = await grab('c7-bind-binder.png')
+const binderDark = await colorBox('c7-bind-binder.png', DARK, [0, IMG_W, 0, 260])
+const binderDiff = await diffBox('c7-bind-none.png', 'c7-bind-binder.png', [0, IMG_W, 0, 260])
+
+await clickSeg('decor.binding', 'staple')
+const stapleShot = await grab('c7-bind-staple.png')
+// 强度阈值抬到 60：只留金属本身，把 2px 的投影模糊挡在外面 ——
+// 投影会把包围盒上下各撑 3px，42×5 的钉冠被量成 61×16（3.8:1），比例就失真了
+const stapleDiff = await diffBox('c7-bind-none.png', 'c7-bind-staple.png', [0, IMG_W, 0, 160], 60)
+await clickSeg('decor.binding', 'clip')
+const clipShot = await grab('c7-bind-clip.png')
+const clipDiff = await diffBox('c7-bind-none.png', 'c7-bind-clip.png', [0, IMG_W, 0, 200])
+await clickSeg('decor.binding', 'none')
+
+report.steps.bindingArt = {
+  binderDark: binderDark.n,
+  noneDark: noBindDark.n,
+  binder: binderDiff.n ? { w: binderDiff.w, h: binderDiff.h, n: binderDiff.n } : null,
+  staple: stapleDiff.n
+    ? {
+        w: stapleDiff.w,
+        h: stapleDiff.h,
+        colH: stapleDiff.colH,
+        line: +(stapleDiff.w / stapleDiff.colH).toFixed(1),
+        box: +(stapleDiff.w / stapleDiff.h).toFixed(1),
+        fill: +(stapleDiff.n / (stapleDiff.w * stapleDiff.colH)).toFixed(2),
+      }
+    : null,
+  clip: clipDiff.n ? { w: clipDiff.w, h: clipDiff.h, ratio: +(clipDiff.h / clipDiff.w).toFixed(1) } : null,
+}
+if (!binderShot || binderShot.sig === noBind?.sig) errors.push('[装订] 选长尾夹后画面没变化')
+if (!(binderDark.n > noBindDark.n + 200)) {
+  errors.push(`[装订] 长尾夹的黑色夹体没画出来（深色像素 ${binderDark.n} vs 无装订 ${noBindDark.n}）`)
+}
+if (!stapleDiff.n || !stapleDiff.colH) errors.push('[装订] 订书钉没画出来')
+else {
+  /*
+   * 「扁带」不是拿外接框宽高比去卡 —— 件是带 -5° 旋转的，外接框高度被 `w·sinθ` 撑大，
+   * 42×5 的钉冠会量成 60×14（4.3:1），看起来"不够扁"，其实是量法错。
+   * 三条一起看才有判别力（实测 6.0 / 0.92 / 4.3）：
+   *   line = 宽 / 中线厚  ≥5    —— 真的扁（钉冠 11.7mm × 1.2mm ≈ 9.8:1）
+   *   fill = 墨面积 /(宽×中线厚) ≤1.35 —— 是一块**实心带**，不是描边的「⊓」（描边会到 1.9 以上）
+   *   box  = 宽 / 外接框高 ≥3.5 —— 没有两条腿把高度撑开（旧版 2.5）
+   */
+  const line = stapleDiff.w / stapleDiff.colH
+  const fill = stapleDiff.n / (stapleDiff.w * stapleDiff.colH)
+  const box = stapleDiff.w / stapleDiff.h
+  if (line < 5) errors.push(`[装订] 订书钉不够扁（宽 ${stapleDiff.w}px / 中线厚 ${stapleDiff.colH}px = ${line.toFixed(1)}，需 ≥5）`)
+  if (fill > 1.35) errors.push(`[装订] 订书钉画成了空框（墨面积占 ${fill.toFixed(2)} 倍带面积，实心带应 ≤1.35）`)
+  if (box < 3.5) errors.push(`[装订] 订书钉外接框偏高（宽高比 ${box.toFixed(1)}，两侧带腿的「⊓」约 2.5）`)
+}
+if (!clipDiff.n) errors.push('[装订] 回形针没画出来')
+else if (clipDiff.h / clipDiff.w < 1.6) {
+  errors.push(`[装订] 回形针比例不对（高宽比 ${(clipDiff.h / clipDiff.w).toFixed(1)}）`)
+}
+if (!binderDiff.n) errors.push('[装订] 长尾夹没有落笔')
+else if (binderDiff.h / binderDiff.w < 1.0) {
+  errors.push(`[装订] 长尾夹该是竖向夹住的（高宽比 ${(binderDiff.h / binderDiff.w).toFixed(1)}）`)
 }
 
 /* ---------- D. 样式包导出 / 导入 ---------- */

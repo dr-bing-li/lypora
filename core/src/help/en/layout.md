@@ -12,6 +12,8 @@ It takes over the whole editor area (the menu bar stays). Three columns, left to
 
 `Esc` or the close button returns to editing. Parameter changes re-paginate automatically (~160ms debounce), so dragging a slider stays smooth.
 
+**Not sure what a control does?** Hover its row for about half a second and a one-line explanation appears (e.g. "Body size — the larger it is, the less fits on a page"). There is no hover on touch screens: tap the label to show it, tap again to dismiss.
+
 ## Templates
 
 - **33 built-ins**, each named with four characters, covering minimal, newspaper/magazine, journal/collage, neon and film looks.
@@ -36,9 +38,9 @@ It takes over the whole editor area (the menu bar stays). Three columns, left to
 | Rules | solid / dashed / stripe / tape / fade / dotted / none, with height, two colours and angle |
 | Table, code, image | 3 states each (flat / boxed / pop; plain / framed / taped) |
 | List numbers | plain / circle badge / square badge |
-| Heading levels | one set per h1–h4 (18 items each): fill (may be a gradient), text colour, padding, radius and **alternate radius**, rotation, shadow and **block shadow**, **weight**, **tracking**, **leading mark** (bar / diamond) and its colour, underline (none / solid / stripe / fade / bar), caps, italic, alignment, inline shrink |
+| Heading levels | one set per h1–h4 (18 items each): fill (may be a gradient) plus **fill span** (full width / text only), text colour, padding, radius and **alternate radius**, rotation, shadow and **block shadow**, **weight**, **tracking**, **leading mark** (bar / diamond) and its colour, underline (none / solid / stripe / fade / bar), caps, italic, alignment |
 | Top bar | height, start colour, end colour — two different colours make it a gradient; height 0 draws nothing |
-| Stickers | shape, corner, size, rotation, fill, stroke, text, bleed — up to 6 |
+| Stickers | 7 shapes, **8 anchors**, size, rotation, fill, stroke, text, bleed — up to 6 |
 | Colour variants | only for templates that ship them (Pop Print: pink-blue / mint / night) |
 
 **Header/footer placeholders**: `{doc}` document name, `{sec}` current section heading, `{date}` today, `{page}` page number, `{total}` total pages. Empty means hidden.
@@ -49,7 +51,7 @@ A footer of `{doc} · {page}/{total}` prints "filename · 3/8" at the bottom of 
 
 ## Decoration
 
-- **Binding**: none / spiral / paperclip / staple. The last two are real SVG wire and metal-ribbon shapes hooked over the top edge.
+- **Binding**: none / spiral / paperclip / staple / **binder clip**. The last three are drawn as SVG from the real object: a paperclip is one continuous wire running from the outer loop to the inner loop (three offset strokes give the round-metal look); a staple is a flat ribbon, not a squared bracket, with the ends bent down; a binder clip is a body that narrows downwards plus a rolled top edge and two wire handles, gripping the top edge of the sheet.
 - **Corner**: none / folded / cut. "Cut" adds 16px on top of the radius slider, so the two stack.
 - **Stamp**: the 4 presets are drawn in CSS (double-ring round seal, vertical square seal, strip, handwritten signature); you can also upload a **transparent PNG** and it is scaled to fit. Position (4 corners) and size are adjustable.
 - **Tape / accent mark / cover motif**: small props the template brings along; just toggle them.
@@ -62,7 +64,7 @@ Templates like *Pop Print* are not about new colours — they are six structural
 - **Inner panel** — the white card: fill, border, radius, padding and **shadow kind** (none / hard sticker shadow / soft). The hard variant is `10px 10px 0` with zero blur — that zero blur *is* the sticker look; any blur turns it into an ordinary drop shadow.
 - **Heading levels** — separate settings for h1–h4: colour block, striped underline, inline shrink (block only as wide as its text), rotation up to ±3°, text shadow. Everything defaults to "draw nothing", which is why the 29 older templates look identical.
 - **Rules** — `---` becomes a thin line, dashed line, 45° stripe or tape; stripes take two colours and an angle.
-- **Stickers** — up to 6, shaped as five-point star, four-point star, burst, badge or blob, anchored to a corner. *Bleed* controls how far it hangs over the edge. For badges the stroke colour doubles as the text colour (the `POP!` badge).
+- **Stickers** — up to 6, in 7 shapes: five-point star, four-point star, burst, badge, blob, **speech bubble** and **balloon**. The last two carry text (switching to them fills in a placeholder you can overwrite); the bubble has its tail at the lower left, the balloon has a knot and a highlight. 8 anchors: the four corners **plus top-centre / bottom-centre / left-middle / right-middle** (the edge ones sit half outside the card). *Bleed* controls how far it hangs over the edge. For badges the stroke colour doubles as the text colour (the `POP!` badge).
 - **Colour variants** — swap the whole palette (paper / pattern ink / accent) in one click. A variant **writes those colours into the current template**; use *Reset* to get the built-in palette back.
 
 All of it still compiles to CSS variables and `data-*` attributes only. No template can inject arbitrary CSS, so a style package cannot restyle the app or smuggle in scripts.

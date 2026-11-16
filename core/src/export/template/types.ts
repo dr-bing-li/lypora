@@ -117,13 +117,13 @@ export type CornerStyle = 'none' | 'fold' | 'round'
 export type CoverLayout = 'center' | 'top' | 'band'
 
 /**
- * 装订位：线圈本、回形针、订书钉。
+ * 装订位：线圈本、回形针、订书钉、长尾夹。
  * 单独一个字段而不是并进 accent —— 强调条在内容边缘，装订位在纸张边缘，
  * 两者的语义（"强调"vs"这是张被装订的纸"）和视觉层都不一样。
  */
-export type BindingStyle = 'none' | 'spiral' | 'clip' | 'staple'
+export type BindingStyle = 'none' | 'spiral' | 'clip' | 'staple' | 'binder'
 
-export const BINDINGS: readonly BindingStyle[] = ['none', 'spiral', 'clip', 'staple']
+export const BINDINGS: readonly BindingStyle[] = ['none', 'spiral', 'clip', 'staple', 'binder']
 
 /**
  * 背景底纹预设。全部由代码生成 CSS 渐变 / SVG data URL，
@@ -333,14 +333,24 @@ export interface RuleSpec {
   angle: number
 }
 
-/** 贴纸图元：五角星 / 四角星 / 爆炸星 / 圆徽标（带字）/ 墨点 */
-export type OrnamentShape = 'star5' | 'star4' | 'burst' | 'badge' | 'blob'
-export const ORNAMENT_SHAPES: readonly OrnamentShape[] = ['star5', 'star4', 'burst', 'badge', 'blob']
+/** 贴纸图元：五角星 / 四角星 / 爆炸星 / 圆徽标（带字）/ 墨点 / 对话气泡（带字）/ 气球（带字） */
+export type OrnamentShape = 'star5' | 'star4' | 'burst' | 'badge' | 'blob' | 'say' | 'balloon'
+export const ORNAMENT_SHAPES: readonly OrnamentShape[] = ['star5', 'star4', 'burst', 'badge', 'blob', 'say', 'balloon']
+
+/**
+ * 贴纸落点：四角 + 四边中点。
+ *
+ * 为什么不复用 StampPos：印章只需要"盖在某个角"，而贴纸经常要"骑在边上"
+ * （比如一枚气泡从右边探进来、一条徽标压在下边缘）。多出四个中点，
+ * 一枚贴纸就能贴在任意一条边而不必用负的出血量去凑。
+ */
+export type OrnPos = StampPos | 'tc' | 'bc' | 'ml' | 'mr'
+export const ORNAMENT_POSITIONS: readonly OrnPos[] = ['tl', 'tc', 'tr', 'ml', 'mr', 'bl', 'bc', 'br']
 
 export interface OrnamentSpec {
   shape: OrnamentShape
-  /** 落点（四角，与印章共用枚举） */
-  pos: StampPos
+  /** 落点（四角 + 四边中点） */
+  pos: OrnPos
   /** 边长 px */
   size: number
   /** 旋转角度 −45..45 */
@@ -349,7 +359,7 @@ export interface OrnamentSpec {
   fill: string
   /** 描边色（空串 = 不描边） */
   stroke: string
-  /** badge/blob 上的字，≤6 字符 */
+  /** badge/blob/say/balloon 上的字，≤6 字符 */
   text: string
   /** 出血：向卡片外顶出的 px，0 = 完全贴边 */
   bleed: number
