@@ -8,24 +8,24 @@
 
 ![Lypora 界面 / Lypora screenshot](docs/images/lypora.png)
 
-> **v0.14.1** — Export survives a phone. On Android, exporting PNG or PDF from the layout panel used to stall on
-> "Rendering…" or fail outright. Four independent causes: the rasteriser had a single route and **no timeout**
-> (a WebView can silently ignore an oversized data URI, and the promise then never settles); image fetching had
-> no ceiling either; failures left the offscreen host and rewritten `img.src` behind; and dismissing the share
-> sheet was reported as a failure although the file **had already been written**.
-> Now a four-step degradation chain — base64 data URI → blob URL → percent data URI → redraw at 0.65× — six
-> seconds each, with the canvas checked on **every** route (a `blob:` source taints it in Chromium), `try/finally`
-> cleanup, per-page progress, and three distinct outcomes for cancel / write failure / share failure.
-> Desktop output is **byte-identical to 0.14.0**, asserted with sha256, not eyeballed.
+> **v0.14.2** — The layout panel, made legible. The sticker group used to print the raw key
+> `card.groupOrn` (missing from all seven locale files); group titles were 13px and parameter names 11.5px in
+> grey, so finding a control was most of the work. Now 14px and 13px against the primary text colour with a
+> wider label column; 7 sticker shapes (a **speech bubble** and a **balloon** carry text) and 8 anchors
+> including the midpoint of all four edges; a **fill span** choice for h1–h4 (full width / text only);
+> redrawn binding hardware — paperclip, staple and a new **binder clip** — modelled on the real objects; and a
+> one-line explanation on hover for about 60 controls (577 entries × 7 locales).
+> One real bug fixed: after picking a colour the "∅" clear button stayed `disabled`, so a colour once chosen
+> could not be cleared.
 > Card templates still follow an idea taken from the free themes of
 > [md2card](https://md2card.cn/zh/editor) — and for card design itself md2card remains the better tool, with more
 > themes and finer control. **If a well-made card is the goal, use [md2card](https://md2card.cn/zh/editor)
 > directly**; these templates exist so that wanting one quick card doesn't push you out of the editor.
-> Android 10+: [`apk`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.1/Lypora-0.14.1-android.apk) ·
-> Windows x64: [`zip`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.1/Lypora-0.14.1-win-x64.zip) ·
-> macOS: [`arm64`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.1/Lypora-0.14.1-macos-arm64.tar.gz) / [`x64`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.1/Lypora-0.14.1-macos-x64.tar.gz) ·
-> Linux: [`deb`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.1/lypora_0.14.1_amd64.deb) / [`rpm`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.1/lypora-0.14.1-1.x86_64.rpm) /
-> [`AppImage`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.1/Lypora-0.14.1-linux-x64.AppImage) / [`tar.gz`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.1/Lypora-0.14.1-linux-x64.tar.gz) ·
+> Android 10+: [`apk`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.2/Lypora-0.14.2-android.apk) ·
+> Windows x64: [`zip`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.2/Lypora-0.14.2-win-x64.zip) ·
+> macOS: [`arm64`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.2/Lypora-0.14.2-macos-arm64.tar.gz) / [`x64`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.2/Lypora-0.14.2-macos-x64.tar.gz) ·
+> Linux: [`deb`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.2/lypora_0.14.2_amd64.deb) / [`rpm`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.2/lypora-0.14.2-1.x86_64.rpm) /
+> [`AppImage`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.2/Lypora-0.14.2-linux-x64.AppImage) / [`tar.gz`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.2/Lypora-0.14.2-linux-x64.tar.gz) ·
 > [all releases](https://github.com/dr-bing-li/lypora/releases)
 
 ```bash
@@ -35,6 +35,35 @@ cd core && npm install && npm run build
 # 2. run it locally
 npm run preview        # http://127.0.0.1:4173
 ```
+
+### What changed in v0.14.2
+
+- **The panel was hard to read.** Group titles 13 → 14px, parameter names 11.5 → 13px and from muted grey to
+  the primary text colour, row height 26 → 30px, label column 82 → 96px — a four-character label no longer
+  wraps onto two lines. `ui-check` now asserts the type scale.
+- **A raw i18n key was on screen.** The sticker group printed `card.groupOrn` in every language. Fixed in all
+  seven locale files, and `no-raw-keys` now fails the build if any row shows a dotted identifier again.
+- **Stickers: 5 shapes → 7, 4 anchors → 8.** New **speech bubble** and **balloon**, both carrying text (a
+  placeholder is filled in on switch so the shape is visible before you type); text colour is chosen from the
+  fill's perceived brightness, so a pale sticker never gets white-on-white. New anchors are the midpoints of
+  all four edges, each sitting half outside the card.
+- **Fill span for h1–h4.** "Full width" or "text only". The old control was a switch named "narrow" whose
+  effect was not obvious. Measured: 682px (85% of the card) versus 344px. The field is still schema 6's
+  `inline`, so exported style packages import unchanged.
+- **Binding hardware redrawn from the real object.** Paperclip: one continuous wire from the outer loop to the
+  inner loop, stroked three times with sub-pixel offsets to read as round metal. Staple: a flat ribbon with a
+  metal gradient, ends bent down into the paper and a 1px contact shadow — measured 60px wide, 10px thick at
+  the centre line (a solid strip, not an outlined `⊓`). Binder clip (new): rolled top edge, near-square dark
+  body, U-shaped wire handle hanging below the jaw.
+- **Hover explanations.** About 60 notes × 7 languages (486 → 577 entries), shown after ~0.4s. On touch
+  screens you tap the label; the handler is bound to the label only, never the row, or it would swallow
+  slider drags.
+- **A real bug: a colour once chosen could not be cleared.** The colour row is not re-rendered when a colour is
+  picked, so its "∅" button kept the `disabled` state it had when the row was built. Now synced in `oninput`.
+- **`beautify-check` 11 → 12 groups.** The new C7 group measures preview pixels only: fill span, the four edge
+  anchors, the two text-bearing shapes differing by 0.46% of pixels, and the three binding items measured as
+  the **difference between "binding" and "none"** — a metal-grey colour range also catches paper texture and
+  grey type, which turned a 1.9:1 paperclip into a 5:1 stripe across the whole card on the first attempt.
 
 ### What changed in v0.14.1
 
@@ -60,38 +89,9 @@ npm run preview        # http://127.0.0.1:4173
   byte**; an all-routes failure turns the status red in ~50ms and leaves `[data-ly-capture]` count at 0; clearing
   the probe exports again with the same hash.
 
-### What changed in v0.14.0
-
-- **schema 6, the style layer.** Six new fields per heading level — `radiusAlt` (alternate radius for corners
-  2 and 4), `elev` (none / soft / glow), `weight`, `track`, `mark` (bar / diamond) and `markColor` — plus
-  `decor.topBar { height, from, to }`. Every default draws nothing, and `isPlainHead()` includes all six in its
-  fully-default test, so the 29 older templates emit the same number of `.ly-head` rules as before.
-- **Four new templates.** *Art Deco* (`deco`): near-black paper under a full-page diamond lattice, 3px gold
-  gradient top bar, upper-case letter-spaced h1, gold diamond before h2. *Amber Capsule* (`pillorange`): a
-  gradient capsule h2 — radius 30 on a 60px block is exactly half its height, which is what makes it a capsule
-  and not a rounded rectangle. *Cyan Flow* (`cyanflow`): `border-radius: 8px 24px 8px 24px`, i.e. `radius` plus
-  `radiusAlt` compiled to `a b a b`. *Cream Typewriter* (`typograph`): two creams (`#f5efe0` paper, `#f8f3e3`
-  inner card), dotted rules, centred weight-400 headings.
-- **The lattice is two repeating gradients, not an SVG tile.** The stylesheet is inlined into the SVG `<style>`
-  on export, so every data URI is one more silent-blank-card failure point; a 45° repeating gradient measures
-  its period along the normal, so a 20px diamond edge is exactly a 14px period.
-- **The top bar is `.ly-topbar` + `[data-topbar]`, not `:has()`.** `:has` fails silently on Android WebView and
-  old Edge, and this band is the shared identity of all four templates.
-- **Panel: 107 → 118 controls** (12 → 18 heading fields per level, plus a top-bar group of three).
-- **A bug that could hide your headings**: `<option value>` is always a string and `'0'` is truthy, so
-  "weight: inherit" wrote `font-weight: 0`. `ParamSpec.numeric` converts on write-back.
-- **`beautify-check` 9 → 10 groups.** The new C5 group takes one pixel assertion per template plus a regression
-  on the oldest: black paper and 1456 gold pixels across 6 of 8 vertical bands; a 257×60px capsule at 32.1% of
-  the card width; a first row inset 9 / 28px on its two sides (the 8/24 pair); two creams 15 apart and a rule
-  alternating 115 times at 47% coverage; and *Plain Paper* still reporting `data-topbar=none`,
-  `background-image: none` and `letter-spacing: normal`.
-- **One assertion was passing by luck and got fixed**: a 1px pale rule is also a 680px colour band, so the
-  capsule measured 84.9% against an 85% ceiling while really occupying 32%. Rows are now grouped into blocks
-  (≥12 contiguous rows) before the widest row is taken, and height is measured on a vertical strip instead —
-  white glyphs cut the run into pieces, so a 69px capsule used to read as 18 rows.
-
-See [`docs/releases/v0.14.1/notes.md`](docs/releases/v0.14.1/notes.md) for the full bilingual changelog of this
-release, and [`docs/releases/v0.14.0/notes.md`](docs/releases/v0.14.0/notes.md) for the style layer it builds on.
+See [`docs/releases/v0.14.2/notes.md`](docs/releases/v0.14.2/notes.md) for the full bilingual changelog of this
+release, and [`docs/releases/v0.14.1/notes.md`](docs/releases/v0.14.1/notes.md) for the Android export hardening
+before it.
 ### Deployment
 
 **A. Browser / PWA (any static host)**
@@ -110,7 +110,7 @@ backend required. Serving it over HTTPS gives you installable PWA behaviour and 
 ```bash
 node tools/pack-win.mjs --zip
 # -> release/Lypora/Lypora.exe           double-click to run
-# -> release/Lypora-0.14.1-win-x64.zip    ready to hand out
+# -> release/Lypora-0.14.2-win-x64.zip    ready to hand out
 ```
 
 Requires `desktop/node_modules/electron/dist` (`npm install` inside `desktop/` downloads it). The packer also
@@ -123,8 +123,8 @@ stamps the icon and version metadata into the executable.
 curl -LO https://github.com/electron/electron/releases/download/v33.4.11/electron-v33.4.11-darwin-arm64.zip
 python tools/pack-mac.py --zip electron-v33.4.11-darwin-arm64.zip --arch arm64
 python tools/pack-mac.py --zip electron-v33.4.11-darwin-x64.zip   --arch x64
-# -> release/Lypora-0.14.1-macos-arm64.tar.gz
-# -> release/Lypora-0.14.1-macos-x64.tar.gz
+# -> release/Lypora-0.14.2-macos-arm64.tar.gz
+# -> release/Lypora-0.14.2-macos-x64.tar.gz
 ```
 
 The packer rebuilds Electron's prebuilt zip into a real `Lypora.app` bundle — rewritten `Info.plist`
@@ -138,7 +138,7 @@ The result is **ad-hoc signed, not notarised** — there is no Developer ID cert
 launch will be stopped by Gatekeeper; either **right-click → Open → Open** once, or use the bundled helper:
 
 ```bash
-tar xzf Lypora-0.14.1-macos-arm64.tar.gz && cd Lypora-0.14.1-macos-arm64
+tar xzf Lypora-0.14.2-macos-arm64.tar.gz && cd Lypora-0.14.2-macos-arm64
 sh mac-finalize.command     # strip quarantine, ad-hoc re-sign, verify
 ```
 
@@ -150,11 +150,11 @@ and under Rosetta.
 ```bash
 curl -LO https://github.com/electron/electron/releases/download/v33.4.11/electron-v33.4.11-linux-x64.zip
 python tools/pack-linux.py --zip electron-v33.4.11-linux-x64.zip
-# -> release/Lypora-0.14.1-linux-x64.tar.gz
+# -> release/Lypora-0.14.2-linux-x64.tar.gz
 ```
 
 ```bash
-tar xzf Lypora-0.14.1-linux-x64.tar.gz && cd Lypora
+tar xzf Lypora-0.14.2-linux-x64.tar.gz && cd Lypora
 ./install.sh          # per-user: ~/.local/share/lypora, .desktop entry, hicolor icons
 ./lypora.sh           # ...or just run it in place
 ```
@@ -172,12 +172,12 @@ everything it added. Target **x86-64, glibc ≥ 2.31** (Ubuntu 20.04+, Debian 11
 python tools/linux-stage.py --zip electron-v33.4.11-linux-x64.zip --stage build/stage --deb
 
 # 2) the three wrappers need Linux binaries (dpkg-deb / rpmbuild / appimagetool)
-dpkg-deb --build --root-owner-group build/stage release/lypora_0.14.1_amd64.deb
-rpmbuild -bb --define "_version 0.14.1" --define "_stage_root $PWD/build/stage" \
+dpkg-deb --build --root-owner-group build/stage release/lypora_0.14.2_amd64.deb
+rpmbuild -bb --define "_version 0.14.2" --define "_stage_root $PWD/build/stage" \
          --define "_topdir $PWD/build/rpm" packaging/lypora.spec
 python tools/linux-stage.py --stage build/stage --appdir build/AppDir
 ARCH=x86_64 ./appimagetool --appimage-extract-and-run --no-appstream build/AppDir \
-         release/Lypora-0.14.1-linux-x64.AppImage
+         release/Lypora-0.14.2-linux-x64.AppImage
 ```
 
 You do not normally run that by hand: **pushing a `v*` tag** triggers
@@ -190,7 +190,7 @@ and a troubleshooting list are in
 
 ```bash
 node tools/build-android.mjs
-# -> release/Lypora-0.14.1-android.apk    install with: adb install -r <file>
+# -> release/Lypora-0.14.2-android.apk    install with: adb install -r <file>
 ```
 
 Needs **JDK 21** and an **Android SDK** with platform 35 + build-tools 35 — the script locates `ANDROID_HOME`
@@ -366,35 +366,36 @@ Lypora 是一个即时渲染的 Markdown 编辑器。你在编辑区里写 Markd
 
 ### 下载
 
-最新版本：**[v0.14.1](https://github.com/dr-bing-li/lypora/releases/tag/v0.14.1)** · 全部构建见
+最新版本：**[v0.14.2](https://github.com/dr-bing-li/lypora/releases/tag/v0.14.2)** · 全部构建见
 [Releases 页面](https://github.com/dr-bing-li/lypora/releases)。
 
-> **v0.14.1 改了什么：** 安卓上「排版 → 导出 PNG / PDF」会停在「正在渲染…」或直接报失败，这一版把它修掉。
-> 四个独立成因：光栅化只有一条路且**全程没有超时**（WebView 会静默忽略超长 data URI，Promise 永不 settle，
-> `busy` 卡住后按钮看着像死了）；取图同样无限等；失败时离屏宿主与改写过的 `img.src` 不还原；分享面板
-> 被划走时 `@capacitor/share` 抛错，**文件其实已经落盘**却报成「导出失败」。
-> 现在是一条四级降级链 —— base64 data URI → blob URL → percent data URI → 0.65 倍重画，每步 6 秒，
-> **每条路都验画布**（`blob:` 在 Chromium 会标脏画布，而 PDF 那条路原来看不出这个问题），
-> 全部 `try/finally`，逐页显示进度，落盘结果分「取消 / 写失败 / 分享失败」三种。
-> 桌面像素输出与 0.14.0 **逐字节相同**，这一点用 sha256 断言，不靠肉眼。
-> 模板方向的灵感归灵感：那几套样式是从 [md2card](https://md2card.cn/zh/editor) 的免费样式**借鉴的灵感**，
-> 用我们自己的 schema 重新画的；而做卡片这件事，**md2card 比我们专业得多**（主题更多、版式控制更细）——
+> **v0.14.2 改了什么：** 只动排版面板，模板数据格式（schema 6）一个字节没改，已导出的样式包照旧可用。
+> 贴纸那组原来直接显示裸键 `card.groupOrn`（七个语言包都缺这条），现在是「贴纸」；形状 5 → 7，新增
+> **对话气泡**与**气球**（都带文字，切过去自动补占位词）；落点 4 → 8，四条边的中点也能摆，且半出卡片。
+> 分组标题 13 → 14px、参数名 11.5 → 13px 并改用主文字色、标签列 82 → 96px（四字标签不再折行）。
+> H1–H4 的底色可以选**通栏**还是**仅文字**（实测 682px / 344px）。装订件按实物重画：回形针是一根线
+> 从外圈走到内圈、三层错位做金属圆柱感；订书钉是扁带（60px 宽、中线厚 10px，实心不是描边）；
+> 新增长尾夹（卷边 + 近方形夹体 + 垂下 U 形钢丝）。约 60 条参数说明挂在悬停上（词条 486 → 577）。
+> 顺带修掉一个真 bug：选完颜色后「∅」一直是 disabled —— 选上的颜色反而清不掉。
+> 桌面三平台覆盖安装即可；安卓 versionCode 21 → 22。模板方向的灵感归灵感：那几套样式是从
+> [md2card](https://md2card.cn/zh/editor) 的免费样式**借鉴的灵感**，用我们自己的 schema 重新画的；
+> 而做卡片这件事，**md2card 比我们专业得多**（主题更多、版式控制更细）——
 > 真要做好看的卡片，**建议直接去用它**，这里的模板只是让你写东西时顺手能出一张。
-> 0.14.0 的样式层（33 套 / 46 项 / schema 6）与完整双语说明见
-> [`docs/releases/v0.14.0/notes.md`](docs/releases/v0.14.0/notes.md)，本版说明见
-> [`docs/releases/v0.14.1/notes.md`](docs/releases/v0.14.1/notes.md)。
+> 0.14.0 的样式层（33 套 / 46 项 / schema 6）、0.14.1 的安卓导出加固与完整双语说明见
+> [`docs/releases/v0.14.1/notes.md`](docs/releases/v0.14.1/notes.md)，本版说明见
+> [`docs/releases/v0.14.2/notes.md`](docs/releases/v0.14.2/notes.md)。
 
 | 文件 | 平台 | 格式 | 大小 | SHA256 |
 |---|---|---|---|---|
-| [`lypora_0.14.1_amd64.deb`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.1/lypora_0.14.1_amd64.deb) | Debian 11+ / Ubuntu 20.04+ / 深度 / 麒麟 | 系统包，`sudo apt install ./…deb` | 81.0 MiB | 1101da02…8a18fe |
-| [`lypora-0.14.1-1.x86_64.rpm`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.1/lypora-0.14.1-1.x86_64.rpm) | Fedora 32+ / RHEL 9+ / openSUSE | 系统包，`sudo dnf install ./…rpm` | 105.0 MiB | f8381022…916c0d |
-| [`Lypora-0.14.1-linux-x64.AppImage`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.1/Lypora-0.14.1-linux-x64.AppImage) | 任意 x86-64 发行版 | 单文件，`chmod +x` 后直接跑 | 96.8 MiB | f0ed5687…2464ae |
-| [`Lypora-0.14.1-linux-x64.tar.gz`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.1/Lypora-0.14.1-linux-x64.tar.gz) | 任意 x86-64 发行版（glibc ≥ 2.31） | tar.gz + `install.sh`（per-user，不要 root） | 104.4 MiB | 1ed034da…0a8079 |
-| [`Lypora-0.14.1-win-x64.zip`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.1/Lypora-0.14.1-win-x64.zip) | Windows 10/11 x64 | 便携版 ZIP，解压即用 | 111.8 MiB | 4f7e4c0f…7572b0 |
-| [`Lypora-0.14.1-macos-arm64.tar.gz`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.1/Lypora-0.14.1-macos-arm64.tar.gz) | macOS 11+（Apple Silicon） | `.app` bundle，ad-hoc 签名 | 98.6 MiB | 66dd6b6c…0877da |
-| [`Lypora-0.14.1-macos-x64.tar.gz`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.1/Lypora-0.14.1-macos-x64.tar.gz) | macOS 11+（Intel） | `.app` bundle，ad-hoc 签名 | 103.0 MiB | 38a2cf13…25653d |
-| [`Lypora-0.14.1-android.apk`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.1/Lypora-0.14.1-android.apk) | Android 10+（API 29+） | APK，debug 签名，直接侧载 | 13.7 MiB | 8e5f93d1…34ef10 |
-| [`SHA256SUMS.txt`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.1/SHA256SUMS.txt) | 任意 | 全部产物的校验清单（8 条） | 见文件 | — |
+| [`lypora_0.14.2_amd64.deb`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.2/lypora_0.14.2_amd64.deb) | Debian 11+ / Ubuntu 20.04+ / 深度 / 麒麟 | 系统包，`sudo apt install ./…deb` | 81.0 MiB | 1101da02…8a18fe |
+| [`lypora-0.14.2-1.x86_64.rpm`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.2/lypora-0.14.2-1.x86_64.rpm) | Fedora 32+ / RHEL 9+ / openSUSE | 系统包，`sudo dnf install ./…rpm` | 105.0 MiB | f8381022…916c0d |
+| [`Lypora-0.14.2-linux-x64.AppImage`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.2/Lypora-0.14.2-linux-x64.AppImage) | 任意 x86-64 发行版 | 单文件，`chmod +x` 后直接跑 | 96.8 MiB | f0ed5687…2464ae |
+| [`Lypora-0.14.2-linux-x64.tar.gz`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.2/Lypora-0.14.2-linux-x64.tar.gz) | 任意 x86-64 发行版（glibc ≥ 2.31） | tar.gz + `install.sh`（per-user，不要 root） | 104.4 MiB | 1ed034da…0a8079 |
+| [`Lypora-0.14.2-win-x64.zip`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.2/Lypora-0.14.2-win-x64.zip) | Windows 10/11 x64 | 便携版 ZIP，解压即用 | 111.8 MiB | 4f7e4c0f…7572b0 |
+| [`Lypora-0.14.2-macos-arm64.tar.gz`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.2/Lypora-0.14.2-macos-arm64.tar.gz) | macOS 11+（Apple Silicon） | `.app` bundle，ad-hoc 签名 | 98.6 MiB | 66dd6b6c…0877da |
+| [`Lypora-0.14.2-macos-x64.tar.gz`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.2/Lypora-0.14.2-macos-x64.tar.gz) | macOS 11+（Intel） | `.app` bundle，ad-hoc 签名 | 103.0 MiB | 38a2cf13…25653d |
+| [`Lypora-0.14.2-android.apk`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.2/Lypora-0.14.2-android.apk) | Android 10+（API 29+） | APK，debug 签名，直接侧载 | 13.7 MiB | 8e5f93d1…34ef10 |
+| [`SHA256SUMS.txt`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.2/SHA256SUMS.txt) | 任意 | 全部产物的校验清单（8 条） | 见文件 | — |
 
 deb / rpm 会装进 `/opt/lypora`，附带 `/usr/bin/lypora` 命令、应用菜单项和 8 档图标，`apt remove` /
 `dnf remove` 删得干净。AppImage 和 tar.gz 完全不需要 root。
@@ -403,12 +404,12 @@ deb / rpm 会装进 `/opt/lypora`，附带 `/usr/bin/lypora` 命令、应用菜�
 员权限、没有自动更新——升级就是下载新版 ZIP 覆盖上去。**exe 未做代码签名**，所以 SmartScreen 会拦一次：
 「更多信息」→「仍要运行」。
 
-**macOS：** 解压得到 `Lypora-0.14.1-macos-<arch>/`，里面是 `Lypora.app`。**这是 ad-hoc 签名，没有 Apple
+**macOS：** 解压得到 `Lypora-0.14.2-macos-<arch>/`，里面是 `Lypora.app`。**这是 ad-hoc 签名，没有 Apple
 Developer ID，也没有公证**，所以首次打开会被 Gatekeeper 拦下。两个办法任选：右键 `Lypora.app` →「打开」→
 再点「打开」；或者先用包里的脚本处理一遍：
 
 ```bash
-tar xzf Lypora-0.14.1-macos-arm64.tar.gz && cd Lypora-0.14.1-macos-arm64
+tar xzf Lypora-0.14.2-macos-arm64.tar.gz && cd Lypora-0.14.2-macos-arm64
 sh mac-finalize.command        # 去 quarantine + ad-hoc 重签 + 校验
 open Lypora.app
 ```
@@ -420,10 +421,10 @@ Apple Silicon 请下载 arm64 包，Intel 下载 x64（x64 也能在 Apple Silic
 **Linux：** 四条路，按你平时怎么管软件选一条。
 
 ```bash
-sudo apt install ./lypora_0.14.1_amd64.deb          # Debian / Ubuntu / 深度 / 麒麟
-sudo dnf install ./lypora-0.14.1-1.x86_64.rpm       # Fedora / RHEL 9+（openSUSE 用 zypper install ./…rpm）
-chmod +x Lypora-0.14.1-linux-x64.AppImage && ./Lypora-0.14.1-linux-x64.AppImage   # 不安装、不要 root
-tar xzf Lypora-0.14.1-linux-x64.tar.gz && cd Lypora && ./install.sh              # 装进 ~/.local，不要 root
+sudo apt install ./lypora_0.14.2_amd64.deb          # Debian / Ubuntu / 深度 / 麒麟
+sudo dnf install ./lypora-0.14.2-1.x86_64.rpm       # Fedora / RHEL 9+（openSUSE 用 zypper install ./…rpm）
+chmod +x Lypora-0.14.2-linux-x64.AppImage && ./Lypora-0.14.2-linux-x64.AppImage   # 不安装、不要 root
+tar xzf Lypora-0.14.2-linux-x64.tar.gz && cd Lypora && ./install.sh              # 装进 ~/.local，不要 root
 ```
 
 deb / rpm 由包管理器负责装卸：文件进 `/opt/lypora` 和 `/usr/share`，同时得到 `/usr/bin/lypora` 命令、
@@ -434,7 +435,7 @@ deb / rpm 由包管理器负责装卸：文件进 `/opt/lypora` 和 `/usr/share`
 **AppImage 里没有 root**，SUID 沙箱必然不可用，所以它的 `AppRun` 一律带 `--no-sandbox`。这是 Electron 打
 AppImage 的固有代价，不是配置错误。目前只有 x86-64 包，没有 arm64。
 
-**Android：** 把 APK 传到手机点开安装（或 `adb install -r Lypora-0.14.1-android.apk`）。系统会提示「允许安装
+**Android：** 把 APK 传到手机点开安装（或 `adb install -r Lypora-0.14.2-android.apk`）。系统会提示「允许安装
 未知来源应用」，这是侧载的正常提示。触屏版是另一套外壳（底部操作栏、菜单收进底部面板、侧栏变抽屉），
 导出 PDF、打开文件夹、导入第三方主题在手机上是置灰的。文档存在应用专属目录
 `Android/data/app.lypora.editor/files/Documents/Lypora/`，要交出去请用**导出 → 系统分享面板**。
@@ -465,8 +466,8 @@ v0.4.1 起，Lypora 也注册进了系统的**「打开方式」**列表（在�
 运行前先校验：
 
 ```bat
-certutil -hashfile Lypora-0.14.1-win-x64.zip SHA256
-certutil -hashfile Lypora-0.14.1-android.apk SHA256
+certutil -hashfile Lypora-0.14.2-win-x64.zip SHA256
+certutil -hashfile Lypora-0.14.2-android.apk SHA256
 ```
 ```bash
 shasum -a 256 -c SHA256SUMS.txt      # macOS / Linux 通用
@@ -501,7 +502,7 @@ Lypora 是一个**小小的、刻意不做大的替代品**，用来临时顶一
 | 帮助 | `F1` 或「帮助」菜单打开 **8 篇只读文档**（快捷键 / 特色功能 / 主题与兼容性 / 页面宽度 / 图片引用 / 排版输出 / 设置项 / 关于），中英双语；只读标签不进最近文件、不参与未保存、不能编辑 |
 | 桌面 | 原生对话框、单实例（第二次启动把文件开成新窗口）、关窗前未保存拦截、文件关联 |
 | 平台 | Windows 便携版 `.exe` + ZIP、macOS `.app`（Apple Silicon 与 Intel）、Linux x64 的 `.deb` / `.rpm` / AppImage / tar.gz（都带 `.desktop` 集成）、Android APK、以及浏览器 / PWA 版——一个 TypeScript 核心，五套外壳 |
-| 发布 | `git push origin v0.14.1` 就够了：GitHub Actions 构建前端、摊一棵 FHS 树、封成 deb / rpm / AppImage / tar.gz、在干净容器里把 deb 和 rpm 真装一遍，然后把全部产物和合并后的 `SHA256SUMS.txt` 传上 Release |
+| 发布 | `git push origin v0.14.2` 就够了：GitHub Actions 构建前端、摊一棵 FHS 树、封成 deb / rpm / AppImage / tar.gz、在干净容器里把 deb 和 rpm 真装一遍，然后把全部产物和合并后的 `SHA256SUMS.txt` 传上 Release |
 
 ### 快速开始
 
@@ -536,7 +537,7 @@ cd core && npm run build
 ```bash
 node tools/pack-win.mjs --zip
 # -> release/Lypora/Lypora.exe           双击即用
-# -> release/Lypora-0.14.1-win-x64.zip    可直接分发
+# -> release/Lypora-0.14.2-win-x64.zip    可直接分发
 ```
 
 依赖 `desktop/node_modules/electron/dist`（在 `desktop/` 里 `npm install` 会下载）。打包脚本会把图标和
@@ -549,8 +550,8 @@ node tools/pack-win.mjs --zip
 curl -LO https://github.com/electron/electron/releases/download/v33.4.11/electron-v33.4.11-darwin-arm64.zip
 python tools/pack-mac.py --zip electron-v33.4.11-darwin-arm64.zip --arch arm64
 python tools/pack-mac.py --zip electron-v33.4.11-darwin-x64.zip   --arch x64
-# -> release/Lypora-0.14.1-macos-arm64.tar.gz
-# -> release/Lypora-0.14.1-macos-x64.tar.gz
+# -> release/Lypora-0.14.2-macos-arm64.tar.gz
+# -> release/Lypora-0.14.2-macos-x64.tar.gz
 ```
 
 打包脚本把 Electron 的预编译 zip 重建成一个真正的 `Lypora.app`——重写 `Info.plist`（bundle id、
@@ -570,7 +571,7 @@ Windows 版同一份 `Resources/app` 前端——最后输出 tar.gz。
 ```bash
 curl -LO https://github.com/electron/electron/releases/download/v33.4.11/electron-v33.4.11-linux-x64.zip
 python tools/pack-linux.py --zip electron-v33.4.11-linux-x64.zip
-# -> release/Lypora-0.14.1-linux-x64.tar.gz
+# -> release/Lypora-0.14.2-linux-x64.tar.gz
 ```
 
 包内结构是 `Lypora/` 目录 + `lypora.sh`（启动器）+ `install.sh` / `uninstall.sh`（安装、卸载）+
@@ -585,12 +586,12 @@ python tools/pack-linux.py --zip electron-v33.4.11-linux-x64.zip
 python tools/linux-stage.py --zip electron-v33.4.11-linux-x64.zip --stage build/stage --deb
 
 # 2) 三种封装需要 Linux 工具链（dpkg-deb / rpmbuild / appimagetool）
-dpkg-deb --build --root-owner-group build/stage release/lypora_0.14.1_amd64.deb
-rpmbuild -bb --define "_version 0.14.1" --define "_stage_root $PWD/build/stage" \
+dpkg-deb --build --root-owner-group build/stage release/lypora_0.14.2_amd64.deb
+rpmbuild -bb --define "_version 0.14.2" --define "_stage_root $PWD/build/stage" \
          --define "_topdir $PWD/build/rpm" packaging/lypora.spec
 python tools/linux-stage.py --stage build/stage --appdir build/AppDir
 ARCH=x86_64 ./appimagetool --appimage-extract-and-run --no-appstream build/AppDir \
-         release/Lypora-0.14.1-linux-x64.AppImage
+         release/Lypora-0.14.2-linux-x64.AppImage
 ```
 
 正常不需要手敲：**推一个 `v*` 标签**就会触发
@@ -602,7 +603,7 @@ ARCH=x86_64 ./appimagetool --appimage-extract-and-run --no-appstream build/AppDi
 
 ```bash
 node tools/build-android.mjs
-# -> release/Lypora-0.14.1-android.apk    安装：adb install -r <文件>
+# -> release/Lypora-0.14.2-android.apk    安装：adb install -r <文件>
 ```
 
 需要 **JDK 21** 与 **Android SDK**（platform 35 + build-tools 35）。脚本会自己找 `ANDROID_HOME` 和 JDK，缺什么
