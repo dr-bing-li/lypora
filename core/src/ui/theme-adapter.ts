@@ -34,6 +34,10 @@ export interface ThemeStats {
   vars: number
   /** 从 #write{max-width} 摘到的版心宽度 */
   width?: string
+  /** 从 #write{font-size} 摘到的正文基准字号（px） */
+  fontBase?: number
+  /** 从 html/body 摘到的整页渐变（存在时页面底色改由它决定） */
+  bgImage?: string
 }
 
 export interface TranslateResult {
@@ -104,6 +108,34 @@ const CLASS_MAP: Record<string, string> = {
   'md-inline-math': '.cm-math-inline',
   'md-para': '.cm-line.md-p',
   'md-heading': '.cm-line',
+  // 代码块容器：这类主题写的 .CodeMirror 就是"代码块那一片"，
+  // 本项目的对应物是代码行（.cm-line.md-code-line），不是 shell。
+  CodeMirror: '.cm-line.md-code-line',
+  // CM5 的皮肤包装层，本项目没有；映射成空串=在复合选择器里抹掉这一节，
+  // 这样 `#write .cm-s-inner .cm-keyword` 才不至于整条失配。
+  'cm-s-inner': '',
+  'cm-s-default': '',
+  // 语法着色 token：对方的 CM5 类名 → 本项目高亮器产出的 .tok-*
+  'cm-keyword': '.tok-kw',
+  'cm-tag': '.tok-kw',
+  'cm-attribute': '.tok-kw',
+  'cm-atom': '.tok-kw',
+  'cm-meta': '.tok-kw',
+  'cm-error': '.tok-kw',
+  'cm-header': '.tok-kw',
+  'cm-string': '.tok-str',
+  'cm-string-2': '.tok-str',
+  'cm-link': '.tok-str',
+  'cm-number': '.tok-num',
+  'cm-comment': '.tok-com',
+  'cm-def': '.tok-fn',
+  'cm-property': '.tok-fn',
+  'cm-builtin': '.tok-fn',
+  'cm-variable': '.tok-fn',
+  'cm-variable-2': '.tok-fn',
+  'cm-variable-3': '.tok-fn',
+  'cm-operator': '.tok-op',
+  'cm-bracket': '.tok-op',
 }
 
 /** 这些类/ID 在本项目里没有对应物，命中它们的规则直接丢弃（避免污染） */
@@ -143,7 +175,16 @@ const DROP_CLASS = [
   'auto-suggest',
   'md-hover-popup',
   'md-emoji',
-  'CodeMirror',
+  // CM5 的行号栏 / 光标层 / 选中层：本项目由 CM6 自己画，套过去只会污染
+  'CodeMirror-gutters',
+  'CodeMirror-linenumber',
+  'CodeMirror-activeline',
+  'CodeMirror-lines',
+  'CodeMirror-line',
+  'CodeMirror-cursor',
+  'CodeMirror-selected',
+  'CodeMirror-code',
+  'CodeMirror-measure',
 ]
 
 const DROP_ID = [
@@ -382,6 +423,11 @@ function parseCompound(s: string): Comp {
   return comp
 }
 
+/** 复合选择器里是否带 ::before / ::after（装饰件与自动编号的载体） */
+function hasEdgePseudo(compound: string): boolean {
+  return /::?(?:before|after)\b/i.test(compound)
+}
+
 function mapCompound(raw: string): string[] | null {
   const c = parseCompound(raw)
   // 丢弃：本项目没有对应物的侧栏 / 大纲 / 搜索面板选择器
@@ -412,8 +458,13 @@ function mapCompound(raw: string): string[] | null {
     if (mappedCls && (tail.includes(mappedCls) || headStr.includes(mappedCls))) continue
     tail += mappedCls ?? `.${cls}`
   }
-  // 任务框是 span，不会带 type 属性，属性选择器一并清掉
-  if (c.tag !== 'input') for (const a of c.attrs) tail += a
+  if (c.tag === 'input') {
+    // 本项目的任务框是 span，没有 type/checked 属性；勾选态是 .is-checked
+    // （不转这一条，主题给复选框配的底色/勾号一律失效）
+    if (c.attrs.some((a) => /^\[\s*checked\s*\]$/i.test(a))) tail += '.is-checked'
+  } else {
+    for (const a of c.attrs) tail += a
+  }
   for (const p of c.pseudos) tail += p
 
   if (!head.length) head.push('')
@@ -424,8 +475,37 @@ function splitSelector(sel: string): { comb: string; compound: string }[] {
   const out: { comb: string; compound: string }[] = []
   let cur = ''
   let comb = ''
-  for (const ch of sel) {
-    if (ch === '>' || ch === '+' || ch === '~') {
+  let depth = 0
+  let quote: string | null = null
+  for (let i = 0; i < sel.length; i++) {
+    const ch = sel[i]
+    if (quote) {
+      cur += ch
+      if (ch === '\\') {
+        cur += sel[++i] ?? ''
+        continue
+      }
+      if (ch === quote) quote = null
+      continue
+    }
+    if (ch === '"' || ch === "'") {
+      quote = ch
+      cur += ch
+      continue
+    }
+    // 括号里的空白与 + / ~ 都不是组合符：`tr:nth-child(2n + 1)` 曾经被
+    // 拆成两节，映射出一个匹配不到任何东西的垃圾选择器
+    if (ch === '(' || ch === '[') {
+      depth++
+      cur += ch
+      continue
+    }
+    if (ch === ')' || ch === ']') {
+      depth = Math.max(0, depth - 1)
+      cur += ch
+      continue
+    }
+    if (depth === 0 && (ch === '>' || ch === '+' || ch === '~')) {
       if (cur) {
         out.push({ comb, compound: cur })
         cur = ''
@@ -433,7 +513,7 @@ function splitSelector(sel: string): { comb: string; compound: string }[] {
       comb = ch
       continue
     }
-    if (/\s/.test(ch)) {
+    if (depth === 0 && /\s/.test(ch)) {
       if (cur) {
         out.push({ comb, compound: cur })
         cur = ''
@@ -447,9 +527,83 @@ function splitSelector(sel: string): { comb: string; compound: string }[] {
   return out
 }
 
+/**
+ * 容器前缀去重：标签映射会给每个标签都补一次容器限定
+ * （table→`.cm-table-widget table`、tr→`.cm-table-widget tr`…），
+ * 于是 `#write table tr th` 会拼成 `.cm-table-widget table .cm-table-widget tr th`
+ * ——一节嵌套套一节，永远命中不了。这里把重复出现的前缀抹掉，只留最左那一次。
+ * 这是"表格三线式、表头底色这些主题表格样式全部失效"的根因。
+ */
+const SCOPE_PREFIXES = ['.cm-table-widget', '.cm-img-widget', '.cm-hr-widget', '.cm-math-block']
+
+function dedupeScopes(sel: string): string {
+  const parts = splitSelector(sel)
+  if (parts.length < 2) return sel
+  const seen = new Set<string>()
+  const kept: { comb: string; compound: string }[] = []
+  for (const part of parts) {
+    let compound = part.compound
+    for (const pre of SCOPE_PREFIXES) {
+      if (compound.startsWith(pre) && seen.has(pre)) compound = compound.slice(pre.length)
+    }
+    // 抹干净后什么都不剩（就是那个容器本身）→ 这一节整个去掉
+    if (!compound.trim()) continue
+    for (const pre of SCOPE_PREFIXES) if (compound.startsWith(pre)) seen.add(pre)
+    kept.push({ comb: kept.length ? part.comb : '', compound })
+  }
+  if (!kept.length) return sel
+  return kept.map((k, i) => (i === 0 ? k.compound : `${k.comb ? ` ${k.comb} ` : ' '}${k.compound}`)).join('')
+}
+
+/**
+ * 子代/兄弟组合符的降级。
+ *
+ * 参考实现的正文是「`#write` 的直接子元素」，本项目是
+ * `#write > .cm-editor > .cm-scroller > .cm-content > .cm-line`，
+ * 所以 `#write > p`（段落卡片最常见的写法）一条也命中不了 —— green-swiss
+ * 的"每段一张卡片"就是这样整片丢掉的。
+ * 另外本项目是扁平行模型，段落之间还夹着 `.cm-line.md-blank`，
+ * `p + p` 这种相邻兄弟永远不成立：
+ *   · `>` 从页面容器或行出发 → 一律按后代处理（行会随后被合并成一节）
+ *   · `+` / `~` 夹在两个块级行之间 → 这套关系无法表达，整条规则丢弃
+ */
+function normalizeCombinators(sel: string): string | null {
+  const parts = splitSelector(sel)
+  const out: { comb: string; compound: string }[] = []
+  for (const part of parts) {
+    const prev = out[out.length - 1]
+    const prevIsPage = prev && prev.compound.includes('.editor-host')
+    const prevIsLine = prev && prev.compound.includes('.cm-line')
+    const curIsLine = part.compound.includes('.cm-line')
+    if (prev && (part.comb === '>' || part.comb === '+' || part.comb === '~')) {
+      if (prevIsPage) {
+        out.push({ comb: '', compound: part.compound })
+        continue
+      }
+      if (prevIsLine && curIsLine) {
+        if (part.comb === '>') {
+          out.push({ comb: '', compound: part.compound })
+          continue
+        }
+        return null
+      }
+    }
+    out.push({ ...part })
+  }
+  return out.map((o, i) => (i === 0 ? o.compound : `${o.comb ? ` ${o.comb} ` : ' '}${o.compound}`)).join('')
+}
+
 interface MappedSel {
   sels: string[]
   kind: Kind
+  /** 含 ::before / ::after —— 装饰件与自动编号都挂在这种规则上 */
+  pseudo: boolean
+  /**
+   * 合并的是"容器里的正文"（`blockquote p` / `li > p`）：同一条规则既可能给
+   * 容器上底色又可能给正文清底色，合并成一节后后者会把前者的卡片吃掉
+   * （green-swiss 的引用卡片就这样变成透明的）。这类规则只保留文字层声明。
+   */
+  textOnly: boolean
 }
 
 const MAX_VARIANTS = 12
@@ -459,10 +613,11 @@ const MAX_VARIANTS = 12
  * `<blockquote><p>` / `<ul><li><p>`。所以 `blockquote p` 要合并成
  * `.cm-line.md-quote-line.md-p`，否则 "后代的 p" 永远找不到。
  */
-function mergeLineCompounds(sel: string): string {
+function mergeLineCompounds(sel: string): { sel: string; textOnly: boolean } {
   const isPlainClassCompound = (s: string) => /^(?:\.[\w-]+)+$/.test(s)
   const seq = splitSelector(sel)
   const out: { comb: string; compound: string }[] = []
+  let textOnly = false
   for (const item of seq) {
     const prev = out[out.length - 1]
     const canMerge =
@@ -473,6 +628,8 @@ function mergeLineCompounds(sel: string): string {
       prev.compound.includes('.cm-line') &&
       item.compound.includes('.cm-line')
     if (canMerge) {
+      // 被并进来的是"正文"（.md-p / .md-li），不是另一个块级容器
+      if (item.compound.includes('.md-p') || item.compound.includes('.md-li')) textOnly = true
       const merged = new Set<string>()
       for (const part of `${prev.compound}${item.compound}`.match(/\.[\w-]+/g) ?? []) merged.add(part)
       prev.compound = [...merged].join('')
@@ -480,7 +637,10 @@ function mergeLineCompounds(sel: string): string {
     }
     out.push({ ...item })
   }
-  return out.map((o, i) => (i === 0 ? o.compound : `${o.comb ? ` ${o.comb} ` : ' '}${o.compound}`)).join('')
+  return {
+    sel: out.map((o, i) => (i === 0 ? o.compound : `${o.comb ? ` ${o.comb} ` : ' '}${o.compound}`)).join(''),
+    textOnly,
+  }
 }
 
 export function mapSelector(selector: string): MappedSel | null {
@@ -492,6 +652,7 @@ export function mapSelector(selector: string): MappedSel | null {
 
   const seq = splitSelector(s)
   if (!seq.length) return null
+  const pseudo = seq.some((x) => hasEdgePseudo(x.compound))
 
   let variants: string[][] = [[]]
   for (const { comb, compound } of seq) {
@@ -504,13 +665,27 @@ export function mapSelector(selector: string): MappedSel | null {
     variants = next.slice(0, MAX_VARIANTS)
   }
 
-  const sels = variants.map((v) => mergeLineCompounds(v.join('').trim()))
-  const kind: Kind = sels.some((x) => x.includes('.editor-host'))
+  let textOnly = false
+  let unusable = false
+  const sels = variants.map((v) => {
+    const norm = normalizeCombinators(v.join('').trim())
+    if (norm == null) {
+      unusable = true
+      return null
+    }
+    const merged = mergeLineCompounds(norm)
+    if (merged.textOnly) textOnly = true
+    return dedupeScopes(merged.sel)
+  })
+  if (unusable && sels.every((s) => s == null)) return null
+  const usable = sels.filter((s): s is string => s != null)
+  if (!usable.length) return null
+  const kind: Kind = usable.some((x) => x.includes('.editor-host'))
     ? 'host'
-    : sels.some((x) => x.includes('.cm-line'))
+    : usable.some((x) => x.includes('.cm-line'))
       ? 'line'
       : 'other'
-  return { sels, kind }
+  return { sels: usable, kind, pseudo, textOnly }
 }
 
 /* ------------------------------------------------------------------ *
@@ -523,6 +698,50 @@ interface Ctx {
   dropped: number
   vars: Record<string, string>
   width?: string
+  fontBase?: number
+  bgImage?: string
+  /** 出现过绝对定位的装饰伪元素 → 需要给行补 position: relative 当定位基准 */
+  absPseudo?: boolean
+  /** html{font-size}：没有 #write 那条时的兜底基准 */
+  htmlFontBase?: number
+  /** 主题自己画了引用块的边框/竖条 → 关掉内置那条 3px 边，否则会叠成两条 */
+  themeQuotes?: boolean
+}
+
+/** 行级元素上保留的"文字层"声明（合并进来的正文只准改这些） */
+const TEXT_ONLY_KEEP =
+  /^(color|opacity|font|font-size|font-weight|font-style|font-family|font-variant|line-height|letter-spacing|word-spacing|text-[a-z-]+|white-space|vertical-align|-webkit-text-[a-z-]+|text-shadow)$/
+
+/** 标题行的 flex 装饰：绿色系主题用 display:flex + ::before 圆点 + ::after 横线做标题 */
+const FLEX_DECLS = new Set([
+  'display',
+  'align-items',
+  'justify-content',
+  'gap',
+  'column-gap',
+  'row-gap',
+  'flex-wrap',
+  'flex-direction',
+])
+
+/** 基准字号可能写成 pt / cm / em（LaTeX 系主题常用 11pt）→ 折成 px */
+function baseFontPx(raw: string): number | null {
+  const m = /^([\d.]+)\s*(px|pt|pc|mm|cm|in|em|rem)$/i.exec(raw.trim())
+  if (!m) return null
+  const n = Number(m[1])
+  if (!Number.isFinite(n) || n <= 0) return null
+  const unit = m[2].toLowerCase()
+  const factor =
+    unit === 'px' ? 1
+    : unit === 'pt' ? 1.3333333
+    : unit === 'pc' ? 16
+    : unit === 'mm' ? 3.7795275
+    : unit === 'cm' ? 37.795275
+    : unit === 'in' ? 96
+    : 16 // em/rem：以 16px 为基准
+  const px = n * factor
+  if (px < 8 || px > 40) return null
+  return Math.round(px * 100) / 100
 }
 
 function translateRule(prelude: string, body: string, ctx: Ctx, depth: number): string | null {
@@ -532,11 +751,20 @@ function translateRule(prelude: string, body: string, ctx: Ctx, depth: number): 
   const parts = splitTop(prelude, ',')
   const sels: string[] = []
   let hostExact = false
+  let pseudo = false
+  let textOnly = false
 
   for (const part of parts) {
     const mapped = mapSelector(part)
     if (!mapped) continue
     if (mapped.sels.some((s) => s === '.editor-host')) hostExact = true
+    if (mapped.pseudo) pseudo = true
+    if (mapped.textOnly) textOnly = true
+    // 参考实现里 .CodeMirror 是"代码块内部的文字层"，外层的底色/圆角/内边距
+    // 都挂在 .md-fences 上。本项目两者是同一批行，所以对 .CodeMirror 的规则
+    // 只准改文字 —— 否则它写的 background: transparent !important 会把
+    // .md-fences 给的深色底整块抹掉（vercel 的代码块就这样变成白底浅字）
+    if (/\.CodeMirror(?![\w-])/.test(part)) textOnly = true
     for (const s of mapped.sels) if (!sels.includes(s)) sels.push(s)
   }
   if (!sels.length) return null
@@ -558,12 +786,141 @@ function translateRule(prelude: string, body: string, ctx: Ctx, depth: number): 
       const raw = /^var\(/.test(mw.value) ? resolveVar(mw.value, ctx.vars) : mw.value
       if (/^[\d.]+(px|cm|mm|in|pt|em|rem|ch)?$/.test(raw)) ctx.width = raw
     }
+    // #write{font-size} → 正文基准字号。用户自己的"字号"设置是缩放倍率，
+    // 不接管的话主题写的 15px / 17px 全被 inline 的 16px 盖掉。
+    const fs = decls.find((d) => d.prop === 'font-size')
+    if (fs) {
+      const raw = /^var\(/.test(fs.value) ? resolveVar(fs.value, ctx.vars) : fs.value
+      const px = baseFontPx(raw)
+      if (px) ctx.fontBase = px
+    }
   }
 
+  // 有的主题把基准字号写在 html 上（`html{font-size:17px}`），没有 #write 那一条。
+  // 优先级低于 #write：两者都写时以 #write 为准。
+  if (kind === 'other' && sels.includes('html') && !sels.includes('body')) {
+    const fs = decls.find((d) => d.prop === 'font-size')
+    if (fs) {
+      const raw = /^var\(/.test(fs.value) ? resolveVar(fs.value, ctx.vars) : fs.value
+      const px = baseFontPx(raw)
+      if (px && !ctx.htmlFontBase) ctx.htmlFontBase = px
+    }
+  }
+
+  // html/body 上的整页渐变 → --bg-image（暗色主题的"底色其实是渐变"）
+  if (kind === 'other' && (sels.includes('body') || sels.includes('html'))) {
+    for (const d of decls) {
+      if (d.prop !== 'background' && d.prop !== 'background-image') continue
+      if (!/(?:^|,\s*)(?:repeating-)?(?:linear|radial|conic)-gradient\(/i.test(d.value)) continue
+      if (!ctx.bgImage || d.prop === 'background-image') ctx.bgImage = d.value
+    }
+  }
+
+  // 代码块在参考实现里是**一个**元素（.md-fences），本项目是**一组行**。
+  // 所以块级装饰（mac 红绿灯圆点这类 ::before）挂到每一行上会重复 N 份，
+  // 只保留在块首行（单行块是 .md-code-only）—— 视觉上等于挂在块顶部。
+  let outSels = sels
+  if (pseudo) {
+    outSels = []
+    for (const s of sels) {
+      if (/\.md-code-line\b/.test(s)) {
+        outSels.push(s.replace(/\.md-code-line\b/g, '.md-code-first'))
+        outSels.push(s.replace(/\.md-code-line\b/g, '.md-code-only'))
+      } else outSels.push(s)
+    }
+  }
+
+  const headingLine = sels.some((s) => /\.md-line-h[1-6]\b/.test(s))
+  const flexHeading =
+    kind === 'line' &&
+    headingLine &&
+    decls.some((d) => d.prop === 'display' && /^(?:inline-)?flex$/i.test(d.value.trim()))
+  if (pseudo && decls.some((d) => d.prop === 'position' && /absolute|fixed/i.test(d.value))) {
+    ctx.absPseudo = true
+  }
+  if (
+    sels.some((x) => x.includes('.md-quote-line')) &&
+    (pseudo || decls.some((d) => /^border(?:-left)?(?:-width|-color|-style)?$/.test(d.prop)))
+  ) {
+    ctx.themeQuotes = true
+  }
+
+  // 代码块是"一组行"，块级边框必须拆：左右给每一行，上边只给首行、下边只给末行，
+  // 否则 `.md-fences{border:1px solid}` 会在每两行之间多出一条横线。
+  // 注意主题常写成 `#write pre.md-fences, #write pre.md-meta-block, …` 这样的并集，
+  // 所以只能按选择器分别处理，不能拿整条规则一刀切。
+  const codeSels = outSels.filter((s) => /\.md-code-line\b/.test(s))
+  const otherSels = outSels.filter((s) => !/\.md-code-line\b/.test(s))
+  const rules: string[] = []
+
+  for (const [mode, part] of [
+    ['code', codeSels],
+    ['plain', otherSels],
+  ] as const) {
+    if (!part.length) continue
+    const { kept, first, last } = filterDecls(decls, {
+      kind,
+      pseudo,
+      textOnly,
+      flexHeading,
+      codeMode: mode === 'code',
+    })
+    if (kept.length) rules.push(`${part.join(', ')} { ${toCss(kept)} }`)
+    if (first.length) {
+      const f = part.map((s) => s.replace(/\.md-code-line\b/g, '.md-code-first'))
+      rules.push(`${f.join(', ')} { ${toCss(first)} }`)
+    }
+    if (last.length) {
+      const l = part.map((s) => s.replace(/\.md-code-line\b/g, '.md-code-last'))
+      rules.push(`${l.join(', ')} { ${toCss(last)} }`)
+    }
+  }
+  if (!rules.length) return null
+  ctx.kept++
+  return rules.join('\n')
+}
+
+interface FilterOpts {
+  kind: Kind
+  pseudo: boolean
+  textOnly: boolean
+  flexHeading: boolean
+  codeMode: boolean
+}
+
+function filterDecls(
+  decls: Decl[],
+  o: FilterOpts,
+): { kept: Decl[]; first: Decl[]; last: Decl[] } {
   const kept: Decl[] = []
+  const first: Decl[] = []
+  const last: Decl[] = []
   for (const d of decls) {
-    if (kind === 'host' && HOST_DROP.has(d.prop)) continue
-    if (kind === 'line') {
+    // 伪元素是装饰件的载体（左侧色条、自动编号、引号、红绿灯圆点），
+    // 它们的盒模型不影响 CM6 的行高测量，整条放行。
+    if (o.pseudo) {
+      kept.push(d)
+      continue
+    }
+    // 合并进来的正文：只允许改文字，不许把容器的底色/边框清掉
+    if (o.textOnly) {
+      // `blockquote p { color: inherit }` 在对方的嵌套 DOM 里是"跟容器同色"，
+      // 合并成一行后 inherit 变成"跟 .cm-content 同色"，反而把容器的文字色顶掉
+      if (/^(?:inherit|unset|initial)$/i.test(d.value.trim())) continue
+      if (TEXT_ONLY_KEEP.test(d.prop) || d.prop.startsWith('--')) kept.push(d)
+      continue
+    }
+    if (o.kind === 'host' && HOST_DROP.has(d.prop)) continue
+    if (o.kind === 'line') {
+      if (o.codeMode) {
+        const split = splitCodeBoxDecl(d)
+        if (split) {
+          if (split.all) kept.push(...split.all)
+          if (split.first) first.push(...split.first)
+          if (split.last) last.push(...split.last)
+          continue
+        }
+      }
       if (d.prop === 'padding') {
         const h = horizontalPadding(d.value)
         if (h.left) kept.push({ prop: 'padding-left', value: h.left, important: d.important })
@@ -571,15 +928,86 @@ function translateRule(prelude: string, body: string, ctx: Ctx, depth: number): 
         continue
       }
       if (d.prop === 'padding-top' || d.prop === 'padding-bottom') continue
+      // 标题行的 flex 装饰（圆点 + 延伸横线）只有 display:flex 才能成立；
+      // 行里只有一个 .md-h 子节点，做成 flex 容器后 ::before/::after 自然成为
+      // 两端的 flex 项，与参考实现的排版一致。
+      if (o.flexHeading && FLEX_DECLS.has(d.prop)) {
+        kept.push(d)
+        continue
+      }
       if (LINE_DROP.has(d.prop)) continue
       // 行级元素不设背景图以外的装饰性伪内容已由 content 过滤掉
       if (d.prop.startsWith('margin')) continue
     }
     kept.push(d)
   }
-  if (!kept.length) return null
-  ctx.kept++
-  return `${sels.join(', ')} { ${toCss(kept)} }`
+  return { kept, first, last }
+}
+
+/** 代码块的块级盒装饰 → 拆成"每行/首行/末行"三份 */
+function splitCodeBoxDecl(d: Decl): { all?: Decl[]; first?: Decl[]; last?: Decl[] } | null {
+  const v = d.value.trim()
+  if (d.prop === 'border') {
+    return {
+      all: [
+        { prop: 'border-left', value: v, important: d.important },
+        { prop: 'border-right', value: v, important: d.important },
+      ],
+      first: [{ prop: 'border-top', value: v, important: d.important }],
+      last: [{ prop: 'border-bottom', value: v, important: d.important }],
+    }
+  }
+  if (d.prop === 'padding') {
+    const p = v.split(/\s+/)
+    if (!p.length) return null
+    const top = p[0]
+    const right = p[1] ?? p[0]
+    const bottom = p[2] ?? p[0]
+    const left = p[3] ?? p[1] ?? p[0]
+    return {
+      all: [
+        { prop: 'padding-left', value: left, important: d.important },
+        { prop: 'padding-right', value: right, important: d.important },
+      ],
+      first: [{ prop: 'padding-top', value: top, important: d.important }],
+      last: [{ prop: 'padding-bottom', value: bottom, important: d.important }],
+    }
+  }
+  if (d.prop === 'padding-top') return { first: [d] }
+  if (d.prop === 'padding-bottom') return { last: [d] }
+  if (d.prop === 'padding') {
+    const p = v.split(/\s+/)
+    if (!p.length) return null
+    const top = p[0]
+    const right = p[1] ?? p[0]
+    const bottom = p[2] ?? p[0]
+    const left = p[3] ?? p[1] ?? p[0]
+    return {
+      all: [
+        { prop: 'padding-left', value: left, important: d.important },
+        { prop: 'padding-right', value: right, important: d.important },
+      ],
+      first: [{ prop: 'padding-top', value: top, important: d.important }],
+      last: [{ prop: 'padding-bottom', value: bottom, important: d.important }],
+    }
+  }
+  if (d.prop === 'padding-top') return { first: [d] }
+  if (d.prop === 'padding-bottom') return { last: [d] }
+  if (d.prop === 'border-top') return { first: [d] }
+  if (d.prop === 'border-bottom') return { last: [d] }
+  if (d.prop === 'border-radius') {
+    // 圆角也必须拆：整块挂到每一行上，行与行之间会露出"每行一个圆角"的缝
+    // （warm-snow 的代码块就是这样被切成一条一条的）。
+    const single = /^[\d.]+(?:px|em|rem|%)?$/.test(v)
+    const viaVar = /^var\(\s*--[\w-]+\s*\)$/.test(v)
+    if (!single && !viaVar) return {}
+    return {
+      first: [{ prop: 'border-radius', value: `${v} ${v} 0 0`, important: d.important }],
+      last: [{ prop: 'border-radius', value: `0 0 ${v} ${v}`, important: d.important }],
+    }
+  }
+  if (d.prop === 'box-shadow') return { first: [d] }
+  return null
 }
 
 function translateRules(src: string, ctx: Ctx, ruleDepth = 0): string {
@@ -824,7 +1252,15 @@ function adaptAccent(
   return cssRgb(b)
 }
 
-function buildBridge(vars: Record<string, string>, width?: string): string {
+interface BridgeExtra {
+  width?: string
+  fontBase?: number
+  bgImage?: string
+  absPseudo?: boolean
+  themeQuotes?: boolean
+}
+
+function buildBridge(vars: Record<string, string>, extra: BridgeExtra = {}): string {
   const out: Record<string, string> = {}
   for (const [ours, sources] of Object.entries(VAR_MAP)) {
     for (const s of sources) {
@@ -840,7 +1276,12 @@ function buildBridge(vars: Record<string, string>, width?: string): string {
   if (!out['--accent']) out['--accent'] = '#0969da'
   if (!out['--font-head']) out['--font-head'] = 'var(--font-body)'
   for (const [k, v] of Object.entries(DERIVED)) if (!out[k]) out[k] = v
-  if (width) out['--content-width'] = width
+  if (extra.width) out['--content-width'] = extra.width
+  // 正文基准字号：主题写 15px / 17px 时，用户"字号"设置降级成缩放倍率
+  if (extra.fontBase && extra.fontBase > 0) {
+    out['--doc-font-scale'] = String(Math.round((extra.fontBase / 16) * 10000) / 10000)
+  }
+  if (extra.bgImage) out['--bg-image'] = extra.bgImage
 
   // —— 骨架配色：菜单栏/状态栏贴 --bg，侧栏贴 --bg-side，各自单独守对比度 ——
   const sideHint = [
@@ -882,7 +1323,11 @@ function buildBridge(vars: Record<string, string>, width?: string): string {
     .map(([k, v]) => `  ${k}: ${v};`)
     .join('\n')
   // html[data-theme] 的特异性高于 [data-theme='github']，且注入更晚，必定生效
-  return `\n/* ---- Lypora 变量桥（由主题适配层生成，勿手改） ---- */\nhtml[data-theme] {\n${body}\n}\n`
+  const rel = extra.absPseudo ? '\n.editor-host .cm-line { position: relative }\n' : ''
+  // 主题自带引用块竖条时，关掉内置那条（只写 width，让主题书写的
+  // `.editor-host .cm-line.md-quote-line`（特异性更高）继续生效）
+  const q = extra.themeQuotes ? '\n.cm-line.md-quote-line { border-left-width: 0 }\n' : ''
+  return `\n/* ---- Lypora 变量桥（由主题适配层生成，勿手改） ---- */\nhtml[data-theme] {\n${body}\n}\n${rel}${q}`
 }
 
 /* ------------------------------------------------------------------ *
@@ -911,7 +1356,15 @@ export function translateThemeCss(src: string): TranslateResult {
   stats.kept = ctx.kept
   stats.dropped = ctx.dropped
   stats.width = ctx.width
+  stats.fontBase = ctx.fontBase ?? ctx.htmlFontBase
+  stats.bgImage = ctx.bgImage
 
-  const bridge = buildBridge(vars, ctx.width)
+  const bridge = buildBridge(vars, {
+    width: ctx.width,
+    fontBase: ctx.fontBase ?? ctx.htmlFontBase,
+    bgImage: ctx.bgImage,
+    absPseudo: ctx.absPseudo,
+    themeQuotes: ctx.themeQuotes,
+  })
   return { css: `${body}${bridge}`, stats }
 }

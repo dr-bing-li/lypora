@@ -223,9 +223,20 @@ const measure = () =>
     }
     const root = getComputedStyle(document.documentElement)
     const h1 = document.querySelector('.cm-line.md-line-h1')
+    const h2 = document.querySelector('.cm-line.md-line-h2')
     const code = document.querySelector('.cm-line.md-code-line')
     const quote = document.querySelector('.cm-line.md-quote-line')
     const table = document.querySelector('.cm-table-widget table')
+    const th = document.querySelector('.cm-table-widget th')
+    const pseudoOf = (el, which) => {
+      const s = getComputedStyle(el, which)
+      return {
+        content: s.content,
+        width: s.width,
+        bg: s.backgroundColor,
+        display: s.display,
+      }
+    }
     const styleEl = document.getElementById('lypora-custom-theme')
     // 骨架配色：向上找第一个不透明底色，避免 transparent 让对比度算错
     // 注意：color-mix() 的实算值是 color(srgb …)，必须用 canvas 归一化成 rgb 字节
@@ -245,23 +256,54 @@ const measure = () =>
       }
     }
     const parseAlpha = (c) => {
-      const m = /^rgba?\([^)]*?([\d.]+)\)$/.exec(c.trim())
-      if (!m) return 1
-      return c.trim().startsWith('rgba') ? Number(m[1]) : 1
+      const s = String(c).trim()
+      let m = /^rgba?\(([^)]*)\)$/.exec(s)
+      if (m) {
+        const parts = m[1].split(/[,/\s]+/).filter(Boolean)
+        if (parts.length < 4) return 1
+        return parts[3].endsWith('%') ? Number(parts[3].slice(0, -1)) / 100 : Number(parts[3])
+      }
+      // color-mix() 的实算值是 color(srgb r g b / a%)，早先没认出来，
+      // 于是 12% 的薄纱被当成实底，深色主题的开关一律误报
+      m = /^color\([^)]*?\/\s*([\d.]+)(%?)\s*\)$/.exec(s)
+      if (m) return m[2] ? Number(m[1]) / 100 : Number(m[1])
+      return 1
     }
+    /**
+     * 实算底色 = 从元素向上把各层半透明底色**逐层叠**出来的结果。
+     * 早先是"取第一个不透明层"，可状态栏开关的底色是
+     * `color-mix(accent 12%, transparent)`（alpha 0.12），直接拿它去和文字算
+     * 对比度等于把 12% 的薄纱当成实底，12 套主题一律误报 1.0:1。
+     */
     const effBg = (el) => {
+      const layers = []
       let n = el
       while (n) {
         const c = getComputedStyle(n).backgroundColor
-        if (c && parseAlpha(c) > 0.02) return c
+        const a = parseAlpha(c)
+        if (a > 0.001) layers.push({ c, a })
+        if (a >= 0.999) break
         n = n.parentElement
       }
-      return 'rgb(255,255,255)'
+      try {
+        cx.clearRect(0, 0, 1, 1)
+        // 兜底：一直透明到根就按白纸算
+        cx.fillStyle = '#ffffff'
+        cx.fillRect(0, 0, 1, 1)
+        for (let i = layers.length - 1; i >= 0; i--) {
+          cx.fillStyle = layers[i].c
+          cx.fillRect(0, 0, 1, 1)
+        }
+        const d = cx.getImageData(0, 0, 1, 1).data
+        return `${d[0]},${d[1]},${d[2]}`
+      } catch {
+        return '255,255,255'
+      }
     }
     const chrome = (sel) => {
       const el = document.querySelector(sel)
       if (!el) return null
-      return { bg: norm(effBg(el)), fg: norm(getComputedStyle(el).color) }
+      return { bg: effBg(el), fg: norm(getComputedStyle(el).color) }
     }
     return {
       chrome: {
@@ -281,9 +323,21 @@ const measure = () =>
       pColor: g('.cm-line.md-p', 'color'),
       pColorRgb: norm(g('.cm-line.md-p', 'color') || '#000'),
       pFont: g('.cm-line.md-p', 'fontFamily'),
+      pFontSize: g('.cm-line.md-p', 'fontSize'),
       h1Size: h1 ? getComputedStyle(h1).fontSize : null,
       h1Family: h1 ? getComputedStyle(h1).fontFamily : null,
       h1Weight: h1 ? getComputedStyle(h1).fontWeight : null,
+      // 装饰件落在 ::before/::after 上：自动编号（counter）、左侧色条、圆点
+      h1Before: h1 ? pseudoOf(h1, '::before') : null,
+      h2Before: h2 ? pseudoOf(h2, '::before') : null,
+      headPseudo: ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'].map((tag) => {
+        const el = document.querySelector(`.cm-line.md-line-${tag}`)
+        return el ? pseudoOf(el, '::before') : null
+      }),
+      h2After: h2 ? pseudoOf(h2, '::after') : null,
+      h1Pos: h1 ? getComputedStyle(h1).position : null,
+      th: th ? { top: getComputedStyle(th).borderTopWidth, left: getComputedStyle(th).borderLeftWidth, bg: getComputedStyle(th).backgroundColor } : null,
+      quoteB: quote ? { left: getComputedStyle(quote).borderLeftWidth, bg: getComputedStyle(quote).backgroundColor } : null,
       h1Color: h1 ? getComputedStyle(h1).color : null,
       codeBg: code ? getComputedStyle(code).backgroundColor : null,
       quoteBar: quote ? getComputedStyle(quote).borderLeftColor : null,
@@ -310,6 +364,31 @@ for (const f of files) {
   // 主题若写 max-width: var(--xxx) 且该变量自身又是 var 链（或指向我们的变量），不做宽度断言
   const rawWidth = topLevelWriteWidth(css)
   const expWidth = rawWidth && !resolve(rawWidth, vars).includes('var(') ? resolve(rawWidth, vars) : null
+
+  // —— 期望值从主题 CSS 文本独立推算（不读适配层的自述）——
+  const plain = css.replace(/\/\*[\s\S]*?\*\//g, '')
+  // 标题自动编号：`h2::before { content: counter(heading-h2) }`
+  const wantsNumbering = /h[2-6][^{}]*::?before[^{}]*\{[^}]*content:\s*counter\(/i.test(plain)
+  // 标题挂装饰件：`#write h1::before { content:''; width:4px … }`（左侧色条 / 圆点）
+  // 只认"常态"规则 —— `h3.md-focus:before` 那种是聚焦才出现的参考实现编辑器行为
+  const wantsHeadDeco =
+    /#write(?![^{}]*md-focus)[^{}]*\bh[1-6][^{}]*::?before[^{}]*\{[^}]*\}/i.test(plain)
+  // 三线表：单元格边框被清掉
+  const wantsFlatCells = /(?:table[^{}]*(?:tr|th|td)|(?:th|td)\.?[\w-]*)[^{}]*\{[^}]*border:\s*(?:none|0)\b/i.test(
+    plain,
+  )
+  // 基准字号（px 或 pt，var() 先按主题变量解析一层）
+  let expFontPx = null
+  for (const m2 of plain.matchAll(/(?:^|})\s*(?:#write|html)\s*\{([^}]*)\}/gi)) {
+    const d = /font-size:\s*([^;}]+)/i.exec(m2[1])
+    if (!d) continue
+    const v = resolve(d[1].trim(), vars)
+    const n = /^([\d.]+)\s*(px|pt)$/i.exec(v)
+    if (n) {
+      expFontPx = n[2].toLowerCase() === 'pt' ? (Number(n[1]) * 4) / 3 : Number(n[1])
+      break
+    }
+  }
 
   await page.setInputFiles('#theme-file', `${THEME_DIR}/${f}`)
   await page.waitForTimeout(750)
@@ -346,6 +425,21 @@ for (const f of files) {
     widthApplied: expWidth ? m.contentVar === expWidth : true,
     styleInjected: m.styleLen > 2000 && m.hasBridge,
     chromeOk: chromeMin >= 3,
+    // 主题写了标题自动编号 → 渲染出来的 h2::before 必须真的有内容
+    numberingOk: wantsNumbering ? !!m.h2Before && m.h2Before.content !== 'none' : true,
+    // 主题给标题挂了 ::before 装饰（色条/圆点）→ 六级标题里至少有一级必须真的画出来
+    headDecoOk: wantsHeadDeco
+      ? m.headPseudo.some((p) => p && p.content !== 'none')
+      : true,
+    // 标题上的装饰用绝对定位时，行必须有定位基准，否则色条会跑到整页左上角
+    headAnchorOk:
+      wantsHeadDeco && m.headPseudo.some((p) => p && p.width !== 'auto' && p.width !== '0px')
+        ? m.h1Pos === 'relative'
+        : true,
+    // 三线表：主题清了单元格边框，渲染就不能还留着网格线
+    tableSkinOk: wantsFlatCells ? !!m.th && (m.th.top === '0px' || m.th.left === '0px') : true,
+    // 主题自带基准字号 → 正文实算字号必须跟上（用户字号是倍率）
+    fontOk: expFontPx == null || Math.abs(parseFloat(m.pFontSize) - expFontPx) <= 0.6,
   }
   const pass = Object.values(checks).every(Boolean)
   results.push({
@@ -380,22 +474,31 @@ for (const f of files) {
 }
 
 /* ---------------- 切换：菜单选自定义主题 / 切回内置 ---------------- */
-async function clickMenu(rootLabel, itemLabel) {
+/**
+ * v0.12.0 起顶级菜单瘦身到 7 项，「主题」进「显示」变成**二级弹层**。
+ * 这里走真实的三级路径：开「显示」→ hover「主题」→ 点主题名。
+ */
+async function clickMenu(rootLabel, subMi, itemLabel) {
   const root = page.locator('.menu-root', { hasText: rootLabel }).first()
   const rb = await root.boundingBox()
   await page.mouse.move(rb.x + 12, rb.y + rb.height / 2)
   await page.mouse.down()
   await page.mouse.up()
   await page.waitForSelector('.menu-drop', { timeout: 5000 })
-  await page.locator('.menu-drop .menu-item', { hasText: itemLabel }).first().click()
+  const sub = page.locator(`.menu-drop .menu-item[data-mi="${subMi}"]`).first()
+  const sb = await sub.boundingBox()
+  await page.mouse.move(sb.x + 10, sb.y + sb.height / 2)
+  await page.waitForSelector('.menu-drop.sub', { timeout: 5000 })
+  const item = page.locator('.menu-drop.sub .menu-item', { hasText: itemLabel }).first()
+  await item.click()
   await page.waitForTimeout(500)
 }
 
-await clickMenu('主题', 'drake-notion')
+await clickMenu('显示', 'view-theme', 'drake-notion')
 const afterMenu = await measure()
-await clickMenu('主题', 'Night')
+await clickMenu('显示', 'view-theme', 'Night')
 const afterNight = await measure()
-await clickMenu('主题', 'Github')
+await clickMenu('显示', 'view-theme', 'Github')
 const afterGithub = await measure()
 
 const summary = {

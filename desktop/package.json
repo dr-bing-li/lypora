@@ -1,7 +1,7 @@
 {
   "name": "lypora-desktop",
   "productName": "Lypora",
-  "version": "0.14.3",
+  "version": "0.14.4",
   "private": true,
   "description": "Lypora — Windows 桌面外壳（Electron）",
   "main": "main.js",

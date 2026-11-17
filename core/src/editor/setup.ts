@@ -68,7 +68,7 @@ export function setEditorPlaceholder(view: EditorView): void {
 
 const themeSpec = EditorView.theme({
   '&': {
-    fontSize: 'var(--content-font-size)',
+    fontSize: 'calc(var(--content-font-size) * var(--doc-font-scale, 1))',
     backgroundColor: 'transparent',
   },
   '.cm-scroller': {

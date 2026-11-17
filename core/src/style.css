@@ -760,7 +760,11 @@ body.full-width .width-grip {
   display: flex;
   flex-direction: column;
   position: relative;
-  background: var(--bg);
+  background-color: var(--bg);
+  /* 暗色主题的"底色"常常是整页渐变（写在 html/body 上）；适配层把它摘进
+     --bg-image，否则会被这一层的 --bg 实底压住，暗色主题看起来一片死黑 */
+  background-image: var(--bg-image, none);
+  background-attachment: fixed;
 }
 
 .editor-scroll {
@@ -912,7 +916,10 @@ body.full-width .editor-host {
 }
 .cm-content {
   font-family: var(--font-body);
-  font-size: var(--content-font-size);
+  /* 主题可以自带正文基准字号（#write{font-size}，适配层折成 --doc-font-scale）；
+     用户"字号"设置仍然生效，但降级为倍率 —— 否则 15px / 17px 的主题一律被
+     inline 的 16px 盖掉，整体观感就和参考实现差一截 */
+  font-size: calc(var(--content-font-size) * var(--doc-font-scale, 1));
   line-height: var(--content-line-height);
   color: var(--fg);
   padding: 0 !important;
