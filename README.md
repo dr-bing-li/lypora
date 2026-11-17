@@ -8,22 +8,25 @@
 
 ![Lypora 界面 / Lypora screenshot](docs/images/lypora.png)
 
-> **v0.14.3** — Two stamp bugs, both of the shape "the control is on the panel but the picture does not move".
-> An uploaded stamp PNG ignored the size slider in the top-left and top-right corners: the CSS carried only
-> `[data-pos="bl"], [data-pos="br"]` and the upload branch emitted a container with neither `data-stamp` nor any
-> width/height, so two corners were constrained and two were laid out at the image's own pixel size. The rule is
-> now corner-agnostic (`width/height: stampSize × 1.1`, `object-fit: contain`). The handwritten signature was
-> hard-coded to the word 签名; there is now a **stamp text** field, so you type your real name, and the font size
-> scales down with the character count so it stays inside both the frame and the underline.
+> **v0.14.4** — Third-party themes now render close to what their authors intended. Twelve real theme packs
+> were compared side by side against each author's own `preview.html`, and six root causes turned up — none of
+> them "missing colours": a `>` after `#write` never matched (the body is a flat sequence of lines, two levels
+> below the page container), the container prefix was substituted twice (`#write table tr th` became
+> `.cm-table-widget table .cm-table-widget tr th`, so **every** theme's table fell back to browser defaults),
+> the theme's base font size was overridden by an inline variable (`html{font-size:11pt}` inflated every `rem`
+> by ~9%), a code block was treated as one box although it is a group of lines (a border was drawn under
+> every line), pseudo-elements were discarded (heading numbering, quote bars, bullets, folded corners), and
+> `inherit` reversed meaning once rules were merged onto a line. `theme-check` grew from 8 to 13 assertions
+> over all twelve themes, with every expectation derived independently from the theme CSS text.
 > Card templates still follow an idea taken from the free themes of
 > [md2card](https://md2card.cn/zh/editor) — and for card design itself md2card remains the better tool, with more
 > themes and finer control. **If a well-made card is the goal, use [md2card](https://md2card.cn/zh/editor)
 > directly**; these templates exist so that wanting one quick card doesn't push you out of the editor.
-> Android 10+: [`apk`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.3/Lypora-0.14.3-android.apk) ·
-> Windows x64: [`zip`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.3/Lypora-0.14.3-win-x64.zip) ·
-> macOS: [`arm64`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.3/Lypora-0.14.3-macos-arm64.tar.gz) / [`x64`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.3/Lypora-0.14.3-macos-x64.tar.gz) ·
-> Linux: [`deb`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.3/lypora_0.14.3_amd64.deb) / [`rpm`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.3/lypora-0.14.3-1.x86_64.rpm) /
-> [`AppImage`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.3/Lypora-0.14.3-linux-x64.AppImage) / [`tar.gz`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.3/Lypora-0.14.3-linux-x64.tar.gz) ·
+> Android 10+: [`apk`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.4/Lypora-0.14.4-android.apk) ·
+> Windows x64: [`zip`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.4/Lypora-0.14.4-win-x64.zip) ·
+> macOS: [`arm64`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.4/Lypora-0.14.4-macos-arm64.tar.gz) / [`x64`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.4/Lypora-0.14.4-macos-x64.tar.gz) ·
+> Linux: [`deb`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.4/lypora_0.14.4_amd64.deb) / [`rpm`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.4/lypora-0.14.4-1.x86_64.rpm) /
+> [`AppImage`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.4/Lypora-0.14.4-linux-x64.AppImage) / [`tar.gz`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.4/Lypora-0.14.4-linux-x64.tar.gz) ·
 > [all releases](https://github.com/dr-bing-li/lypora/releases)
 
 ```bash
@@ -33,6 +36,38 @@ cd core && npm install && npm run build
 # 2. run it locally
 npm run preview        # http://127.0.0.1:4173
 ```
+
+### What changed in v0.14.4
+
+- **A `>` after `#write` never matched.** The body is a flat sequence of lines two levels below
+  `.cm-editor > .cm-content`, so `#write > p` had no target (green-swiss lost every paragraph card). A `>`
+  after the page container is now treated as a descendant; `p + p` — spacing *between* paragraphs — has no
+  counterpart here and is dropped **and counted** rather than silently vanishing.
+- **The container prefix was substituted twice.** `#write table tr th` became
+  `.cm-table-widget table .cm-table-widget tr th` — "a widget inside a widget", zero matches — and **all
+  twelve themes** had tables rendered as browser defaults. A scope prefix now appears once per selector, and
+  selector splitting is bracket/quote aware so `tr:nth-child(2n + 1)` is no longer shredded.
+- **The theme's base font size was overridden.** `#write{font-size}` only changed itself and
+  `html{font-size:11pt}` left `html` at 16px, inflating every `rem` by ~1.09×. Both now fold into a
+  `--doc-font-scale` multiplier; the font-size slider scales on top of the theme baseline. Measured baselines:
+  forest-latex 27.9px, green-swiss 42.75px, vercel-ceylon 37.4px.
+- **A code block is a group of lines, not one box.** `pre.md-fences{border:1px solid}` drew a rule under
+  every line (songti) and four radii per line; block box properties are now split across the first and last
+  line. `.CodeMirror{background:transparent!important}`-style "clear the outer shell" rules are reduced to the
+  text layer, so they no longer wipe the block's own fill (vercel had white text on white).
+- **Pseudo-elements carry the decoration.** Automatic numbering, quote bars, bullets and the folded-corner H2
+  all rely on them; they now pass through untouched, lines get a positioning context, and pseudo-elements on
+  code blocks (traffic-light dots) are drawn once per block instead of once per line.
+- **`inherit` means the opposite once merged onto a line.** `blockquote p{color:inherit}` reached for the body
+  colour instead of the quote's (orange-drake's quote text and bar both turned black). Dropped in textOnly mode.
+- **Accepted by an independent expectation, not by the adapter's own claims.** `theme-check` went from 8 to
+  **13 assertions** over 12 real themes, each expected value derived from the theme CSS text (0.6px tolerance):
+  all twelve pass, `console errors: none`, and switching back to the built-in Github theme is pixel-identical
+  to the baseline. Across the 84 cross-checked metrics, 78 match; the remaining six are float rounding on
+  forest-latex's `11pt` (≤0.006px) and rainbow-konayuki's `#write` line height (the user's own setting wins).
+- **Four things genuinely cannot be expressed** — and are documented in the in-app help page rather than
+  papered over: block spacing as `p + p`, decoration spanning several lines, `display:table`-style re-layout,
+  and remote fonts/backgrounds (offline-first, and untrusted input makes no requests).
 
 ### What changed in v0.14.3
 
@@ -78,8 +113,8 @@ npm run preview        # http://127.0.0.1:4173
   the **difference between "binding" and "none"** — a metal-grey colour range also catches paper texture and
   grey type, which turned a 1.9:1 paperclip into a 5:1 stripe across the whole card on the first attempt.
 
-See [`docs/releases/v0.14.3/notes.md`](docs/releases/v0.14.3/notes.md) for the full bilingual changelog of this
-release, and [`docs/releases/v0.14.2/notes.md`](docs/releases/v0.14.2/notes.md) for the layout-panel pass before it.
+See [`docs/releases/v0.14.4/notes.md`](docs/releases/v0.14.4/notes.md) for the full bilingual changelog of this
+release, and [`docs/releases/v0.14.3/notes.md`](docs/releases/v0.14.3/notes.md) for the stamp pass before it.
 ### Deployment
 
 **A. Browser / PWA (any static host)**
@@ -98,7 +133,7 @@ backend required. Serving it over HTTPS gives you installable PWA behaviour and 
 ```bash
 node tools/pack-win.mjs --zip
 # -> release/Lypora/Lypora.exe           double-click to run
-# -> release/Lypora-0.14.3-win-x64.zip    ready to hand out
+# -> release/Lypora-0.14.4-win-x64.zip    ready to hand out
 ```
 
 Requires `desktop/node_modules/electron/dist` (`npm install` inside `desktop/` downloads it). The packer also
@@ -111,8 +146,8 @@ stamps the icon and version metadata into the executable.
 curl -LO https://github.com/electron/electron/releases/download/v33.4.11/electron-v33.4.11-darwin-arm64.zip
 python tools/pack-mac.py --zip electron-v33.4.11-darwin-arm64.zip --arch arm64
 python tools/pack-mac.py --zip electron-v33.4.11-darwin-x64.zip   --arch x64
-# -> release/Lypora-0.14.3-macos-arm64.tar.gz
-# -> release/Lypora-0.14.3-macos-x64.tar.gz
+# -> release/Lypora-0.14.4-macos-arm64.tar.gz
+# -> release/Lypora-0.14.4-macos-x64.tar.gz
 ```
 
 The packer rebuilds Electron's prebuilt zip into a real `Lypora.app` bundle — rewritten `Info.plist`
@@ -126,7 +161,7 @@ The result is **ad-hoc signed, not notarised** — there is no Developer ID cert
 launch will be stopped by Gatekeeper; either **right-click → Open → Open** once, or use the bundled helper:
 
 ```bash
-tar xzf Lypora-0.14.3-macos-arm64.tar.gz && cd Lypora-0.14.3-macos-arm64
+tar xzf Lypora-0.14.4-macos-arm64.tar.gz && cd Lypora-0.14.4-macos-arm64
 sh mac-finalize.command     # strip quarantine, ad-hoc re-sign, verify
 ```
 
@@ -138,11 +173,11 @@ and under Rosetta.
 ```bash
 curl -LO https://github.com/electron/electron/releases/download/v33.4.11/electron-v33.4.11-linux-x64.zip
 python tools/pack-linux.py --zip electron-v33.4.11-linux-x64.zip
-# -> release/Lypora-0.14.3-linux-x64.tar.gz
+# -> release/Lypora-0.14.4-linux-x64.tar.gz
 ```
 
 ```bash
-tar xzf Lypora-0.14.3-linux-x64.tar.gz && cd Lypora
+tar xzf Lypora-0.14.4-linux-x64.tar.gz && cd Lypora
 ./install.sh          # per-user: ~/.local/share/lypora, .desktop entry, hicolor icons
 ./lypora.sh           # ...or just run it in place
 ```
@@ -160,12 +195,12 @@ everything it added. Target **x86-64, glibc ≥ 2.31** (Ubuntu 20.04+, Debian 11
 python tools/linux-stage.py --zip electron-v33.4.11-linux-x64.zip --stage build/stage --deb
 
 # 2) the three wrappers need Linux binaries (dpkg-deb / rpmbuild / appimagetool)
-dpkg-deb --build --root-owner-group build/stage release/lypora_0.14.3_amd64.deb
-rpmbuild -bb --define "_version 0.14.3" --define "_stage_root $PWD/build/stage" \
+dpkg-deb --build --root-owner-group build/stage release/lypora_0.14.4_amd64.deb
+rpmbuild -bb --define "_version 0.14.4" --define "_stage_root $PWD/build/stage" \
          --define "_topdir $PWD/build/rpm" packaging/lypora.spec
 python tools/linux-stage.py --stage build/stage --appdir build/AppDir
 ARCH=x86_64 ./appimagetool --appimage-extract-and-run --no-appstream build/AppDir \
-         release/Lypora-0.14.3-linux-x64.AppImage
+         release/Lypora-0.14.4-linux-x64.AppImage
 ```
 
 You do not normally run that by hand: **pushing a `v*` tag** triggers
@@ -178,7 +213,7 @@ and a troubleshooting list are in
 
 ```bash
 node tools/build-android.mjs
-# -> release/Lypora-0.14.3-android.apk    install with: adb install -r <file>
+# -> release/Lypora-0.14.4-android.apk    install with: adb install -r <file>
 ```
 
 Needs **JDK 21** and an **Android SDK** with platform 35 + build-tools 35 — the script locates `ANDROID_HOME`
@@ -354,37 +389,41 @@ Lypora 是一个即时渲染的 Markdown 编辑器。你在编辑区里写 Markd
 
 ### 下载
 
-最新版本：**[v0.14.3](https://github.com/dr-bing-li/lypora/releases/tag/v0.14.3)** · 全部构建见
+最新版本：**[v0.14.4](https://github.com/dr-bing-li/lypora/releases/tag/v0.14.4)** · 全部构建见
 [Releases 页面](https://github.com/dr-bing-li/lypora/releases)。
 
-> **v0.14.3 改了什么：** 两个「参数在面板上、画面却改不动」的 bug，都在印章那一组。
-> 模板数据格式（schema 6）一个字节没改，已导出的样式包与老模板的导出像素都不变。
-> 一、**上传的印章图在左上、右上尺寸不可调**。当时 CSS 只写了半边规则（只有左下、右下受约束），
-> 上传分支的容器又没有 `data-stamp` 也没有宽高，于是左上/右上按图片原始像素铺开 —— 160×100 的图就画
-> 160×100，拖滑块纹丝不动，大图还盖住标题。现在四角共用一条规则，等比缩进 `印章大小 × 1.1` 的方框，
-> 实测同一个尺寸下四角红块面积 1344 / 1344 / 1346 / 1345，`40 → 120` 时四角同步放大到约 9.5 倍。
-> 二、**手写签名的字写死了「签名」**。新增「印章文字」一行：填真名就签真名，留空回到预设字
-> （阅 / 已阅 / 签名），四个预设都能改。字数多时字号自动收小，既不戳出印章边框也不跑出下划线；
-> 只在字数超出预设长度时才写内联字号，所以默认印章逐像素不变。清空输入后与默认图差异为 **0**。
-> 桌面三平台覆盖安装即可；安卓 versionCode 22 → 23。模板方向的灵感归灵感：那几套样式是从
-> [md2card](https://md2card.cn/zh/editor) 的免费样式**借鉴的灵感**，用我们自己的 schema 重新画的；
-> 而做卡片这件事，**md2card 比我们专业得多**（主题更多、版式控制更细）——
-> 真要做好看的卡片，**建议直接去用它**，这里的模板只是让你写东西时顺手能出一张。
-> 0.14.2 的排版面板（字号 / 贴纸 8 落点 / 底色范围 / 装订件重画 / 悬停说明）与完整双语说明见
-> [`docs/releases/v0.14.2/notes.md`](docs/releases/v0.14.2/notes.md)，本版说明见
-> [`docs/releases/v0.14.3/notes.md`](docs/releases/v0.14.3/notes.md)。
+> **v0.14.4 改了什么：** 第三方主题的显示效果。拿 12 套真实在用的主题包，逐套和作者自己提供的
+> `preview.html` 并排看，差距不是「少几个颜色」，而是「整篇版式没接上」。查到六类原因：
+> 一、`#write > p` 里的 `>` 永远命中不了 —— 正文是两层容器下面平铺的行，`>` 的左邻是页面容器；
+> 现在页面容器后面的 `>` 按后代处理，`p + p` 这种「段落之间」的间距无法表达，丢弃并计入统计。
+> 二、同一个选择器里的容器前缀被替换了两遍，`#write table tr th` 变成套娃，
+> **12 套主题的表格全部退化成浏览器默认细线框**；现在同一作用域只留一次。
+> 三、主题自带的基准字号被行内变量顶掉，`html{font-size:11pt}` 时 `rem` 排版整体放大约 9%；
+> 现在换算成倍率，字号滑块仍是在主题基准上缩放。
+> 四、代码块是「一组行」不是一个盒子，`border` 曾在每一行下面画一条线（songti），
+> 圆角变成每行四个角；块级边框 / 圆角 / 阴影 / 内边距现在拆给首行与末行。
+> 五、标题自动编号、引用色条、列表圆点、H2 折角三角全靠伪元素，之前被一并丢掉；
+> 代码块上的红绿灯圆点也不再每行画一套。
+> 六、`inherit` 合并到行上语义反转（`blockquote p{color:inherit}` 会去继承正文色，引用整体变黑），
+> 这类关键字现在直接丢弃。
+> 验收不靠自述：`theme-check` 的断言从 8 项扩到 **13 项**，期望值全部从主题 CSS 文本独立推算
+> （0.6px 容差），12 套全过、控制台零错误、切回内置主题逐像素同基线；84 项对照指标里 78 项一致，
+> 余 6 项是 forest-latex 的 `11pt` 浮点差与 rainbow-konayuki 写在 `#write` 上的行高（用户设置优先）。
+> 另有四条明确做不到的（块间距、跨行装饰、重排布局、远程资源），已写进应用内帮助页而不是含糊过去。
+> 上一版的印章修复见 [`docs/releases/v0.14.3/notes.md`](docs/releases/v0.14.3/notes.md)，
+> 本版完整双语说明见 [`docs/releases/v0.14.4/notes.md`](docs/releases/v0.14.4/notes.md)。
 
 | 文件 | 平台 | 格式 | 大小 | SHA256 |
 |---|---|---|---|---|
-| [`lypora_0.14.3_amd64.deb`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.3/lypora_0.14.3_amd64.deb) | Debian 11+ / Ubuntu 20.04+ / 深度 / 麒麟 | 系统包，`sudo apt install ./…deb` | 81.0 MiB | 456826ce…ed6315 |
-| [`lypora-0.14.3-1.x86_64.rpm`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.3/lypora-0.14.3-1.x86_64.rpm) | Fedora 32+ / RHEL 9+ / openSUSE | 系统包，`sudo dnf install ./…rpm` | 105.0 MiB | cd45cbb7…3907e8 |
-| [`Lypora-0.14.3-linux-x64.AppImage`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.3/Lypora-0.14.3-linux-x64.AppImage) | 任意 x86-64 发行版 | 单文件，`chmod +x` 后直接跑 | 96.8 MiB | 2eb1ed98…f6dadc |
-| [`Lypora-0.14.3-linux-x64.tar.gz`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.3/Lypora-0.14.3-linux-x64.tar.gz) | 任意 x86-64 发行版（glibc ≥ 2.31） | tar.gz + `install.sh`（per-user，不要 root） | 104.4 MiB | e006076e…bcdfe7 |
-| [`Lypora-0.14.3-win-x64.zip`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.3/Lypora-0.14.3-win-x64.zip) | Windows 10/11 x64 | 便携版 ZIP，解压即用 | 111.8 MiB | 21e41034…142767 |
-| [`Lypora-0.14.3-macos-arm64.tar.gz`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.3/Lypora-0.14.3-macos-arm64.tar.gz) | macOS 11+（Apple Silicon） | `.app` bundle，ad-hoc 签名 | 98.6 MiB | 8e649af5…e3388e |
-| [`Lypora-0.14.3-macos-x64.tar.gz`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.3/Lypora-0.14.3-macos-x64.tar.gz) | macOS 11+（Intel） | `.app` bundle，ad-hoc 签名 | 103.0 MiB | 6f1f4977…df53cd |
-| [`Lypora-0.14.3-android.apk`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.3/Lypora-0.14.3-android.apk) | Android 10+（API 29+） | APK，debug 签名，直接侧载 | 13.7 MiB | 0189f334…96d578 |
-| [`SHA256SUMS.txt`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.3/SHA256SUMS.txt) | 任意 | 全部产物的校验清单（8 条） | 见文件 | — |
+| [`lypora_0.14.4_amd64.deb`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.4/lypora_0.14.4_amd64.deb) | Debian 11+ / Ubuntu 20.04+ / 深度 / 麒麟 | 系统包，`sudo apt install ./…deb` | 81.0 MiB | 456826ce…ed6315 |
+| [`lypora-0.14.4-1.x86_64.rpm`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.4/lypora-0.14.4-1.x86_64.rpm) | Fedora 32+ / RHEL 9+ / openSUSE | 系统包，`sudo dnf install ./…rpm` | 105.0 MiB | cd45cbb7…3907e8 |
+| [`Lypora-0.14.4-linux-x64.AppImage`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.4/Lypora-0.14.4-linux-x64.AppImage) | 任意 x86-64 发行版 | 单文件，`chmod +x` 后直接跑 | 96.8 MiB | 2eb1ed98…f6dadc |
+| [`Lypora-0.14.4-linux-x64.tar.gz`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.4/Lypora-0.14.4-linux-x64.tar.gz) | 任意 x86-64 发行版（glibc ≥ 2.31） | tar.gz + `install.sh`（per-user，不要 root） | 104.4 MiB | e006076e…bcdfe7 |
+| [`Lypora-0.14.4-win-x64.zip`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.4/Lypora-0.14.4-win-x64.zip) | Windows 10/11 x64 | 便携版 ZIP，解压即用 | 111.8 MiB | 21e41034…142767 |
+| [`Lypora-0.14.4-macos-arm64.tar.gz`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.4/Lypora-0.14.4-macos-arm64.tar.gz) | macOS 11+（Apple Silicon） | `.app` bundle，ad-hoc 签名 | 98.6 MiB | 8e649af5…e3388e |
+| [`Lypora-0.14.4-macos-x64.tar.gz`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.4/Lypora-0.14.4-macos-x64.tar.gz) | macOS 11+（Intel） | `.app` bundle，ad-hoc 签名 | 103.0 MiB | 6f1f4977…df53cd |
+| [`Lypora-0.14.4-android.apk`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.4/Lypora-0.14.4-android.apk) | Android 10+（API 29+） | APK，debug 签名，直接侧载 | 13.7 MiB | 0189f334…96d578 |
+| [`SHA256SUMS.txt`](https://github.com/dr-bing-li/lypora/releases/download/v0.14.4/SHA256SUMS.txt) | 任意 | 全部产物的校验清单（8 条） | 见文件 | — |
 
 deb / rpm 会装进 `/opt/lypora`，附带 `/usr/bin/lypora` 命令、应用菜单项和 8 档图标，`apt remove` /
 `dnf remove` 删得干净。AppImage 和 tar.gz 完全不需要 root。
@@ -393,12 +432,12 @@ deb / rpm 会装进 `/opt/lypora`，附带 `/usr/bin/lypora` 命令、应用菜�
 员权限、没有自动更新——升级就是下载新版 ZIP 覆盖上去。**exe 未做代码签名**，所以 SmartScreen 会拦一次：
 「更多信息」→「仍要运行」。
 
-**macOS：** 解压得到 `Lypora-0.14.3-macos-<arch>/`，里面是 `Lypora.app`。**这是 ad-hoc 签名，没有 Apple
+**macOS：** 解压得到 `Lypora-0.14.4-macos-<arch>/`，里面是 `Lypora.app`。**这是 ad-hoc 签名，没有 Apple
 Developer ID，也没有公证**，所以首次打开会被 Gatekeeper 拦下。两个办法任选：右键 `Lypora.app` →「打开」→
 再点「打开」；或者先用包里的脚本处理一遍：
 
 ```bash
-tar xzf Lypora-0.14.3-macos-arm64.tar.gz && cd Lypora-0.14.3-macos-arm64
+tar xzf Lypora-0.14.4-macos-arm64.tar.gz && cd Lypora-0.14.4-macos-arm64
 sh mac-finalize.command        # 去 quarantine + ad-hoc 重签 + 校验
 open Lypora.app
 ```
@@ -410,10 +449,10 @@ Apple Silicon 请下载 arm64 包，Intel 下载 x64（x64 也能在 Apple Silic
 **Linux：** 四条路，按你平时怎么管软件选一条。
 
 ```bash
-sudo apt install ./lypora_0.14.3_amd64.deb          # Debian / Ubuntu / 深度 / 麒麟
-sudo dnf install ./lypora-0.14.3-1.x86_64.rpm       # Fedora / RHEL 9+（openSUSE 用 zypper install ./…rpm）
-chmod +x Lypora-0.14.3-linux-x64.AppImage && ./Lypora-0.14.3-linux-x64.AppImage   # 不安装、不要 root
-tar xzf Lypora-0.14.3-linux-x64.tar.gz && cd Lypora && ./install.sh              # 装进 ~/.local，不要 root
+sudo apt install ./lypora_0.14.4_amd64.deb          # Debian / Ubuntu / 深度 / 麒麟
+sudo dnf install ./lypora-0.14.4-1.x86_64.rpm       # Fedora / RHEL 9+（openSUSE 用 zypper install ./…rpm）
+chmod +x Lypora-0.14.4-linux-x64.AppImage && ./Lypora-0.14.4-linux-x64.AppImage   # 不安装、不要 root
+tar xzf Lypora-0.14.4-linux-x64.tar.gz && cd Lypora && ./install.sh              # 装进 ~/.local，不要 root
 ```
 
 deb / rpm 由包管理器负责装卸：文件进 `/opt/lypora` 和 `/usr/share`，同时得到 `/usr/bin/lypora` 命令、
@@ -424,7 +463,7 @@ deb / rpm 由包管理器负责装卸：文件进 `/opt/lypora` 和 `/usr/share`
 **AppImage 里没有 root**，SUID 沙箱必然不可用，所以它的 `AppRun` 一律带 `--no-sandbox`。这是 Electron 打
 AppImage 的固有代价，不是配置错误。目前只有 x86-64 包，没有 arm64。
 
-**Android：** 把 APK 传到手机点开安装（或 `adb install -r Lypora-0.14.3-android.apk`）。系统会提示「允许安装
+**Android：** 把 APK 传到手机点开安装（或 `adb install -r Lypora-0.14.4-android.apk`）。系统会提示「允许安装
 未知来源应用」，这是侧载的正常提示。触屏版是另一套外壳（底部操作栏、菜单收进底部面板、侧栏变抽屉），
 导出 PDF、打开文件夹、导入第三方主题在手机上是置灰的。文档存在应用专属目录
 `Android/data/app.lypora.editor/files/Documents/Lypora/`，要交出去请用**导出 → 系统分享面板**。
@@ -455,8 +494,8 @@ v0.4.1 起，Lypora 也注册进了系统的**「打开方式」**列表（在�
 运行前先校验：
 
 ```bat
-certutil -hashfile Lypora-0.14.3-win-x64.zip SHA256
-certutil -hashfile Lypora-0.14.3-android.apk SHA256
+certutil -hashfile Lypora-0.14.4-win-x64.zip SHA256
+certutil -hashfile Lypora-0.14.4-android.apk SHA256
 ```
 ```bash
 shasum -a 256 -c SHA256SUMS.txt      # macOS / Linux 通用
@@ -491,7 +530,7 @@ Lypora 是一个**小小的、刻意不做大的替代品**，用来临时顶一
 | 帮助 | `F1` 或「帮助」菜单打开 **8 篇只读文档**（快捷键 / 特色功能 / 主题与兼容性 / 页面宽度 / 图片引用 / 排版输出 / 设置项 / 关于），中英双语；只读标签不进最近文件、不参与未保存、不能编辑 |
 | 桌面 | 原生对话框、单实例（第二次启动把文件开成新窗口）、关窗前未保存拦截、文件关联 |
 | 平台 | Windows 便携版 `.exe` + ZIP、macOS `.app`（Apple Silicon 与 Intel）、Linux x64 的 `.deb` / `.rpm` / AppImage / tar.gz（都带 `.desktop` 集成）、Android APK、以及浏览器 / PWA 版——一个 TypeScript 核心，五套外壳 |
-| 发布 | `git push origin v0.14.3` 就够了：GitHub Actions 构建前端、摊一棵 FHS 树、封成 deb / rpm / AppImage / tar.gz、在干净容器里把 deb 和 rpm 真装一遍，然后把全部产物和合并后的 `SHA256SUMS.txt` 传上 Release |
+| 发布 | `git push origin v0.14.4` 就够了：GitHub Actions 构建前端、摊一棵 FHS 树、封成 deb / rpm / AppImage / tar.gz、在干净容器里把 deb 和 rpm 真装一遍，然后把全部产物和合并后的 `SHA256SUMS.txt` 传上 Release |
 
 ### 快速开始
 
@@ -526,7 +565,7 @@ cd core && npm run build
 ```bash
 node tools/pack-win.mjs --zip
 # -> release/Lypora/Lypora.exe           双击即用
-# -> release/Lypora-0.14.3-win-x64.zip    可直接分发
+# -> release/Lypora-0.14.4-win-x64.zip    可直接分发
 ```
 
 依赖 `desktop/node_modules/electron/dist`（在 `desktop/` 里 `npm install` 会下载）。打包脚本会把图标和
@@ -539,8 +578,8 @@ node tools/pack-win.mjs --zip
 curl -LO https://github.com/electron/electron/releases/download/v33.4.11/electron-v33.4.11-darwin-arm64.zip
 python tools/pack-mac.py --zip electron-v33.4.11-darwin-arm64.zip --arch arm64
 python tools/pack-mac.py --zip electron-v33.4.11-darwin-x64.zip   --arch x64
-# -> release/Lypora-0.14.3-macos-arm64.tar.gz
-# -> release/Lypora-0.14.3-macos-x64.tar.gz
+# -> release/Lypora-0.14.4-macos-arm64.tar.gz
+# -> release/Lypora-0.14.4-macos-x64.tar.gz
 ```
 
 打包脚本把 Electron 的预编译 zip 重建成一个真正的 `Lypora.app`——重写 `Info.plist`（bundle id、
@@ -560,7 +599,7 @@ Windows 版同一份 `Resources/app` 前端——最后输出 tar.gz。
 ```bash
 curl -LO https://github.com/electron/electron/releases/download/v33.4.11/electron-v33.4.11-linux-x64.zip
 python tools/pack-linux.py --zip electron-v33.4.11-linux-x64.zip
-# -> release/Lypora-0.14.3-linux-x64.tar.gz
+# -> release/Lypora-0.14.4-linux-x64.tar.gz
 ```
 
 包内结构是 `Lypora/` 目录 + `lypora.sh`（启动器）+ `install.sh` / `uninstall.sh`（安装、卸载）+
@@ -575,12 +614,12 @@ python tools/pack-linux.py --zip electron-v33.4.11-linux-x64.zip
 python tools/linux-stage.py --zip electron-v33.4.11-linux-x64.zip --stage build/stage --deb
 
 # 2) 三种封装需要 Linux 工具链（dpkg-deb / rpmbuild / appimagetool）
-dpkg-deb --build --root-owner-group build/stage release/lypora_0.14.3_amd64.deb
-rpmbuild -bb --define "_version 0.14.3" --define "_stage_root $PWD/build/stage" \
+dpkg-deb --build --root-owner-group build/stage release/lypora_0.14.4_amd64.deb
+rpmbuild -bb --define "_version 0.14.4" --define "_stage_root $PWD/build/stage" \
          --define "_topdir $PWD/build/rpm" packaging/lypora.spec
 python tools/linux-stage.py --stage build/stage --appdir build/AppDir
 ARCH=x86_64 ./appimagetool --appimage-extract-and-run --no-appstream build/AppDir \
-         release/Lypora-0.14.3-linux-x64.AppImage
+         release/Lypora-0.14.4-linux-x64.AppImage
 ```
 
 正常不需要手敲：**推一个 `v*` 标签**就会触发
@@ -592,7 +631,7 @@ ARCH=x86_64 ./appimagetool --appimage-extract-and-run --no-appstream build/AppDi
 
 ```bash
 node tools/build-android.mjs
-# -> release/Lypora-0.14.3-android.apk    安装：adb install -r <文件>
+# -> release/Lypora-0.14.4-android.apk    安装：adb install -r <文件>
 ```
 
 需要 **JDK 21** 与 **Android SDK**（platform 35 + build-tools 35）。脚本会自己找 `ANDROID_HOME` 和 JDK，缺什么
