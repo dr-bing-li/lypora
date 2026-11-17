@@ -169,6 +169,8 @@ export const PARAM_SPECS: ParamSpec[] = [
   { path: 'decor.tape', kind: 'toggle', labelKey: 'tpl.p.tape' },
   { path: 'decor.stamp', kind: 'toggle', labelKey: 'tpl.p.stamp' },
   { path: 'decor.stampPreset', kind: 'select', labelKey: 'tpl.p.stampPreset', options: enumOpts('tpl.stamp', STAMPS) },
+  // 印章上的字：留空 = 用预设的默认字（阅 / 已阅 / 签名）。手写签名填真名最常用
+  { path: 'decor.stampText', kind: 'text', labelKey: 'tpl.p.stampText', placeholderKey: 'tpl.p.stampTextHint', maxLength: 6 },
   { path: 'decor.stampPos', kind: 'select', labelKey: 'tpl.p.stampPos', options: enumOpts('tpl.pos', STAMP_POS) },
   { path: 'decor.stampSize', kind: 'number', labelKey: 'tpl.p.stampSize', min: 34, max: 140, step: 2, unit: 'px' },
 

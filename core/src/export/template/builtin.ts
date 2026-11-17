@@ -106,6 +106,7 @@ const DEFAULT_DECOR: TemplateDecor = {
   stampImage: '',
   stampSize: 64,
   stampPos: 'br',
+  stampText: '',
   panel: DEFAULT_PANEL,
   headings: DEFAULT_HEADS,
   rule: DEFAULT_RULE,

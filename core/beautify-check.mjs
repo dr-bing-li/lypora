@@ -1717,6 +1717,162 @@ else if (binderDiff.h / binderDiff.w < 1.0) {
   errors.push(`[装订] 长尾夹该是竖向夹住的（高宽比 ${(binderDiff.h / binderDiff.w).toFixed(1)}）`)
 }
 
+/* ---------- C8. 印章：上传图四角一致 + 签名文字可改 ---------- */
+
+/*
+ * 两条都是用户报上来的「看得见的毛病」：
+ *  ① 上传的印章图放在左上 / 右上时，stampSize 拖了完全没用 ——
+ *     旧 CSS 只给 `[data-pos="bl"|"br"] .ly-stamp-img` 限了 max-height，
+ *     另外两角没有任何尺寸约束，图片按原始像素铺开，大图还把标题盖住。
+ *  ② 手写签名的字写死成「签名」，用户没法签自己的名字。
+ *
+ * 断言只认现象：四角的红块面积彼此一致、并且随 stampSize 一起变大（旧代码在
+ * 左上 / 右上这一项是 1:1，纹丝不动）；换成真名后像素必须变，清空后必须回到原样。
+ */
+
+/** 纯色 PNG 编码器（不引第三方库；检查脚本必须能在任何机器上自己造图） */
+const CRC_TABLE = (() => {
+  const t = new Int32Array(256)
+  for (let n = 0; n < 256; n++) {
+    let c = n
+    for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1
+    t[n] = c
+  }
+  return t
+})()
+const crc32 = (buf) => {
+  let c = -1
+  for (const b of buf) c = CRC_TABLE[(c ^ b) & 0xff] ^ (c >>> 8)
+  return (c ^ -1) >>> 0
+}
+function solidPng(w, h, [r, g, b]) {
+  const raw = Buffer.alloc((w * 3 + 1) * h)
+  for (let y = 0; y < h; y++) {
+    const o = y * (w * 3 + 1)
+    raw[o] = 0 // filter: none
+    for (let x = 0; x < w; x++) {
+      const p = o + 1 + x * 3
+      raw[p] = r
+      raw[p + 1] = g
+      raw[p + 2] = b
+    }
+  }
+  const chunk = (type, data) => {
+    const len = Buffer.alloc(4)
+    len.writeUInt32BE(data.length)
+    const t = Buffer.from(type, 'ascii')
+    const crc = Buffer.alloc(4)
+    crc.writeUInt32BE(crc32(Buffer.concat([t, data])))
+    return Buffer.concat([len, t, data, crc])
+  }
+  const ihdr = Buffer.alloc(13)
+  ihdr.writeUInt32BE(w, 0)
+  ihdr.writeUInt32BE(h, 4)
+  ihdr[8] = 8 // bit depth
+  ihdr[9] = 2 // truecolour
+  return Buffer.concat([
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    chunk('IHDR', ihdr),
+    chunk('IDAT', zlib.deflateSync(raw)),
+    chunk('IEND', Buffer.alloc(0)),
+  ])
+}
+
+await page.click('.ce-style[data-tpl="paper"]')
+await page.waitForTimeout(1400)
+await page.evaluate(() => {
+  // 封面开着的时候印章落在封面上，四角位置看不出差别
+  const c = document.querySelector('.ce-check input')
+  if (c && c.checked) c.click()
+})
+await page.waitForTimeout(800)
+await page.evaluate(() => {
+  const sw = document.querySelector('.ce-group[data-group="stamp"] .ce-switch')
+  if (sw && !sw.classList.contains('on')) sw.click()
+})
+await page.waitForTimeout(700)
+
+// 非正方形（160×100）才能证明「等比缩进方框」，正方形会把比例问题藏起来
+await page.setInputFiles('[data-act="stamp-file"]', {
+  name: 'stamp-probe.png',
+  mimeType: 'image/png',
+  buffer: solidPng(160, 100, [220, 30, 60]),
+})
+await page.waitForTimeout(1600)
+
+const REDBAND = [
+  [150, 255],
+  [0, 115],
+  [0, 115],
+]
+const segOk = await page.evaluate(
+  () => !!document.querySelector('.ce-param[data-path="decor.stampPos"] .ce-seg-btn[data-val="tl"]'),
+)
+const stampArea = {}
+if (!segOk) errors.push('[印章] 找不到位置分段按钮，四角落点无法验证')
+else {
+  for (const size of [40, 120]) {
+    await setNum('decor.stampSize', size)
+    for (const pos of ['tl', 'tr', 'bl', 'br']) {
+      await clickSeg('decor.stampPos', pos)
+      const f = `c8-stamp-${pos}-${size}.png`
+      await grab(f)
+      stampArea[`${pos}@${size}`] = (await colorBox(f, REDBAND)).n
+    }
+  }
+  for (const pos of ['tl', 'tr', 'bl', 'br']) {
+    const a = stampArea[`${pos}@40`]
+    const b = stampArea[`${pos}@120`]
+    if (!a) errors.push(`[印章] ${pos} 位置的印章图没画出来`)
+    else if (!(b / a >= 4)) {
+      // 面积比 ≈ (120/40)² = 9；旧代码在 tl / tr 是 1:1（图按原图像素铺开，参数无效）
+      errors.push(`[印章] ${pos} 位置的印章图不随「印章大小」变（面积 ${a} → ${b}，需 ≥4 倍）`)
+    }
+  }
+  const s40 = ['tl', 'tr', 'bl', 'br'].map((p) => stampArea[`${p}@40`]).filter(Boolean)
+  if (s40.length === 4) {
+    const ratio = Math.max(...s40) / Math.min(...s40)
+    if (ratio > 1.3) errors.push(`[印章] 四个角的印章图大小不一致（max/min = ${ratio.toFixed(2)}，需 ≤1.3）`)
+  }
+}
+
+/* 签名文字 */
+const setStampText = async (v) => {
+  const before = await imgSrc()
+  const ok = await page.evaluate((val) => {
+    const inp = document.querySelector('.ce-param[data-path="decor.stampText"] input.ce-text')
+    if (!inp) return false
+    inp.value = val
+    inp.dispatchEvent(new Event('input', { bubbles: true }))
+    inp.dispatchEvent(new Event('blur'))
+    return true
+  }, v)
+  if (!ok) return false
+  await waitPaint(before)
+  await page.waitForTimeout(200)
+  return true
+}
+
+await page.evaluate(() => document.querySelector('.ce-seg-btn[data-act="stamp-clear"]')?.click())
+await page.waitForTimeout(1400)
+await clickSeg('decor.stampPreset', 'signature')
+await setNum('decor.stampSize', 80)
+await grab('c8-sig-default.png')
+const sigSet = await setStampText('张三丰')
+if (!sigSet) errors.push('[签名] 面板上没有「印章文字」输入框')
+else {
+  await grab('c8-sig-name.png')
+  const dName = await diffBox('c8-sig-default.png', 'c8-sig-name.png')
+  await setStampText('')
+  await grab('c8-sig-back.png')
+  const dBack = await diffBox('c8-sig-default.png', 'c8-sig-back.png')
+  report.steps.signature = { nameDiff: dName.n, backToDefault: dBack.n }
+  if (!(dName.n > 300)) errors.push(`[签名] 改了「印章文字」画面没变（差异像素 ${dName.n}）`)
+  if (dBack.n !== 0) errors.push(`[签名] 清空印章文字后没回到预设的样子（差异像素 ${dBack.n}，应为 0）`)
+}
+
+report.steps.stamp = { area: stampArea }
+
 /* ---------- D. 样式包导出 / 导入 ---------- */
 
 // D 组导出的是"当前模板"，这里必须回到波普（后面几条断言是按它的 band/阴影写的）

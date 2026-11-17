@@ -338,6 +338,8 @@ export function normalizeTemplate(raw: unknown, fallback: CardTemplate): CardTem
     stampImage: sanitizeStampImage(dc.stampImage) || (fallback.decor.stampImage ?? ''),
     stampSize: clampNum(dc.stampSize, 34, 140, fallback.decor.stampSize ?? 64),
     stampPos: pickEnum(dc.stampPos, STAMP_POSITIONS, fallback.decor.stampPos ?? 'br'),
+    // 印章文字：空串 = 用预设默认字。花括号是页眉占位符语法，印章里没有这个用法，直接剔掉
+    stampText: scrubText(dc.stampText, 6, fallback.decor.stampText ?? '').replace(/[{}]/g, '').trim(),
     /* schema 5「艺术层」 */
     panel: normalizePanel(dc.panel, fallback.decor.panel),
     headings: normalizeHeads(dc.headings, fallback.decor.headings),

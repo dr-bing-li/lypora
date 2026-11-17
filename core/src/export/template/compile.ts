@@ -214,7 +214,7 @@ const DECOR_CSS = `
   letter-spacing: 0.30em;
   text-indent: 0.30em;
 }
-/* 手写签名：楷体斜体 + 一道下划线 */
+/* 手写签名：楷体斜体 + 一道下划线（文字可由 decor.stampText 替换，字数多时字号由内联样式收） */
 .ly-card .ly-stamp[data-stamp="signature"] {
   width: calc(var(--c-stamp-size) * 1.75); height: calc(var(--c-stamp-size) * 0.70);
   border-bottom: 1.5px solid currentColor;
@@ -226,10 +226,19 @@ const DECOR_CSS = `
   font-size: calc(var(--c-stamp-size) * 0.52);
   letter-spacing: 0.04em;
   padding-bottom: 0.08em;
+  white-space: nowrap;
 }
-/* 自定义上传：透明 PNG，按宽高比缩放进 stampSize 的方框 */
+/*
+ * 自定义上传：透明 PNG，等比缩进 stampSize 的方框。
+ *
+ * 这条规则必须按 data-stamp="image" 给**四个角通用**：早先只给 bl / br 限了
+ * max-height，左上 / 右上没有任何尺寸约束，图片就按原始像素铺开 ——
+ * 滑块怎么拖都不动，大图还会盖住标题。
+ */
 .ly-card .ly-stamp-img { object-fit: contain; object-position: center; }
-.ly-card .ly-stamp[data-pos="br"] .ly-stamp-img, .ly-card .ly-stamp[data-pos="bl"] .ly-stamp-img { max-height: calc(var(--c-stamp-size) * 1.1); }
+.ly-card .ly-stamp[data-stamp="image"] {
+  width: calc(var(--c-stamp-size) * 1.1); height: calc(var(--c-stamp-size) * 1.1);
+}
 
 /* ---- 装订位（真实元素，绝对定位，不参与布局） ----
  * 回形针与订书钉原来是"三个 CSS 边框拼出来的"，形状与位置都不对（用户能一眼看出）。

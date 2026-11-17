@@ -568,7 +568,8 @@ export function createBeautifyPanel(deps: BeautifyDeps): BeautifyHandle {
     )
     g.appendChild(on)
 
-    for (const path of ['decor.stampPreset', 'decor.stampPos', 'decor.stampSize']) {
+    // stampText 紧跟预设：换形状之后第一件想改的就是上面那个字
+    for (const path of ['decor.stampPreset', 'decor.stampText', 'decor.stampPos', 'decor.stampSize']) {
       const spec = PARAM_SPECS.find((s) => s.path === path)
       if (spec) g.appendChild(renderParam(spec))
     }

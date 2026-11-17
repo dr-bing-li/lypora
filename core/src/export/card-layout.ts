@@ -697,7 +697,10 @@ function bindSvg(kind: string): string {
   return ''
 }
 
-/** 印章预设里的字：朱文圆印「阅」、白文方印「已阅」竖排、长条「已阅」、手写「签名」 */
+/**
+ * 印章预设里的字：朱文圆印「阅」、白文方印「已阅」竖排、长条「已阅」、手写「签名」。
+ * 用户填了 `decor.stampText` 就以那个为准，这里只是各预设的缺省字。
+ */
 const STAMP_GLYPH: Record<string, string> = {
   seal: '阅',
   square: '已阅',
@@ -705,15 +708,43 @@ const STAMP_GLYPH: Record<string, string> = {
   signature: '签名',
 }
 
+/**
+ * 印章字号系数（相对 `--c-stamp-size`）与可用空间。
+ *
+ * 默认的一两个字走 `base`，所以老模板像素一个不差（C5 回归）；
+ * 用户把印章文字改长（签名填真名）时才按 `room / 字数` 收一收，免得字戳出印章边框。
+ * `room` 是"这个形状的容纳区相当于几倍字号"：圆印 ≈ 0.85、方印竖排看高度 0.85、
+ * 长条横排 1.93、签名横排 1.61。
+ */
+const STAMP_FIT: Record<string, { base: number; room: number }> = {
+  seal: { base: 0.46, room: 0.85 },
+  square: { base: 0.4, room: 0.85 },
+  strip: { base: 0.3, room: 1.93 },
+  signature: { base: 0.52, room: 1.61 },
+}
+
 function stampHtml(tpl: CardTemplate): string {
   const d = tpl.decor
   if (!d.stamp) return ''
   const pos = d.stampPos ?? 'br'
   if (d.stampImage) {
-    return `<span class="ly-stamp" data-pos="${pos}"><img class="ly-stamp-img" src="${d.stampImage}" alt="" style="width:100%;height:100%"></span>`
+    /*
+     * data-stamp="image" 不能省 —— 尺寸规则挂在它上面。
+     * 早先上传图只按 `[data-pos="bl"|"br"] .ly-stamp-img` 限了 max-height，
+     * 于是左上 / 右上的印章图不受 stampSize 约束，按原图像素直接铺开
+     * （「大小不可调」就是这么来的，而且大图会把标题盖住）。
+     */
+    return `<span class="ly-stamp" data-pos="${pos}" data-stamp="image"><img class="ly-stamp-img" src="${d.stampImage}" alt="" style="width:100%;height:100%"></span>`
   }
   const preset = d.stampPreset ?? 'seal'
-  return `<span class="ly-stamp" data-pos="${pos}" data-stamp="${preset}"><b>${STAMP_GLYPH[preset] ?? '阅'}</b></span>`
+  const glyph = (d.stampText ?? '').trim() || STAMP_GLYPH[preset] || '阅'
+  const fit = STAMP_FIT[preset]
+  const n = Array.from(glyph).length
+  const k = fit ? Math.min(fit.base, fit.room / Math.max(1, n)) : null
+  // 只在"字数超出默认"时才写内联字号：默认字保持 CSS 里的原系数，老模板逐像素不变
+  const shrink = k !== null && fit !== undefined && k < fit.base - 1e-6
+  const style = shrink ? ` style="font-size:calc(var(--c-stamp-size) * ${k.toFixed(3)})"` : ''
+  return `<span class="ly-stamp" data-pos="${pos}" data-stamp="${preset}"><b${style}>${escapeHtml(glyph)}</b></span>`
 }
 
 /** 面板里直接预览 DOM 时注入的样式（截图走 capture 自己的内联，不依赖这里） */

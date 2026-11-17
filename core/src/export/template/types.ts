@@ -198,6 +198,12 @@ export interface TemplateDecor {
   stampSize: number
   /** 印章落点 */
   stampPos: StampPos
+  /**
+   * 印章文字（schema 6 内追加的可选字段）。
+   * 空串 = 用预设的默认字（阅 / 已阅 / 签名），所以老模板与已导出的样式包像素不变；
+   * 手写签名填真名即可——那道横线就成了签名的下划线。
+   */
+  stampText: string
   /* ---- schema 5 ---- */
   /** 双面卡片：外圈带 + 内面板 */
   panel: PanelSpec

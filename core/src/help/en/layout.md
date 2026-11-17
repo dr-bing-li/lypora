@@ -32,7 +32,7 @@ It takes over the whole editor area (the menu bar stays). Three columns, left to
 | Background | 7 paper presets (kraft / ruled / grid / dots / watercolour / xuan paper / mesh glow) + your own image + opacity |
 | Texture & decoration | 9 textures (grain / grid / dots / ruled / fibre / halo / stripe / sprockets / lattice), accent mark (left / top / corner), corner treatment (fold / round cut), 5 outer frames, tape, binding |
 | Typography | 6 quote styles, 7 bullet styles, 5 title marks, 5 outer frames |
-| Stamp | on/off, 4 presets (round Chinese seal, square seal, strip, handwritten signature), corner position, size |
+| Stamp | on/off, 4 presets (round Chinese seal, square seal, strip, handwritten signature), **stamp text** (type your real name for the signature), corner position, size |
 | Header & footer | free text for header-left, header-right and footer |
 | Band & panel | band width, panel fill (may be empty), border, radius, shadow kind, inner padding |
 | Rules | solid / dashed / stripe / tape / fade / dotted / none, with height, two colours and angle |
@@ -53,7 +53,8 @@ A footer of `{doc} · {page}/{total}` prints "filename · 3/8" at the bottom of 
 
 - **Binding**: none / spiral / paperclip / staple / **binder clip**. The last three are drawn as SVG from the real object: a paperclip is one continuous wire running from the outer loop to the inner loop (three offset strokes give the round-metal look); a staple is a flat ribbon, not a squared bracket, with the ends bent down; a binder clip is a body that narrows downwards plus a rolled top edge and two wire handles, gripping the top edge of the sheet.
 - **Corner**: none / folded / cut. "Cut" adds 16px on top of the radius slider, so the two stack.
-- **Stamp**: the 4 presets are drawn in CSS (double-ring round seal, vertical square seal, strip, handwritten signature); you can also upload a **transparent PNG** and it is scaled to fit. Position (4 corners) and size are adjustable.
+- **Stamp**: the 4 presets are drawn in CSS (double-ring round seal, vertical square seal, strip, handwritten signature); you can also upload a **transparent PNG**, which is scaled proportionally into a box of the chosen size. Position (4 corners) and size are both adjustable — an uploaded image follows the same size rule in all four corners, so it never happens that one corner responds to the slider and another does not.
+- **Stamp text**: put your real name here if you want to sign (most useful with the handwritten signature); leave it empty to use the preset word (阅 / 已阅 / 签名). Longer text is scaled down automatically, so it neither pokes out of the seal frame nor runs past the signature underline.
 - **Tape / accent mark / cover motif**: small props the template brings along; just toggle them.
 
 ## The art layer (0.13.0)
