@@ -64,7 +64,7 @@ Typora 的 `#write` 是真正的内容根，`#write > p` 是父子关系；我�
 | vercel-ceylon | 255,255,255 | 23,23,23 | 37.4px | 924 | 17.9 | 5.8 |
 | warm-snow | 42,39,37 | 240,235,224 | 33.6px | 840 | 12.5 | 4.3 |
 
-切换链路同时验：导入后 `styleLen=11209`、切回内置 Night 归 0、再切回内置 Github 与基线逐像素一致
+切换链路同时验：导入后 `styleLen=11208`、切回内置 Night 归 0、再切回内置 Github 与基线逐像素一致
 （`matchesBaseline=true`），`console errors: none`。
 
 **明确做不到的（是模型差异，不是没修）**：`p + p` 这类块间距；跨行居中的装饰；
@@ -140,7 +140,7 @@ tolerance — the adapter's own claims are never trusted.
 | vercel-ceylon | 255,255,255 | 23,23,23 | 37.4px | 924 | 17.9 | 5.8 |
 | warm-snow | 42,39,37 | 240,235,224 | 33.6px | 840 | 12.5 | 4.3 |
 
-The switching path is verified too: after import `styleLen=11209`, switching to the built-in Night back to 0,
+The switching path is verified too: after import `styleLen=11208`, switching to the built-in Night back to 0,
 switching back to the built-in Github pixel-identical to the baseline (`matchesBaseline=true`), and
 `console errors: none`.
 

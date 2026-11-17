@@ -1324,10 +1324,7 @@ function buildBridge(vars: Record<string, string>, extra: BridgeExtra = {}): str
     .join('\n')
   // html[data-theme] 的特异性高于 [data-theme='github']，且注入更晚，必定生效
   const rel = extra.absPseudo ? '\n.editor-host .cm-line { position: relative }\n' : ''
-  // 主题自带引用块竖条时，关掉内置那条（只写 width，让主题书写的
-  // `.editor-host .cm-line.md-quote-line`（特异性更高）继续生效）
-  const q = extra.themeQuotes ? '\n.cm-line.md-quote-line { border-left-width: 0 }\n' : ''
-  return `\n/* ---- Lypora 变量桥（由主题适配层生成，勿手改） ---- */\nhtml[data-theme] {\n${body}\n}\n${rel}${q}`
+  return `\n/* ---- Lypora 变量桥（由主题适配层生成，勿手改） ---- */\nhtml[data-theme] {\n${body}\n}\n${rel}`
 }
 
 /* ------------------------------------------------------------------ *
@@ -1366,5 +1363,10 @@ export function translateThemeCss(src: string): TranslateResult {
     absPseudo: ctx.absPseudo,
     themeQuotes: ctx.themeQuotes,
   })
-  return { css: `${body}${bridge}`, stats }
+  // 主题自带引用块竖条时，关掉内置那条（只写 width，别碰颜色/样式）。
+  // 这条必须写在**最前面**：主题转译出来的 blockquote 规则常常正好是
+  // `.cm-line.md-quote-line`（0,2,0），与这条同特异性 —— 同特异性下谁在后面谁赢，
+  // 而我们要的是"主题赢"。写在后面会把 scholar-notion / songti 的 4px 竖条一并清掉。
+  const qReset = ctx.themeQuotes ? '.cm-line.md-quote-line { border-left-width: 0 }\n' : ''
+  return { css: `${qReset}${body}${bridge}`, stats }
 }
