@@ -153,4 +153,14 @@ in-app help page *Themes and compatibility*, along with a self-check recipe: ope
 **Upgrading**: overwrite on all three desktop platforms. Previously imported themes are re-translated
 automatically, no re-import needed. Android versionCode 23 → 24, side-load over the old build.
 
-<!-- DOWNLOADS -->
+| 文件 / File | 平台 / Platform | 格式 / Format | 大小 / Size | SHA256 |
+|---|---|---|---|---|
+| `Lypora-0.14.4-android.apk` | Android 10+（API 29+） | APK（debug 签名，直接安装）<br>APK, debug-signed, sideload | 13.7 MiB | `1b0a94b8201a59d2a67280e131f22fac09d1654c35e75ac3c79430648ac5ad84` |
+| `Lypora-0.14.4-linux-x64.AppImage` | 任意 x86-64 发行版 | 单文件，免安装<br>Single file, no install | 96.8 MiB | `b7014f00b6dfeed36802eb22b49683c74cfce9f6889c26586ac002ba4006f0e1` |
+| `Lypora-0.14.4-linux-x64.tar.gz` | 任意 x86-64 发行版（glibc ≥ 2.31） | tar.gz + `install.sh`（per-user） | 104.4 MiB | `edf1ab553237d639245c3205215c3955e9a52d08f04998dae784872b65d05a57` |
+| `Lypora-0.14.4-macos-arm64.tar.gz` | macOS 11+ / Apple Silicon | `.app` bundle（ad-hoc 签名） | 98.6 MiB | `7fb5ecb503707168cdee1ed5f9a976ac8a49d6034a9f7a5c3234002984f44a6a` |
+| `Lypora-0.14.4-macos-x64.tar.gz` | macOS 11+ / Intel | `.app` bundle（ad-hoc 签名） | 103.0 MiB | `cdfedc92326e3de85d95fa055dde4610a5c158bef3d6c8d65c57f86dce561f4b` |
+| `Lypora-0.14.4-win-x64.zip` | Windows 10/11 x64 | 便携版 ZIP（解压即用）<br>Portable ZIP — unzip and run | 111.8 MiB | `67e928323c90934e3b6d9a21a17369bc0e841a385d84d4fb6985f02d060c7b64` |
+| `lypora-0.14.4-1.x86_64.rpm` | Fedora 32+ / RHEL 9+ / openSUSE | 系统包（`dnf install`） | 105.0 MiB | `3ec7b05dffec4795044026900fbc82fbf9b2931236d36522c51b94f144e91680` |
+| `lypora_0.14.4_amd64.deb` | Debian 11+ / Ubuntu 20.04+ / 深度 / 麒麟 | 系统包（`apt install`） | 81.0 MiB | `b4dc9d60a287a0aa4c4292d18662192bb71fd8632eff7942d87456d4eb6e694e` |
+
